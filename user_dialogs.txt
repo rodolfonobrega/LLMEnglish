@@ -1,0 +1,135 @@
+=== User Message 1 ===
+Quero uma aplicação para aprender inglês que será parecida com um flashcard. Basicamente, uma IA vai escrever algo na minha língua, por exemplo, português, que eu preciso falar. Pode ser qualquer coisa. Por exemplo, fale que você quer imitar que você está pedindo um pão na padaria, ou reservando um hotel, alguma coisa do tipo. E aí eu tenho que falar. Eu preciso ter uma opção de gravar o áudio e falar. E eu vou falar, obviamente, em inglês. E a IA precisa avaliar o que eu falei, dar uma nota. E quando ela der uma nota, ela me mostrar um jeito melhor de falar, ou corrigir os erros que eu cometi. Então, como se fosse um professor, com ideias didáticas, sempre pensando na língua falada, para falar mais naturalmente. Também pode ser uma imagem gerada pela IA para eu descrever a imagem, falar o que eu vejo nela e coisas do tipo. E eu posso guardar ou não aquela frase. Então, eu vou ter um lugar onde eu acesso coisas que já aconteceram. Então, por exemplo, uma frase que você já pediu para eu falar, eu falo de novo. E com aprendizado, com um reforço, né, igual cards, então precisa ter uma lógica de espaçamento. E outro lugar que eu descubro coisas novas. Inclusive, nesses textos, eu posso falar para ele gerar aleatoriamente, ou eu posso passar algum contexto, alguma palavra que eu queira falar. Então, por exemplo, se eu quiser aprender a falar "is". Aí a frase pode ser "O cachorro é preto" porque eu vou precisar falar "The dog is black". Então, o texto ou a imagem tem que remeter a algo que tenha essa palavra para eu poder usar. audio_spark Create conversational voice apps image Generate images with Nano Banana Pro spark Gemini intelligence in your app speech_to_text Transcribe audio audio_spark Generate speech
+
+=== User Message 2 ===
+The project is almost how I wanted it, but there are some changes that need to be made. I think there can be an option where I translate. So, you would give me a phrase, and I would translate it, which I think is more or less how it is now. The second thing is that you can ask me to role-play a question. For example, "Imagine you are at a hotel and need to change rooms." Then I will speak and you can even put a phrase in the middle, which would be what the attendant could say or not. And then I will speak about how I would handle that situation. The other part is literally to translate. For example, it could be the same phrase, and I would have to translate it into English as if I were asking someone. From what I've gathered, what I am saying is not being transcribed correctly. It's transcribing as if I had spoken better than I did. So, it's altering what I said. And it can't; it needs to capture exactly what I said.
+
+=== User Message 3 ===
+It's good, but I think this flow of the review is becoming strange. For example, when I create a new card, it automatically goes to review, when it should appear for me. I should be able to choose if I want to add it to the review or not. It shouldn't go automatically. In the review, it's doing a part of past repetitions, which is correct. But there should be a place where I see the cards that I could review. I could see how many times I got it right, how many times I got it wrong. It's like the average score of these cards. How I could delete a card. I could also change the phrase. I could add a card manually. That type of thing.
+
+=== User Message 4 ===
+On the Library component, for each card, display a summary of its review history, including the total number of reviews, correct count, and average score.
+
+=== User Message 5 ===
+Não sei se é possível, mas ele poderia avaliar também a pronúncia e eu poderia gerar o áudio da frase que ele sugeriu pra eu conseguir ouvir.
+
+=== User Message 6 ===
+Add a button to each card in the Library that allows the user to hear the AI-generated audio for the card's prompt.
+
+=== User Message 7 ===
+Quando eu digito nos campos, não dá pra ver porque parece que a letra está invisível ou dá mesma cor do fundo
+
+=== User Message 8 ===
+Quando clico pra ouvir ele gera o áudio toda vez ou deixa em cache os que já existem? Poderia deixar em cache.
+
+=== User Message 9 ===
+On the Library component, for each card, display a summary of its review history. This summary should include the total number of reviews, the count of correct answers (score >= 7), and the average score. Format this information clearly within each card's display.
+
+=== User Message 10 ===
+Poderia deixar mais gameficado tudo? E deixar a interface 100% em inglês?
+
+=== User Message 11 ===
+Grandes opções de tradução. O usuário consegue traduzir textos um pouco mais longos, não precisa ser absurdamente longos, mas maiores do que uma frase. Eu poderia escolher um tema e teria esse texto, que eu poderia traduzir. Eu poderia especificar palavras que quisesse ter no texto e essas coisas. Inclusive mais de uma palavra, né? Posso separar por vírgula, por exemplo.
+
+=== User Message 12 ===
+Não entendi Tem a frase e o texto juntos? Não é assim, o usuário vai definir se quer esses textos curtos ou textos um pouco mais longos. Lembrando que tudo aqui tem que ser baseado na vida real e em coisas faladas, por exemplo, um texto, pode ser uma apresentação do trabalho, pode ser uma pessoa pedindo coisas no restaurants ou contando uma história pra um amigo, mas tudo pensando em linguagem falada, nunca linguagem escrita, ok? Essa aplicação é pra treinar fala somente
+
+=== User Message 13 ===
+Faltou uma opção de descartar o áudio quando eu gravo algo errado e quero começar de novo
+
+=== User Message 14 ===
+Por algum motivo ele está melhorando o que eu falei, mas tem que pegar exatamente como falei porque é aí que vou melhorar.
+
+=== User Message 15 ===
+Eu gostaria de poder ouvir meu áudio antes de enviar para AI avaliar. Assim eu poderia corrigir antes. Além disso, eu gostaria de conseguir ouvir mesmo tendo enviado para AI
+
+=== User Message 16 ===
+Alem de target vocabulary Eu gostaria dê um campo que eu pudesse dar um contexto. Exemplo, quero falar sobre pyspark, entende?
+
+=== User Message 17 ===
+On the FlashcardView component, add a section after the evaluation results that provides detailed pronunciation feedback based on the user's speech. This feedback should focus on rhythm, intonation, and connected speech, offering specific tips for improvement.
+
+=== User Message 18 ===
+Está em building scenario Pra sempre, algo quebrou nas últimas mudanças?
+
+=== User Message 19 ===
+Na verdade era no texto mesmo
+
+=== User Message 20 ===
+Se eu clicar no listen to the partner 2 vezes ele toca um áudio sobre outro
+
+=== User Message 21 ===
+Eu não consigo acessar as coisas relacionadas ao card, por exemplo, a correção, o áudio que eu tinha gravado, etc. Sabe? A tela que aparece logo após eu analisar meu áudio, e seria bom, pra se eu quiser estudar, pode ser na library. Mas que fique claro, na revisão eu não posso ver a resposta,porque isso fugiria ao propósito.
+
+=== User Message 22 ===
+A parte de imagem está funcionando assim? O LLM pode criar uma imagem e fazer qualquer questionamento sobre a imagem. Pra eu descrever, perguntar o que é, perguntar algo sobre a imagem ou coisas do tipo. É isso mesmo que está acontecendo?
+
+=== User Message 23 ===
+Está aparecendo The AI is looking at the image Na parte de texto quando mando meu áudio
+
+=== User Message 24 ===
+O view lab result so aparece apos Uma revisão, sendo que quando eu crio o card eu posso já ter feito uma análise.
+
+=== User Message 25 ===
+O role play está errado, ele tem que me dar a situação e eu resolver sem me passar a frase que tenho que falar.
+
+=== User Message 26 ===
+Agora, preste bastante atenção. Quero uma feature nova, e ela precisa estar separada por enquanto. Vai ser o roleplay com áudio. Vai ser bem parecida com o roleplay, só que, ao invés de ser um texto, você vai passar uma atividade. Só que aí eu quero que seja meio que um diálogo. Entendeu? Por exemplo, você vai pedir para eu pedir um bolo de chocolate e um café. E aí você vai ser o garçom, e você a pessoa que pede. O garçom ou atendente. E aí, você tem que simular. Então, tem que ter a minha parte de gravar o áudio, a sua parte de gravar o áudio, e teria que ser uma coisa meio dinâmica. E essa parte não precisa, por enquanto, deixar gravar na revisão, porque eu ainda preciso pensar melhor como que eu quero fazer isso. Mas precisa ir gerando o áudio e dando a opção de eu gravar. E assim vai. Se fosse possível ser em streaming, seria legal o áudio, mas se não der, tudo bem.
+
+=== User Message 27 ===
+Ficou excelente. Eu consigo de alguma maneira definir o tema? Ou deixar a AI definir caso eu não saiba o que? Aqueles botões de temas do começo funcionam pra essa parte? Queria deixar mais polido no sentido de organização, mas a feature está excelente
+
+=== User Message 28 ===
+Só pra ter certeza, nessa parte eu consigo simular uma entrevista de emprego, certo? Ou eu posso ser o atendente, ou simular uma conversa entre amigos e coisas do tipo né?
+
+=== User Message 29 ===
+Quando for fazer algo de café, hotel, etc, poderia falar pra ela criar uma marca, pode ser fictícia ou não, sempre? Por exemplo, poderia ser um pedido no MC donalds, na Starbucks, etc, ou um café aleatório em Londres
+
+=== User Message 30 ===
+É possível ao final ter uma análise da conversa, falar o que poderia ser melhor, mostrar o texto completo com um diálogo limpo e que pudesse existir de verdade, e um botão que gerasse o áudio do diálogo mesmo? Porque aí eu poderia treinar shadowing com isso, entende?
+
+=== User Message 31 ===
+O diálogo tem que ser mega natural, tá? Como um nativo falaria de verdade.
+
+=== User Message 32 ===
+Coisa boba, mas poderia deixar a library no final? Último elemento?
+
+=== User Message 33 ===
+Eu gostaria de ter um botão de sair no live sem necessariamente mandar para análise. A mesma coisa no discovery.
+
+=== User Message 34 ===
+Não ficou claro pra mim quando eu vou ser o usuário ou o funcionário. Por default, eu deveria ser sempre o turista, cliente, etc. É só se eu pedir a AI inverte os papeis. Além disso, a explicações do contexto deve sempre estar em português, porque isso não me dá dicas em inglês e aí eu tenho que me forçar pra falar em inglês. Entende, né? O texto que fala sobre o que é o diálogo deve aparecer em português.
+
+=== User Message 35 ===
+A interface pode ser toda em inglês, inclusive os feedbacks, só o que precisa ser apresentado em português é o texto que fala sobre o que vamos falar, ok? Assim eu treino meu reading também. Porque eu só não quero "dicas" com coisas que vou ter que falar, mas o restante ser em inglês faz sentido.
+
+=== User Message 36 ===
+Quando ele fala o diálogo, ele usa duas vozes diferentes?
+
+=== User Message 37 ===
+Olha, talvez você não precise alterar nada, só quero garantir com você que o diálogo tem que ser bem natural, a AI não precisa ficar falando mais do que precisa só "enchendo linguiça", ela precisa falar o tanto quanto uma pessoa normal falaria. Se isso já estiver sendo feito deste jeito, ótimo.
+
+=== User Message 38 ===
+Temos alguns problemas, provavelmente nós prompts Veja: "Aqui está a sua missão de Roleplay: 🏨 Missão: Check-in no Hotel Cenário: Você acabou de chegar ao "Sunshine Hotel" em Miami após um longo voo. Você está na recepção para fazer o seu check-in, mas quer garantir que tudo esteja correto com a sua reserva. Seu Papel: Turista. Meu Papel: Recepcionista do hotel. Seus Objetivos: Cumprimentar o recepcionista e dizer que você tem uma reserva em seu nome. Confirmar se o café da manhã está incluso no valor da diária. Pedir um quarto em um andar alto (high floor) e a senha do Wi-Fi. Instrução: Quando estiver pronto, comece a conversa em inglês falando com o recepcionista." Isso foi uma coisa que ele gerou, o formato está ruim, eu não deveria ver um " meu papel " Entenda, isso pode ocorrer internamente, mas pro usuário ele tem que ver só a situação e nada mais. Outra coisa que aconteceu, o atendente perguntou pra mim se o café da manhã estava disponível e perguntou se eu queria um andar alto e a senha do wifi. Isso não pode acontecer, eu que tenho que perguntar. Meio que ele vazou o que eu deveria fazer, entende?
+
+=== User Message 39 ===
+Remove aquela parte do front end de immersion rules
+
+=== User Message 40 ===
+O random não está tão random, o de food so fala Sobre lasanha bolonhesa, era pra ficsr variando, café, restaurante, comida de rua, etc
+
+=== User Message 41 ===
+Quando eu aperto play no diálogo do live ele so fala a primeira frase, era pra ter o diálogo todo
+
+=== User Message 42 ===
+Quando eu aperto play no diálogo do live ele so fala a primeira frase, era pra ter o diálogo todo. Consegue corrigir isso?
+
+=== User Message 43 ===
+Coisa boba, mas quando eu falar bye ou algo que indique o fim do diálogo no live, tem como parar a conversa automaticamente? Ou vai adicionar muita complexidade? Se for, pode deixar.
+
+=== User Message 44 ===
+Algo quebrou, eu estou falando hello é nada acontece.
+
+=== User Message 45 ===
+O shadowing lab ficou todo em português. O diálogo tem que ficar em inglês. Outra coisa, os diálogos estão demorando entre um e outro, seria legal se ele gerasse mais rápido ou aguardasse gerar todos ou alguns pra ficar mais fluido
+

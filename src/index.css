@@ -1,0 +1,154 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ── Light theme (default) ── */
+:root {
+  /* Surfaces */
+  --parchment: #FBF7F0;
+  --card: #FFFFFF;
+  --card-warm: #F7F2EA;
+  --card-hover: #EFE9DF;
+
+  /* Ink */
+  --ink: #2D2A26;
+  --ink-secondary: #5C5650;
+  --ink-muted: #9C9590;
+  --ink-faint: #C4BEB6;
+
+  /* Accent: sky */
+  --sky: #4A90D9;
+  --sky-hover: #3A7BC8;
+  --sky-soft: rgba(74, 144, 217, 0.1);
+
+  /* Speech / voice */
+  --coral: #E8735A;
+  --coral-hover: #D4603F;
+  --coral-soft: rgba(232, 115, 90, 0.1);
+
+  /* Warmth / XP */
+  --amber: #F5A623;
+  --amber-soft: rgba(245, 166, 35, 0.12);
+
+  /* Semantic */
+  --leaf: #5CB85C;
+  --leaf-soft: rgba(92, 184, 92, 0.1);
+  --danger: #D9534F;
+  --danger-soft: rgba(217, 83, 79, 0.1);
+
+  /* Border & shadow */
+  --edge: rgba(45, 42, 38, 0.08);
+  --edge-strong: rgba(45, 42, 38, 0.15);
+  --shadow-sm: 0 1px 3px rgba(45, 42, 38, 0.06);
+  --shadow-md: 0 4px 12px rgba(45, 42, 38, 0.08);
+  --shadow-lg: 0 8px 24px rgba(45, 42, 38, 0.10);
+
+  --ring-offset: var(--parchment);
+}
+
+/* ── Dark theme ── */
+.dark {
+  --parchment: #1A1816;
+  --card: #252220;
+  --card-warm: #302C28;
+  --card-hover: #403C38;
+
+  --ink: #F0EBE3;
+  --ink-secondary: #C4BEB6;
+  --ink-muted: #9C9590;
+  --ink-faint: #5C5650;
+
+  --sky-soft: rgba(74, 144, 217, 0.15);
+  --coral-soft: rgba(232, 115, 90, 0.15);
+  --amber-soft: rgba(245, 166, 35, 0.15);
+  --leaf-soft: rgba(92, 184, 92, 0.15);
+  --danger-soft: rgba(217, 83, 79, 0.15);
+
+  --edge: rgba(240, 235, 227, 0.08);
+  --edge-strong: rgba(240, 235, 227, 0.15);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+
+  --ring-offset: var(--parchment);
+}
+
+/* ── Tailwind theme registration ── */
+@theme {
+  /* Surfaces */
+  --color-parchment: var(--parchment);
+  --color-card: var(--card);
+  --color-card-warm: var(--card-warm);
+  --color-card-hover: var(--card-hover);
+
+  /* Ink */
+  --color-ink: var(--ink);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+
+  /* Sky */
+  --color-sky: var(--sky);
+  --color-sky-hover: var(--sky-hover);
+  --color-sky-soft: var(--sky-soft);
+
+  /* Coral */
+  --color-coral: var(--coral);
+  --color-coral-hover: var(--coral-hover);
+  --color-coral-soft: var(--coral-soft);
+
+  /* Amber */
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+
+  /* Semantic */
+  --color-leaf: var(--leaf);
+  --color-leaf-soft: var(--leaf-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  /* Structure */
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
+
+  /* z-index scale */
+  --z-header: 40;
+  --z-nav: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+}
+
+/* ── Base styles ── */
+body {
+  margin: 0;
+  background-color: var(--parchment);
+  color: var(--ink);
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input, textarea, select {
+  color: var(--ink);
+  background-color: var(--card-warm);
+}
+
+button, [role="button"], a, select, summary {
+  cursor: pointer;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--ink-muted);
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

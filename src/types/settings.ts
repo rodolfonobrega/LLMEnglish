@@ -111,8 +111,7 @@ export const IMAGE_MODELS = [
   { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image', provider: 'gemini' as const },
   // OpenAI
   { value: 'gpt-image-1', label: 'GPT Image 1 (best)', provider: 'openai' as const },
-  { value: 'dall-e-3', label: 'DALL-E 3', provider: 'openai' as const },
-  { value: 'dall-e-2', label: 'DALL-E 2 (cheap)', provider: 'openai' as const },
+  { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini (fast & affordable)', provider: 'openai' as const },
 ];
 
 export const LIVE_MODELS = [

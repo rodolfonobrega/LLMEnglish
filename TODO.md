@@ -33,5 +33,9 @@
 ## 7. Performance & Cost Optimization
 - [ ] **Audio Caching Verification**: Verify that generated audios are being correctly cached and reused to prevent redundant API calls and reduce costs.
 
+## 8. Infrastructure & Multi-Provider Support
+- [ ] **Groq API Integration**: Add support for Groq API. Since it is OpenAI-compatible, investigate reusing the OpenAI service logic by simply switching the `base_url`.
+
+
 
 

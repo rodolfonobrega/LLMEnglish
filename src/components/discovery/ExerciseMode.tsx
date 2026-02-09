@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic } from 'lucide-react';
+import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ThemeSelector } from '../shared/ThemeSelector';
@@ -16,6 +16,7 @@ import {
   getEvaluationPrompt,
   getImageQuestionPrompt,
 } from '../../utils/prompts';
+import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
 import { addCard } from '../../services/storage';
 import { addXP } from '../../services/gamification';
@@ -94,15 +95,15 @@ function getSystemPrompt(
   type: ExerciseType,
   vocabArr: string[] | undefined,
   context: string | undefined,
-  theme: string | undefined,
+  theme: string | null,
 ) {
   switch (type) {
     case 'phrase':
-      return getPhraseGenerationPrompt(vocabArr, context, theme);
+      return getPhraseGenerationPrompt(vocabArr, context, theme || undefined);
     case 'text':
-      return getTextGenerationPrompt(vocabArr, context, theme);
+      return getTextGenerationPrompt(vocabArr, context, theme || undefined);
     case 'roleplay':
-      return getRoleplayGenerationPrompt(context, theme);
+      return getRoleplayGenerationPrompt(context, theme || undefined);
   }
 }
 
@@ -122,7 +123,7 @@ export function ExerciseMode() {
   // Form state
   const [exerciseType, setExerciseType] = useState<ExerciseType>('phrase');
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('audio');
-  const [theme, setTheme] = useState('random');
+  const [theme, setTheme] = useState<string | null>('random');
   const [targetVocab, setTargetVocab] = useState('');
   const [context, setContext] = useState('');
 
@@ -150,6 +151,13 @@ export function ExerciseMode() {
     setPrompt('');
     setImageUrl('');
 
+    // VALIDATION: Require either a theme or a specific context
+    if (!theme && !context?.trim()) {
+      setError('Please select a theme or provide a specific topic.');
+      setIsGenerating(false);
+      return;
+    }
+
     try {
       if (isAudio) {
         // Audio + Text mode
@@ -160,15 +168,21 @@ export function ExerciseMode() {
           exerciseType,
           vocabArr,
           context || undefined,
-          theme !== 'random' ? theme : undefined,
+          theme !== 'random' ? theme : null,
         );
         const result = await chatCompletion(systemPrompt, getUserMessage(exerciseType));
         setPrompt(result.trim());
       } else {
         // Visual Prompt mode
-        const scene =
-          context?.trim() ||
-          IMAGE_SCENES[Math.floor(Math.random() * IMAGE_SCENES.length)];
+        let scene = context?.trim();
+        if (!scene) {
+          if (theme === 'random') {
+            scene = IMAGE_SCENES[Math.floor(Math.random() * IMAGE_SCENES.length)];
+          } else if (theme) {
+            scene = `a scene related to ${theme}`;
+          }
+        }
+
         const imgUrl = await generateImage(
           `A realistic photo of an everyday scene that would be interesting to describe: ${scene}`,
         );
@@ -198,7 +212,8 @@ export function ExerciseMode() {
         'You are an expert English language evaluator. Respond only with valid JSON.',
         evalPrompt,
       );
-      const evalResult: EvaluationResult = JSON.parse(evalResponse);
+      const cleanResponse = cleanJson(evalResponse);
+      const evalResult: EvaluationResult = JSON.parse(cleanResponse);
       evalResult.userTranscription = transcription;
       setEvaluation(evalResult);
 
@@ -219,24 +234,24 @@ export function ExerciseMode() {
 
     const card = isAudio
       ? createDefaultCard({
-          type: exerciseType,
-          prompt,
-          targetVocabulary:
-            config.hasVocab && targetVocab
-              ? targetVocab.split(',').map(v => v.trim())
-              : undefined,
-          context: context || undefined,
-          theme,
-          latestEvaluation: evaluation,
-          userAudioBlob: userAudioBase64 || undefined,
-        })
+        type: exerciseType,
+        prompt,
+        targetVocabulary:
+          config.hasVocab && targetVocab
+            ? targetVocab.split(',').map(v => v.trim())
+            : undefined,
+        context: context || undefined,
+        theme: theme || undefined,
+        latestEvaluation: evaluation,
+        userAudioBlob: userAudioBase64 || undefined,
+      })
       : createDefaultCard({
-          type: 'image',
-          prompt,
-          imageUrl,
-          latestEvaluation: evaluation,
-          userAudioBlob: userAudioBase64 || undefined,
-        });
+        type: 'image',
+        prompt,
+        imageUrl,
+        latestEvaluation: evaluation,
+        userAudioBlob: userAudioBase64 || undefined,
+      });
 
     addCard(card);
     setSaved(true);
@@ -315,7 +330,10 @@ export function ExerciseMode() {
         {/* CONTEXT / THEME */}
         <div>
           <SectionLabel>Context / Theme</SectionLabel>
-          <ThemeSelector selected={theme} onSelect={setTheme} />
+          <ThemeSelector
+            selected={theme || ''}
+            onSelect={(t) => setTheme(prev => prev === t ? null : t)}
+          />
         </div>
 
         {/* TARGET VOCABULARY — only for phrase/text in audio mode */}
@@ -331,21 +349,23 @@ export function ExerciseMode() {
           </div>
         )}
 
-        {/* SPECIFIC TOPIC / CONTEXT */}
-        <div>
-          <SectionLabel>Specific Topic / Context</SectionLabel>
-          <Input
-            value={context}
-            onChange={e => setContext(e.target.value)}
-            placeholder={
-              !isAudio
-                ? 'e.g., a busy street market, cozy coffee shop'
-                : exerciseType === 'roleplay'
-                  ? 'e.g., returning a product, doctor appointment'
-                  : 'e.g., ordering coffee, job interview'
-            }
-          />
-        </div>
+        {/* SPECIFIC TOPIC / CONTEXT - Only shown when "Custom Topic" is selected */}
+        {theme === 'custom' && (
+          <div>
+            <SectionLabel>Specific Topic / Context</SectionLabel>
+            <Input
+              value={context}
+              onChange={e => setContext(e.target.value)}
+              placeholder={
+                !isAudio
+                  ? 'e.g., a busy street market, cozy coffee shop'
+                  : exerciseType === 'roleplay'
+                    ? 'e.g., returning a product, doctor appointment'
+                    : 'e.g., ordering coffee, job interview'
+              }
+            />
+          </div>
+        )}
 
         {/* GENERATE BUTTON */}
         <Button
@@ -357,6 +377,12 @@ export function ExerciseMode() {
           <Sparkles size={20} />
           {isAudio ? 'Generate Speech Task' : 'Generate Image Challenge'}
         </Button>
+
+        {error && (
+          <div className="bg-danger-soft border border-danger/30 rounded-2xl p-4 text-danger text-sm">
+            {error}
+          </div>
+        )}
       </div>
     );
   }
@@ -432,23 +458,40 @@ export function ExerciseMode() {
               <X size={16} />
             </button>
           )}
+
+          {/* Explicit Back/Cancel button for better UX */}
+          <div className="absolute -top-12 left-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={reset}
+              className="text-ink-muted hover:text-ink pl-0 gap-1"
+            >
+              <ChevronLeft size={16} />
+              Back to Menu
+            </Button>
+          </div>
         </div>
 
         <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />
 
-        {isEvaluating && (
-          <div className="flex items-center justify-center gap-2 text-sky">
-            <Loader2 size={20} className="animate-spin" />
-            <span className="font-medium">Evaluating your speech...</span>
-          </div>
-        )}
+        {
+          isEvaluating && (
+            <div className="flex items-center justify-center gap-2 text-sky">
+              <Loader2 size={20} className="animate-spin" />
+              <span className="font-medium">Evaluating your speech...</span>
+            </div>
+          )
+        }
 
-        {error && (
-          <div className="bg-danger-soft border border-danger/30 rounded-2xl p-4 text-danger text-sm">
-            {error}
-          </div>
-        )}
-      </div>
+        {
+          error && (
+            <div className="bg-danger-soft border border-danger/30 rounded-2xl p-4 text-danger text-sm">
+              {error}
+            </div>
+          )
+        }
+      </div >
     );
   }
 

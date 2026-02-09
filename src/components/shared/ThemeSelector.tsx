@@ -10,7 +10,7 @@ const THEMES = [
   { id: 'transport', label: 'Transportation', icon: '🚕' },
   { id: 'entertainment', label: 'Entertainment', icon: '🎬' },
   { id: 'education', label: 'Education', icon: '📖' },
-  { id: 'random', label: 'Random', icon: '🎲' },
+  { id: 'custom', label: 'Custom Topic', icon: '✨' },
 ];
 
 interface ThemeSelectorProps {
@@ -20,7 +20,7 @@ interface ThemeSelectorProps {
 
 export function ThemeSelector({ selected, onSelect }: ThemeSelectorProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+    <div className="flex gap-2 flex-wrap">
       {THEMES.map(theme => (
         <button
           key={theme.id}

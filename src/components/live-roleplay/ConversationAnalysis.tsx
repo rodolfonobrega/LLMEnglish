@@ -3,6 +3,7 @@ import type { LiveScenario, ConversationTurn } from '../../types/scenario';
 import { chatCompletion, textToSpeech } from '../../services/openai';
 import { getModelConfig } from '../../services/storage';
 import { getConversationAnalysisPrompt } from '../../utils/prompts';
+import { cleanJson } from '../../utils/cleanJson';
 import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';
 
 function getTtsMimeType(): string {
@@ -84,7 +85,8 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
         'You analyze English conversations. Respond only with valid JSON.',
         prompt,
       );
-      const data: AnalysisData = JSON.parse(response);
+      const cleanResponse = cleanJson(response);
+      const data: AnalysisData = JSON.parse(cleanResponse);
       setAnalysis(data);
 
       addXP(XP_PER_LIVE_SESSION);

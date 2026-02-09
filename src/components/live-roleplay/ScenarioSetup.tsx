@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { chatCompletion, generateImage } from '../../services/openai';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt } from '../../utils/prompts';
+import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
 import { Sparkles, Pencil } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -59,7 +60,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         prompt,
       );
 
-      const parsed = JSON.parse(response);
+      const cleanResponse = cleanJson(response);
+      const parsed = JSON.parse(cleanResponse);
 
       const systemPrompt = getLiveRoleplaySystemPrompt(
         isCustom ? customDescription.trim() || 'custom' : theme,

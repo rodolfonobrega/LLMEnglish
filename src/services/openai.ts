@@ -139,6 +139,10 @@ async function geminiChatWithImage(systemPrompt: string, imageUrl: string, model
   let imageData: string;
   let mimeType: string;
 
+  if (!imageUrl) {
+    throw new Error('Image URL is missing (undefined or empty).');
+  }
+
   if (imageUrl.startsWith('data:')) {
     const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) throw new Error('Invalid data URL for image');
@@ -291,7 +295,17 @@ async function openaiImageGeneration(prompt: string, model: string): Promise<str
   }
 
   const data = await resp.json();
-  return data.data[0].url;
+
+  if (data.data && data.data[0]) {
+    if (data.data[0].url) {
+      return data.data[0].url;
+    }
+    if (data.data[0].b64_json) {
+      return `data:image/png;base64,${data.data[0].b64_json}`;
+    }
+  }
+
+  throw new Error(`OpenAI response missing image URL or b64_json: ${JSON.stringify(data)}`);
 }
 
 async function geminiImageGeneration(prompt: string, model: string): Promise<string> {

@@ -4,6 +4,7 @@ import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { chatCompletion, chatCompletionWithImage, generateImage, speechToText } from '../../services/openai';
 import { getImageQuestionPrompt, getEvaluationPrompt } from '../../utils/prompts';
+import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
 import { addCard } from '../../services/storage';
 import { addXP } from '../../services/gamification';
@@ -32,7 +33,7 @@ export function ImageMode() {
       const imgUrl = await generateImage(
         'A realistic photo of an everyday scene that would be interesting to describe: ' +
         ['a busy street market', 'a cozy coffee shop', 'a park on a sunny day', 'an airport terminal', 'a kitchen with food being prepared', 'a beach scene', 'a city skyline at sunset'][
-          Math.floor(Math.random() * 7)
+        Math.floor(Math.random() * 7)
         ]
       );
       setImageUrl(imgUrl);
@@ -55,7 +56,8 @@ export function ImageMode() {
       const transcription = await speechToText(blob);
       const evalPrompt = getEvaluationPrompt(question, transcription, 'image description');
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
-      const evalResult: EvaluationResult = JSON.parse(evalResponse);
+      const cleanResponse = cleanJson(evalResponse);
+      const evalResult: EvaluationResult = JSON.parse(cleanResponse);
       evalResult.userTranscription = transcription;
       setEvaluation(evalResult);
 

@@ -27,21 +27,34 @@ IMAGE_NAME := speaklab
 CONTAINER_NAME := speaklab
 PORT := 8888
 
+docker: docker-stop docker-build docker-run ## Full rebuild: stop, remove, build, and run
+	@echo "✓ Docker app running at http://localhost:$(PORT)"
+
 docker-build: ## Build Docker image
 	docker build -t $(IMAGE_NAME) .
+	@echo "✓ Image built: $(IMAGE_NAME)"
 
-docker-run: ## Run container (port 8080)
+docker-run: ## Run container
 	docker run -d --name $(CONTAINER_NAME) -p $(PORT):80 $(IMAGE_NAME)
-	@echo "App running at http://localhost:$(PORT)"
+	@echo "✓ Container started: http://localhost:$(PORT)"
 
-docker-stop: ## Stop and remove container
-	docker stop $(CONTAINER_NAME) 2>/dev/null || true
-	docker rm $(CONTAINER_NAME) 2>/dev/null || true
+docker-stop: ## Stop and remove container (no error if not running)
+	docker stop $(CONTAINER_NAME) || true
+	docker rm $(CONTAINER_NAME) || true
+	@echo "✓ Container stopped and removed"
+
+docker-clean: docker-stop ## Stop container and remove image
+	docker rmi $(IMAGE_NAME) || true
+	@echo "✓ Image removed: $(IMAGE_NAME)"
 
 docker-restart: docker-stop docker-run ## Restart container
+	@echo "✓ Container restarted"
 
 docker-logs: ## Tail container logs
 	docker logs -f $(CONTAINER_NAME)
+
+docker-shell: ## Open shell inside running container
+	docker exec -it $(CONTAINER_NAME) /bin/sh
 
 # ──────────────────────────────────────────────
 # Help

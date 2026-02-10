@@ -19,6 +19,7 @@ import {
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
 import { addCard } from '../../services/storage';
+import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
 import { addXP } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';
@@ -74,7 +75,7 @@ const exerciseConfig: Record<
     promptLabel: "Situation (speak in English how you'd handle this)",
     evalType: 'role-play situation',
     skeletonLines: 3,
-    hasVocab: false,
+    hasVocab: true,
   },
 };
 
@@ -103,7 +104,7 @@ function getSystemPrompt(
     case 'text':
       return getTextGenerationPrompt(vocabArr, context, theme || undefined);
     case 'roleplay':
-      return getRoleplayGenerationPrompt(context, theme || undefined);
+      return getRoleplayGenerationPrompt(context, theme || undefined, vocabArr);
   }
 }
 
@@ -216,6 +217,11 @@ export function ExerciseMode() {
       const evalResult: EvaluationResult = JSON.parse(cleanResponse);
       evalResult.userTranscription = transcription;
       setEvaluation(evalResult);
+
+      // Record error patterns for intelligent review
+      const tempCardId = `temp_${Date.now()}`;
+      const patterns = await extractErrorPatterns(evalResult, prompt, tempCardId);
+      recordErrorPatterns(patterns);
 
       let xp = XP_PER_EXERCISE;
       if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
@@ -332,7 +338,7 @@ export function ExerciseMode() {
           <SectionLabel>Context / Theme</SectionLabel>
           <ThemeSelector
             selected={theme || ''}
-            onSelect={(t) => setTheme(prev => prev === t ? null : t)}
+            onSelect={(t) => setTheme(t)}
           />
         </div>
 

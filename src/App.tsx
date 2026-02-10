@@ -5,6 +5,7 @@ import { ReviewPage } from './components/review/ReviewPage';
 import { LiveRoleplayPage } from './components/live-roleplay/LiveRoleplayPage';
 import { LibraryPage } from './components/library/LibraryPage';
 import { SettingsPage } from './components/settings/SettingsPage';
+import { ErrorDashboard } from './components/errors/ErrorDashboard';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="live" element={<LiveRoleplayPage />} />
           <Route path="library" element={<LibraryPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="errors" element={<ErrorDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

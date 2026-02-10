@@ -5,16 +5,17 @@ import { getModelConfig } from '../../services/storage';
 import { getConversationAnalysisPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';
+import { addXP } from '../../services/gamification';
+import { XP_PER_LIVE_SESSION } from '../../types/gamification';
+import { Loader2, Volume2, Play, Square, RotateCcw, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { Card, CardContent } from '../ui/card';
+import { cn } from '../../utils/cn';
 
 function getTtsMimeType(): string {
   const config = getModelConfig();
   return config.ttsProvider === 'gemini' ? 'audio/wav' : 'audio/mp3';
 }
-import { addXP } from '../../services/gamification';
-import { XP_PER_LIVE_SESSION } from '../../types/gamification';
-import { Loader2, Volume2, Play, Square, RotateCcw, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { cn } from '../../utils/cn';
 
 interface ConversationAnalysisProps {
   scenario: LiveScenario;
@@ -192,11 +193,11 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <div className="relative">
-          <Sparkles size={48} className="text-coral animate-bounce" style={{ animationDuration: '2s' }} />
+          <Sparkles size={48} className="text-primary animate-bounce" style={{ animationDuration: '2s' }} />
         </div>
         <div className="text-center">
-          <p className="text-ink font-bold text-lg">Analyzing your conversation...</p>
-          <p className="text-ink-muted text-sm mt-1">
+          <p className="text-foreground font-bold text-lg">Analyzing your conversation...</p>
+          <p className="text-muted-foreground text-sm mt-1">
             {themeEmoji} {scenario.brandName}
           </p>
         </div>
@@ -207,8 +208,8 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
   if (error) {
     return (
       <div className="space-y-4">
-        <div className="bg-danger-soft border border-danger/30 rounded-xl p-4 text-danger">{error}</div>
-        <Button variant="ghost" onClick={onReset} className="text-sky">Try Again</Button>
+        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-destructive">{error}</div>
+        <Button variant="ghost" onClick={onReset} className="text-primary hover:text-primary/80">Try Again</Button>
       </div>
     );
   }
@@ -218,173 +219,178 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
   const audioProgressPct = audioTotal > 0 ? Math.round((audioProgress / audioTotal) * 100) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Scene image header with warm amber overlay */}
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Scene image header with modern overlay */}
       {scenario.sceneImageUrl ? (
-        <div className="relative overflow-hidden rounded-[20px] shadow-[var(--shadow-lg)]">
-          <img
-            src={scenario.sceneImageUrl}
-            alt={`Scene: ${scenario.brandName}`}
-            className="w-full h-36 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-parchment via-parchment/50 to-amber/10" />
-          <div className="absolute bottom-4 left-5 right-5">
-            <h2 className="text-2xl font-extrabold text-ink text-balance">Conversation Analysis</h2>
-            <p className="text-sm text-ink-secondary mt-0.5">
-              {themeEmoji} {scenario.brandName} &middot; {scenario.location}
-            </p>
+        <Card className="overflow-hidden border-none shadow-lg">
+          <div className="relative h-40">
+            <img
+              src={scenario.sceneImageUrl}
+              alt={`Scene: ${scenario.brandName}`}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+            <div className="absolute bottom-4 left-6 right-6">
+              <h2 className="text-2xl font-bold text-foreground text-balance">Conversation Analysis</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {themeEmoji} {scenario.brandName} &middot; {scenario.location}
+              </p>
+            </div>
           </div>
-        </div>
+        </Card>
       ) : (
-        <div className="space-y-1">
-          <h2 className="text-2xl font-extrabold text-ink text-balance">Conversation Analysis</h2>
-          <p className="text-sm text-ink-secondary">
+        <div className="space-y-1 px-1">
+          <h2 className="text-2xl font-bold text-foreground text-balance">Conversation Analysis</h2>
+          <p className="text-sm text-muted-foreground">
             {themeEmoji} {scenario.brandName} &middot; {scenario.location}
           </p>
         </div>
       )}
 
       {/* Overall Feedback */}
-      <div className="bg-card rounded-[20px] p-5 shadow-[var(--shadow-md)]">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="size-7 rounded-full bg-leaf-soft flex items-center justify-center">
-            <CheckCircle2 size={16} className="text-leaf" />
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="size-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <CheckCircle2 size={18} />
+            </div>
+            <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Overall Feedback</h3>
           </div>
-          <h3 className="text-sm font-bold text-leaf uppercase tracking-wide">Overall Feedback</h3>
-        </div>
-        <p className="text-ink-secondary leading-relaxed text-pretty">{analysis.overallFeedback}</p>
-      </div>
+          <p className="text-muted-foreground leading-relaxed text-pretty">{analysis.overallFeedback}</p>
+        </CardContent>
+      </Card>
 
       {/* Improvements */}
       {analysis.improvements.length > 0 && (
-        <div className="bg-card rounded-[20px] p-5 shadow-[var(--shadow-md)]">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="size-7 rounded-full bg-coral-soft flex items-center justify-center">
-              <AlertTriangle size={16} className="text-coral" />
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="size-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                <AlertTriangle size={18} />
+              </div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Areas for Improvement</h3>
             </div>
-            <h3 className="text-sm font-bold text-coral uppercase tracking-wide">Areas for Improvement</h3>
-          </div>
-          <ul className="space-y-3">
-            {analysis.improvements.map((imp, i) => (
-              <li key={i} className="flex items-start gap-3 text-ink-secondary">
-                <span className="flex-shrink-0 size-6 rounded-full bg-coral-soft text-coral text-xs font-bold flex items-center justify-center mt-0.5">
-                  {i + 1}
-                </span>
-                <span className="text-pretty leading-relaxed">{imp}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+            <ul className="space-y-4">
+              {analysis.improvements.map((imp, i) => (
+                <li key={i} className="flex items-start gap-4">
+                  <span className="flex-shrink-0 size-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center mt-0.5 dark:bg-amber-900/50 dark:text-amber-400">
+                    {i + 1}
+                  </span>
+                  <span className="text-muted-foreground text-pretty leading-relaxed">{imp}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       {/* Shadowing Lab */}
-      <div className="bg-card rounded-[20px] p-5 shadow-[var(--shadow-md)]">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="size-7 rounded-full bg-sky-soft flex items-center justify-center">
-              <Volume2 size={16} className="text-sky" />
-            </div>
-            <h3 className="text-sm font-bold text-sky uppercase tracking-wide">Shadowing Lab</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            {dialogueAudioReady && (
-              <Button
-                variant="coral"
-                size="sm"
-                onClick={isPlayingDialogue ? stopDialogue : playFullDialogue}
-                aria-label={isPlayingDialogue ? 'Stop dialogue playback' : 'Play full dialogue'}
-              >
-                {isPlayingDialogue ? <Square size={14} /> : <Play size={14} />}
-                {isPlayingDialogue ? 'Stop' : 'Play All'}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <p className="text-xs text-ink-faint mb-3 text-pretty">
-          Native version of your conversation. Tap any line to hear it, or play all for full shadowing practice.
-        </p>
-
-        {/* Audio generation progress bar */}
-        {isGeneratingAudio && (
-          <div className="mb-4 space-y-2">
-            <div className="flex items-center gap-2 text-xs text-ink-muted">
-              <Loader2 size={12} className="animate-spin text-sky" />
-              <span>Generating audio... {audioProgress}/{audioTotal}</span>
-            </div>
-            <div className="h-1.5 bg-card-warm rounded-full overflow-hidden">
-              <div
-                className="h-full bg-sky rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${audioProgressPct}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Journal-style dialogue with interactive lines */}
-        <div className="bg-card-warm rounded-2xl p-4 space-y-3">
-          {analysis.cleanDialogue.map((turn, i) => {
-            const isPlaying = currentPlayingLine === i;
-            const canPlay = dialogueAudioReady && dialogueAudioUrls[i];
-
-            return (
-              <div
-                key={i}
-                className={cn('flex', turn.role === 'user' ? 'justify-end' : 'justify-start')}
-              >
-                <button
-                  onClick={() => canPlay && playIndividualLine(i)}
-                  disabled={!canPlay}
-                  className={cn(
-                    'max-w-[85%] rounded-2xl px-4 py-3 text-left transition-all duration-200',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky/50',
-                    turn.role === 'user'
-                      ? 'bg-sky-soft text-ink'
-                      : 'bg-card text-ink shadow-[var(--shadow-sm)]',
-                    isPlaying && 'ring-2 ring-sky shadow-[var(--shadow-md)] scale-[1.02]',
-                    canPlay && !isPlaying && 'hover:shadow-[var(--shadow-md)] hover:scale-[1.01] cursor-pointer',
-                    !canPlay && 'opacity-70 cursor-default',
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <p className="text-[11px] text-ink-muted capitalize font-semibold">
-                      {turn.role === 'user' ? 'You (native)' : scenario.aiRole}
-                    </p>
-                    {canPlay && (
-                      <div className={cn(
-                        'flex-shrink-0 size-5 rounded-full flex items-center justify-center transition-colors',
-                        isPlaying
-                          ? 'bg-sky text-white'
-                          : 'bg-ink/5 text-ink-muted',
-                      )}>
-                        {isPlaying ? (
-                          <div className="flex items-center gap-[2px]">
-                            <span className="w-[2px] h-2 bg-white rounded-full animate-pulse" />
-                            <span className="w-[2px] h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                            <span className="w-[2px] h-2 bg-white rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                          </div>
-                        ) : (
-                          <Volume2 size={10} />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-sm text-pretty leading-relaxed">{turn.text}</p>
-                </button>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="size-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                <Volume2 size={18} />
               </div>
-            );
-          })}
-        </div>
-      </div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Shadowing Lab</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              {dialogueAudioReady && (
+                <Button
+                  size="sm"
+                  onClick={isPlayingDialogue ? stopDialogue : playFullDialogue}
+                  aria-label={isPlayingDialogue ? 'Stop dialogue playback' : 'Play full dialogue'}
+                  className={cn("gap-2", isPlayingDialogue ? "bg-destructive hover:bg-destructive/90 text-white" : "")}
+                >
+                  {isPlayingDialogue ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                  {isPlayingDialogue ? 'Stop' : 'Play All'}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <p className="text-sm text-muted-foreground mb-6 text-pretty">
+            Native version of your conversation. Tap any line to hear it, or play all for full shadowing practice.
+          </p>
+
+          {/* Audio generation progress bar */}
+          {isGeneratingAudio && (
+            <div className="mb-6 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 size={12} className="animate-spin text-primary" />
+                <span>Generating audio... {audioProgress}/{audioTotal}</span>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${audioProgressPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Journal-style dialogue with interactive lines */}
+          <div className="space-y-4">
+            {analysis.cleanDialogue.map((turn, i) => {
+              const isPlaying = currentPlayingLine === i;
+              const canPlay = dialogueAudioReady && dialogueAudioUrls[i];
+
+              return (
+                <div
+                  key={i}
+                  className={cn('flex', turn.role === 'user' ? 'justify-end' : 'justify-start')}
+                >
+                  <div
+                    onClick={() => canPlay && playIndividualLine(i)}
+                    className={cn(
+                      'max-w-[85%] rounded-2xl px-5 py-4 text-left transition-all duration-200 border cursor-pointer select-none group',
+                      turn.role === 'user'
+                        ? 'bg-primary/5 border-primary/10 hover:border-primary/30'
+                        : 'bg-card border-border hover:border-primary/30 shadow-sm',
+                      isPlaying && 'ring-2 ring-primary border-transparent shadow-md scale-[1.01]',
+                      !canPlay && 'opacity-70 cursor-default hover:border-border',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-bold">
+                        {turn.role === 'user' ? 'You (native)' : scenario.aiRole}
+                      </p>
+                      {canPlay && (
+                        <div className={cn(
+                          'flex-shrink-0 size-6 rounded-full flex items-center justify-center transition-colors',
+                          isPlaying
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary',
+                        )}>
+                          {isPlaying ? (
+                            <div className="flex items-center gap-[2px] h-3">
+                              <span className="w-[2px] h-2 bg-current rounded-full animate-pulse" />
+                              <span className="w-[2px] h-3 bg-current rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                              <span className="w-[2px] h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          ) : (
+                            <Volume2 size={12} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground">{turn.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Action */}
       <Button
-        variant="coral"
         size="lg"
         onClick={onReset}
-        className="w-full text-lg font-bold py-4 rounded-2xl"
+        variant="default"
+        className="w-full text-lg font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
       >
-        <RotateCcw size={18} />
+        <RotateCcw size={18} className="mr-2" />
         Start New Conversation
       </Button>
     </div>

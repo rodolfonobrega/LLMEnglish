@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { getCardsDueForReview, updateCard } from '../../services/storage';
 import { updateCardSchedule } from '../../services/spacedRepetition';
+import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
+import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ScoreDisplay } from '../shared/ScoreDisplay';
 import { chatCompletion, speechToText } from '../../services/openai';
-import { getEvaluationPrompt } from '../../utils/prompts';
+import { getEvaluationPrompt, getTutorExplanationPrompt } from '../../utils/prompts';
 import { addXP } from '../../services/gamification';
 import { XP_PER_REVIEW } from '../../types/gamification';
 import type { Card, EvaluationResult } from '../../types/card';
-import { Loader2, RotateCcw, ChevronRight, CheckCircle2, Compass, Trophy } from 'lucide-react';
+import { Loader2, RotateCcw, ChevronRight, CheckCircle2, Compass, Trophy, Brain, Lightbulb } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+
+type ReviewMode = 'standard' | 'intelligent';
 
 export function ReviewPage() {
   const [dueCards, setDueCards] = useState<Card[]>([]);
@@ -22,19 +26,27 @@ export function ReviewPage() {
   const [showResults, setShowResults] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [sessionScores, setSessionScores] = useState<number[]>([]);
+  const [reviewMode, setReviewMode] = useState<ReviewMode>('standard');
+  const [showTutor, setShowTutor] = useState(false);
+  const [tutorExplanation, setTutorExplanation] = useState<string | null>(null);
+  const [isGeneratingTutor, setIsGeneratingTutor] = useState(false);
 
   useEffect(() => {
     loadDueCards();
   }, []);
 
-  const loadDueCards = () => {
-    const cards = getCardsDueForReview();
+  const loadDueCards = (mode: ReviewMode = reviewMode) => {
+    const cards = mode === 'intelligent'
+      ? getPrioritizedReviewCards(20)
+      : getCardsDueForReview();
+
     setDueCards(cards);
     setCurrentIndex(0);
     setEvaluation(null);
     setShowResults(false);
     setSessionComplete(false);
     setSessionScores([]);
+    setReviewMode(mode);
   };
 
   const currentCard = dueCards[currentIndex];
@@ -43,6 +55,8 @@ export function ReviewPage() {
     if (!currentCard) return;
     setIsEvaluating(true);
     setError(null);
+    setShowTutor(false);
+    setTutorExplanation(null);
     try {
       const transcription = await speechToText(blob);
       const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`);
@@ -61,6 +75,10 @@ export function ReviewPage() {
       updatedCard.latestEvaluation = evalResult;
       updateCard(updatedCard);
 
+      // Record error patterns for intelligent review
+      const patterns = await extractErrorPatterns(evalResult, currentCard.prompt, currentCard.id);
+      recordErrorPatterns(patterns);
+
       setSessionScores(prev => [...prev, evalResult.score]);
 
       addXP(XP_PER_REVIEW);
@@ -69,6 +87,30 @@ export function ReviewPage() {
       setError(err instanceof Error ? err.message : 'Evaluation failed');
     } finally {
       setIsEvaluating(false);
+    }
+  };
+
+  const handleShowTutor = async () => {
+    if (!evaluation || !currentCard) return;
+    setIsGeneratingTutor(true);
+    try {
+      const tutorPrompt = getTutorExplanationPrompt(
+        currentCard.prompt,
+        evaluation.userTranscription,
+        evaluation.correctedVersion,
+        evaluation.corrections,
+        evaluation.pronunciationFeedback
+      );
+      const explanation = await chatCompletion(
+        'You are a patient, encouraging English tutor. Explain mistakes clearly and provide helpful examples.',
+        tutorPrompt
+      );
+      setTutorExplanation(explanation);
+      setShowTutor(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate tutor explanation');
+    } finally {
+      setIsGeneratingTutor(false);
     }
   };
 
@@ -103,7 +145,7 @@ export function ReviewPage() {
               Practice in Discovery
             </Button>
           </a>
-          <Button variant="secondary" onClick={loadDueCards}>
+          <Button variant="secondary" onClick={() => loadDueCards(reviewMode)}>
             <RotateCcw size={16} />
             Refresh
           </Button>
@@ -137,7 +179,7 @@ export function ReviewPage() {
             </div>
           </div>
         </div>
-        <Button variant="coral" size="lg" onClick={loadDueCards} className="rounded-2xl px-8">
+        <Button variant="coral" size="lg" onClick={() => loadDueCards(reviewMode)} className="rounded-2xl px-8">
           <RotateCcw size={18} />
           Review More
         </Button>
@@ -153,10 +195,50 @@ export function ReviewPage() {
           <h2 className="text-2xl font-extrabold text-ink text-balance">Review</h2>
           <p className="text-ink-muted tabular-nums text-sm">Card {currentIndex + 1} of {dueCards.length}</p>
         </div>
-        <div className="bg-card rounded-full px-4 py-1.5 text-sm font-semibold text-ink-secondary tabular-nums shadow-[var(--shadow-sm)]">
-          {dueCards.length - currentIndex} remaining
+        <div className="flex items-center gap-2">
+          <div className="bg-card rounded-full px-4 py-1.5 text-sm font-semibold text-ink-secondary tabular-nums shadow-[var(--shadow-sm)]">
+            {dueCards.length - currentIndex} remaining
+          </div>
         </div>
       </div>
+
+      {/* Review Mode Selector */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            loadDueCards('standard');
+          }}
+          className={`flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all ${
+            reviewMode === 'standard'
+              ? 'bg-sky text-white shadow-md'
+              : 'bg-card text-ink-muted hover:bg-card-warm'
+          }`}
+        >
+          <CheckCircle2 size={16} className="inline mr-1" />
+          Standard Review
+        </button>
+        <button
+          onClick={() => {
+            loadDueCards('intelligent');
+          }}
+          className={`flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all ${
+            reviewMode === 'intelligent'
+              ? 'bg-coral text-white shadow-md'
+              : 'bg-card text-ink-muted hover:bg-card-warm'
+          }`}
+        >
+          <Brain size={16} className="inline mr-1" />
+          Smart Review
+        </button>
+      </div>
+
+      {reviewMode === 'intelligent' && (
+        <div className="bg-coral-soft rounded-xl p-3 text-sm">
+          <p className="text-coral font-medium">
+            💡 Smart Review prioritizes cards based on your weak areas and past performance.
+          </p>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="h-2.5 bg-card-warm rounded-full overflow-hidden shadow-inner">
@@ -197,6 +279,27 @@ export function ReviewPage() {
           {showResults && evaluation && (
             <div className="space-y-4">
               <EvaluationResults result={evaluation} showSaveButton={false} />
+
+              {/* Tutor Mode */}
+              {evaluation.score < 8 && (
+                <div className="bg-gradient-to-r from-amber-soft to-leaf-soft rounded-2xl p-4">
+                  <button
+                    onClick={handleShowTutor}
+                    disabled={isGeneratingTutor}
+                    className="w-full flex items-center justify-center gap-2 text-ink font-semibold"
+                  >
+                    <Lightbulb size={20} className="text-amber" />
+                    {isGeneratingTutor ? 'Generating Explanation...' : showTutor ? 'Regenerate Explanation' : 'Get Tutor Explanation'}
+                  </button>
+                  {showTutor && tutorExplanation && (
+                    <div className="mt-3 p-3 bg-white rounded-xl text-sm text-ink leading-relaxed">
+                      <p className="font-semibold mb-2 text-amber">📚 Your Tutor Explains:</p>
+                      <p>{tutorExplanation}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button
                 variant="coral"
                 size="lg"

@@ -1,17 +1,107 @@
+import { useState, useEffect } from 'react';
 import { ExerciseMode } from './ExerciseMode';
+import { ProgressBar } from '../ui/custom';
+import { getGamification } from '../../services/storage';
+import type { GamificationState } from '../../types/gamification';
+import { Sparkles, Target, Compass, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { XP_PER_LEVEL } from '../../types/gamification';
 
 export function DiscoveryPage() {
+  const [stats, setStats] = useState<GamificationState | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setStats(getGamification());
+    const handler = () => setStats(getGamification());
+    window.addEventListener('gamification-update', handler);
+    return () => window.removeEventListener('gamification-update', handler);
+  }, []);
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-extrabold text-ink text-balance">Discovery Lab</h2>
-        <p className="text-ink-muted text-pretty max-w-md mx-auto">
-          Design natural speech scenarios and practice speaking.
-        </p>
+    <div className="space-y-6 pb-20">
+      {/* Welcome Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Welcome! 👋
+          </h1>
+          <p className="text-muted-foreground">Ready for a new challenge?</p>
+        </div>
+        <div className="w-12 h-12 bg-gradient-to-br from-amber-200 to-amber-300 rounded-full flex items-center justify-center">
+          <span className="text-2xl">👋</span>
+        </div>
       </div>
 
-      <ExerciseMode />
+      {/* Progress Bar */}
+      {stats && (
+        <ProgressBar
+          current={stats.xp % XP_PER_LEVEL}
+          max={XP_PER_LEVEL}
+          level={stats.level}
+          streak={stats.streak}
+        />
+      )}
+
+      {/* Exercise Mode Section */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-foreground">Practice Exercises</h2>
+          <Sparkles className="w-5 h-5 text-yellow-500" />
+        </div>
+
+        <ExerciseMode />
+      </section>
+
+      {/* Quick Actions */}
+      <section>
+        <h2 className="text-lg font-bold text-foreground mb-4">Quick Start</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/live')}
+            className="p-4 bg-muted rounded-2xl border border-border hover:bg-accent transition-colors text-left"
+          >
+            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center mb-3">
+              <Target className="w-5 h-5 text-white" />
+            </div>
+            <h4 className="font-bold text-foreground">Live Roleplay</h4>
+            <p className="text-sm text-muted-foreground">Real-time practice</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/review')}
+            className="p-4 bg-muted rounded-2xl border border-border hover:bg-accent transition-colors text-left"
+          >
+            <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center mb-3">
+              <BookOpen className="w-5 h-5 text-white" />
+            </div>
+            <h4 className="font-bold text-foreground">Review</h4>
+            <p className="text-sm text-muted-foreground">Spaced repetition</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/library')}
+            className="p-4 bg-muted rounded-2xl border border-border hover:bg-accent transition-colors text-left"
+          >
+            <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center mb-3">
+              <Compass className="w-5 h-5 text-white" />
+            </div>
+            <h4 className="font-bold text-foreground">Library</h4>
+            <p className="text-sm text-muted-foreground">Your collection</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/errors')}
+            className="p-4 bg-muted rounded-2xl border border-border hover:bg-accent transition-colors text-left"
+          >
+            <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center mb-3">
+              <Target className="w-5 h-5 text-white" />
+            </div>
+            <h4 className="font-bold text-foreground">Error Analysis</h4>
+            <p className="text-sm text-muted-foreground">Track mistakes</p>
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

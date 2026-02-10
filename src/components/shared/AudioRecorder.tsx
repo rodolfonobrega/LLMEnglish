@@ -89,7 +89,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
           <div className="flex items-center gap-3 w-full justify-center">
             <Button
               variant="secondary"
-              size="md"
+              size="default"
               onClick={handlePlayback}
               aria-label={isPlaying ? 'Pause playback' : 'Play recording'}
               className="rounded-full"
@@ -100,7 +100,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
 
             <Button
               variant="ghost"
-              size="md"
+              size="default"
               onClick={discardRecording}
               aria-label="Discard recording"
               className="rounded-full text-ink-muted"
@@ -110,7 +110,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
 
             <Button
               variant="coral"
-              size="md"
+              size="default"
               onClick={handleSubmit}
               disabled={disabled}
               aria-label="Submit recording"

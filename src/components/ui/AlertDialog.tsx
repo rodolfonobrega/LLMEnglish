@@ -55,7 +55,7 @@ export function AlertDialog({
               {cancelLabel}
             </BaseAlertDialog.Close>
             <Button
-              variant="danger"
+              variant="destructive"
               onClick={() => {
                 onConfirm();
                 onOpenChange(false);

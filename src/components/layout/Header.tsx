@@ -1,9 +1,9 @@
 import { getGamification } from '../../services/storage';
 import { useState, useEffect } from 'react';
 import type { GamificationState } from '../../types/gamification';
-import { Flame, Star, Zap, Sun, Moon, Monitor } from 'lucide-react';
+import { Flame, Star, Sun, Moon, Monitor, Zap } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
-import { cn } from '../../utils/cn';
+import { XP_PER_LEVEL } from '../../types/gamification';
 
 const themeIcons = {
   light: Sun,
@@ -26,39 +26,65 @@ export function Header() {
   const ThemeIcon = themeIcons[theme];
 
   return (
-    <header className="bg-card/80 backdrop-blur-sm border-b border-edge sticky top-0 z-(--z-header) pt-[env(safe-area-inset-top)]">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-sky text-balance">
-          SpeakLab
-        </h1>
+    <header className="bg-card border-b border-border sticky top-0 z-50">
+      <div className="flex items-center justify-between px-6 py-3">
+        {/* Logo - Mobile Only */}
+        <div className="lg:hidden flex items-center gap-3">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-1.5 rounded-lg">
+            <Zap className="text-white" size={18} />
+          </div>
+          <div>
+            <h1 className="font-bold text-foreground text-base leading-tight">SpeakLab</h1>
+            {stats && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-primary">LEVEL {stats.level}</span>
+                <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
+                    style={{ width: `${(stats.xp % XP_PER_LEVEL) / XP_PER_LEVEL * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
+        {/* Spacer for desktop */}
+        <div className="hidden lg:block" />
+
+        {/* User Stats */}
         <div className="flex items-center gap-3">
           {stats && (
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1.5 text-amber" title="XP">
-                <Star size={16} />
-                <span className="font-medium tabular-nums">{stats.xp} XP</span>
+            <>
+              {/* XP */}
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
+                <Star className="w-4 h-4 text-orange-500 fill-orange-500" />
+                <span className="text-sm font-bold text-orange-600">{stats.xp}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-sky" title={`Level ${stats.level}`}>
-                <Zap size={16} />
-                <span className="font-medium tabular-nums">Lv.{stats.level}</span>
+
+              {/* Level */}
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full border border-blue-100">
+                <Zap className="w-4 h-4 text-blue-500 fill-blue-500" />
+                <span className="text-sm font-bold text-blue-600">Lv.{stats.level}</span>
               </div>
-              <div
-                className={cn('flex items-center gap-1.5', stats.streak > 0 ? 'text-coral' : 'text-ink-muted')}
-                title={`${stats.streak}-day streak`}
-              >
-                <Flame size={16} />
-                <span className="font-medium tabular-nums">{stats.streak}</span>
-              </div>
-            </div>
+
+              {/* Streak */}
+              {stats.streak > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
+                  <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+                  <span className="text-sm font-bold text-orange-600">{stats.streak}</span>
+                </div>
+              )}
+            </>
           )}
 
+          {/* Theme Toggle */}
           <button
             onClick={cycle}
             aria-label={`Theme: ${theme}. Click to change.`}
-            className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-card-warm transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <ThemeIcon size={18} />
+            <ThemeIcon size={20} />
           </button>
         </div>
       </div>

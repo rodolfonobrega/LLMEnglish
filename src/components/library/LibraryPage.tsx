@@ -124,7 +124,7 @@ export function LibraryPage() {
           />
           <Button
             variant="coral"
-            size="md"
+            size="default"
             onClick={handleAddManual}
             disabled={!newPrompt.trim()}
             className="w-full rounded-xl"
@@ -178,7 +178,7 @@ export function LibraryPage() {
             </p>
           </div>
           <a href="/">
-            <Button variant="primary" size="md">
+            <Button variant="primary" size="default">
               <Compass size={16} />
               Go to Discovery
             </Button>

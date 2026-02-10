@@ -49,7 +49,7 @@ Rules:
   return prompt;
 }
 
-export function getRoleplayGenerationPrompt(context?: string, theme?: string): string {
+export function getRoleplayGenerationPrompt(context?: string, theme?: string, targetVocabulary?: string[]): string {
   let prompt = `You are an English language teacher. Generate a role-play situation in Brazilian Portuguese for the student.
 
 Rules:
@@ -61,6 +61,9 @@ Rules:
 - Keep it to 2-3 sentences describing the situation.
 - Write in Portuguese.`;
 
+  if (targetVocabulary && targetVocabulary.length > 0) {
+    prompt += `\n- Encourage the use of these words/phrases in the response: ${targetVocabulary.join(', ')}.`;
+  }
   if (context) {
     prompt += `\n- Context/topic: ${context}.`;
   }
@@ -253,4 +256,37 @@ Rules:
 - Provide at least 3 specific improvements.
 - Be encouraging but honest.
 - Respond ONLY with the JSON, nothing else.`;
+}
+
+export function getTutorExplanationPrompt(
+  prompt: string,
+  userTranscription: string,
+  correctedVersion: string,
+  corrections: string[],
+  pronunciationFeedback: { rhythm: string; intonation: string; connectedSpeech: string; tips: string[] }
+): string {
+  return `You are a patient, encouraging English tutor. The student just completed this exercise:
+
+Prompt (in Portuguese): "${prompt}"
+Student said: "${userTranscription}"
+Corrected version: "${correctedVersion}"
+
+Corrections made:
+${corrections.map(c => `- ${c}`).join('\n')}
+
+Pronunciation feedback:
+- Rhythm: ${pronunciationFeedback.rhythm}
+- Intonation: ${pronunciationFeedback.intonation}
+- Connected speech: ${pronunciationFeedback.connectedSpeech}
+- Tips: ${pronunciationFeedback.tips.join(', ')}
+
+Explain the student's mistakes in a clear, friendly way. Your explanation should:
+1. Help them understand WHY they made these mistakes
+2. Provide simple examples of correct usage
+3. Give them a quick tip to remember for next time
+4. Be encouraging - mistakes are part of learning!
+
+Write in a conversational, warm tone like a supportive teacher talking to a student. Use Portuguese for explanations but include English examples.
+
+Keep it to 3-4 sentences maximum.`;
 }

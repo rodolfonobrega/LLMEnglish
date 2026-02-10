@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Compass, RotateCcw, Mic, BookOpen, Settings } from 'lucide-react';
+import { Compass, RotateCcw, Mic, BookOpen, Settings, AlertTriangle } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/review', icon: RotateCcw, label: 'Review' },
   { to: '/live', icon: Mic, label: 'Live' },
   { to: '/library', icon: BookOpen, label: 'Library' },
+  { to: '/errors', icon: AlertTriangle, label: 'Errors' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -14,28 +15,26 @@ export function Navigation() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-edge z-(--z-nav) pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40 pb-[env(safe-area-inset-bottom)]"
     >
-      <div className="max-w-7xl mx-auto px-2 py-1">
-        <div className="flex items-center justify-around">
-          {navItems.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
-                  isActive
-                    ? 'bg-sky-soft text-sky'
-                    : 'text-ink-muted hover:text-ink-secondary',
-                )
-              }
-            >
-              <item.icon size={20} />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </div>
+      <div className="flex items-center justify-around px-2 py-2">
+        {navItems.map(item => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              cn(
+                'flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all',
+                isActive
+                  ? 'text-primary'
+                  : 'text-muted-foreground',
+              )
+            }
+          >
+            <item.icon size={20} />
+            <span className="text-xs font-medium">{item.label}</span>
+          </NavLink>
+        ))}
       </div>
     </nav>
   );

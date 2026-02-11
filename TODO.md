@@ -36,6 +36,8 @@
 ## 8. Infrastructure & Multi-Provider Support
 - [ ] **Groq API Integration**: Add support for Groq API. Since it is OpenAI-compatible, investigate reusing the OpenAI service logic by simply switching the `base_url`.
 
+## 9 Treino de habilidades
+- [ ] Queria que tivesse uma área que a pessoa pudesse simplesmente simular situações. Ex: Uma entrevista de emprego. Mas a pessoa poderia colocar 'simular entrevista com o google'. Ai seria legal melhorar o prompt pra pedir pro LLM já pensar nas melhores questões e coisas do tipo, sabe?
 
-
-
+## 10 Melhorar Roleplay
+- [ ] No roleplay seria legal se tivessem "trilhas". Ex: Pra viagem, poderia ter uma trilha pré programada, como reservar hotel, essas coisas. Mas poderia ter um "random" de viagem também. Mesmo se a pessoa escolher "bookar hotel", o llm que teria que gerar na hora a situação.

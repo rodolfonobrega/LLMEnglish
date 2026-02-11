@@ -1,17 +1,20 @@
 import type { Card } from '../types/card';
-import type { GamificationState } from '../types/gamification';
+import type { GamificationState, SessionReport } from '../types/gamification';
 import type { LiveSession } from '../types/scenario';
-import type { ModelConfig } from '../types/settings';
+import type { ModelConfig, ConversationTone } from '../types/settings';
 import { DEFAULT_MODEL_CONFIG } from '../types/settings';
 
 const KEYS = {
   cards: 'el_cards',
   gamification: 'el_gamification',
   liveSessions: 'el_live_sessions',
+  sessionReports: 'el_session_reports',
   openaiKey: 'el_openai_key',
   geminiKey: 'el_gemini_key',
+  groqKey: 'el_groq_key',
   audioCache: 'el_audio_cache',
   modelConfig: 'el_model_config',
+  conversationTone: 'el_conversation_tone',
 };
 
 // --- Cards ---
@@ -90,6 +93,38 @@ export function saveLiveSession(session: LiveSession): void {
   localStorage.setItem(KEYS.liveSessions, JSON.stringify(sessions));
 }
 
+// --- Session Reports ---
+
+const MAX_SESSION_REPORTS = 200;
+
+export function getSessionReports(): SessionReport[] {
+  const raw = localStorage.getItem(KEYS.sessionReports);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export function saveSessionReport(report: SessionReport): void {
+  const reports = getSessionReports();
+  reports.push(report);
+  if (reports.length > MAX_SESSION_REPORTS) {
+    reports.splice(0, reports.length - MAX_SESSION_REPORTS);
+  }
+  localStorage.setItem(KEYS.sessionReports, JSON.stringify(reports));
+}
+
+export function getSessionReportsByDateRange(startDate: string, endDate: string): SessionReport[] {
+  const reports = getSessionReports();
+  return reports.filter(
+    r => r.date >= startDate && r.date <= endDate
+  );
+}
+
+export function getLatestSessionReports(limit: number): SessionReport[] {
+  const reports = getSessionReports();
+  return [...reports]
+    .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0))
+    .slice(0, limit);
+}
+
 // --- API Keys ---
 // Priority: localStorage (user-entered in Settings) > .env file (VITE_OPENAI_API_KEY / VITE_GEMINI_API_KEY)
 
@@ -109,6 +144,14 @@ export function setGeminiKey(key: string): void {
   localStorage.setItem(KEYS.geminiKey, key);
 }
 
+export function getGroqKey(): string {
+  return localStorage.getItem(KEYS.groqKey) || import.meta.env.VITE_GROQ_API_KEY || '';
+}
+
+export function setGroqKey(key: string): void {
+  localStorage.setItem(KEYS.groqKey, key);
+}
+
 // --- Model Config ---
 
 export function getModelConfig(): ModelConfig {
@@ -123,6 +166,18 @@ export function getModelConfig(): ModelConfig {
 
 export function saveModelConfig(config: ModelConfig): void {
   localStorage.setItem(KEYS.modelConfig, JSON.stringify(config));
+}
+
+// --- Conversation Tone ---
+
+export function getConversationTone(): ConversationTone {
+  const raw = localStorage.getItem(KEYS.conversationTone);
+  if (raw === 'casual' || raw === 'balanced' || raw === 'formal') return raw;
+  return 'balanced';
+}
+
+export function saveConversationTone(tone: ConversationTone): void {
+  localStorage.setItem(KEYS.conversationTone, tone);
 }
 
 // --- Audio Cache ---

@@ -3,9 +3,9 @@ import { chatCompletion, generateImage } from '../../services/openai';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
-import { Sparkles, Pencil } from 'lucide-react';
+import { getTrailsForTheme } from '../../utils/roleplayTrails';
+import { Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Card, CardContent } from '../ui/card';
 import { cn } from '../../utils/cn';
 
 interface ScenarioSetupProps {
@@ -13,46 +13,78 @@ interface ScenarioSetupProps {
 }
 
 const THEMES = [
-  { id: 'food', label: 'Food & Dining', tagline: 'Order like a local', icon: '🍽️', gradient: 'from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/20', activeClass: 'ring-orange-200 bg-orange-50' },
-  { id: 'travel', label: 'Travel & Hotels', tagline: 'Check in, explore', icon: '✈️', gradient: 'from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/20', activeClass: 'ring-sky-200 bg-sky-50' },
-  { id: 'shopping', label: 'Shopping', tagline: 'Find the perfect deal', icon: '🛍️', gradient: 'from-pink-50 to-rose-50 dark:from-pink-950/30 dark:to-rose-950/20', activeClass: 'ring-pink-200 bg-pink-50' },
-  { id: 'work', label: 'Work & Business', tagline: 'Nail that meeting', icon: '💼', gradient: 'from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/20', activeClass: 'ring-slate-200 bg-slate-50' },
-  { id: 'health', label: 'Healthcare', tagline: 'Describe your symptoms', icon: '🏥', gradient: 'from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/20', activeClass: 'ring-emerald-200 bg-emerald-50' },
-  { id: 'social', label: 'Social & Friends', tagline: 'Make conversation flow', icon: '👋', gradient: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/20', activeClass: 'ring-violet-200 bg-violet-50' },
-  { id: 'transport', label: 'Transportation', tagline: 'Get where you need to go', icon: '🚕', gradient: 'from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/20', activeClass: 'ring-yellow-200 bg-yellow-50' },
-  { id: 'entertainment', label: 'Entertainment', tagline: 'Book tickets & events', icon: '🎬', gradient: 'from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20', activeClass: 'ring-red-200 bg-red-50' },
-  { id: 'education', label: 'Education', tagline: 'Campus life & classes', icon: '📖', gradient: 'from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20', activeClass: 'ring-indigo-200 bg-indigo-50' },
-  { id: 'random', label: 'Surprise Me!', tagline: 'A random adventure', icon: '🎲', gradient: 'from-fuchsia-50 to-pink-50 dark:from-fuchsia-950/30 dark:to-pink-950/20', activeClass: 'ring-fuchsia-200 bg-fuchsia-50' },
+  { id: 'food', label: 'Food & Dining', icon: '🍽️' },
+  { id: 'travel', label: 'Travel & Hotels', icon: '✈️' },
+  { id: 'shopping', label: 'Shopping', icon: '🛍️' },
+  { id: 'work', label: 'Work & Business', icon: '💼' },
+  { id: 'health', label: 'Healthcare', icon: '🏥' },
+  { id: 'social', label: 'Social & Friends', icon: '👋' },
+  { id: 'transport', label: 'Transportation', icon: '🚕' },
+  { id: 'entertainment', label: 'Entertainment', icon: '🎬' },
+  { id: 'education', label: 'Education', icon: '📖' },
+  { id: 'random', label: 'Surprise Me!', icon: '🎲' },
+  { id: 'custom', label: 'Custom Topic', icon: '✨' },
 ];
 
 function getSceneImagePrompt(brandName: string, location: string, aiRole: string): string {
   return `A cozy illustration of ${brandName} in ${location}. The scene shows a ${aiRole} at work in a warm, inviting interior. Anime/cartoon style, soft lighting, vibrant colors, wide shot, no text overlays, suitable as a background for a language learning app.`;
 }
 
-const INTENSITIES: { id: ScenarioIntensity; label: string; desc: string; icon: string }[] = [
-  { id: 'normal', label: 'Normal', desc: 'Everyday situations', icon: '☕' },
-  { id: 'adventurous', label: 'Adventurous', desc: 'Unique & colorful', icon: '🧭' },
-  { id: 'wild', label: 'Wild', desc: 'Bizarre & unforgettable', icon: '🌋' },
+const INTENSITIES: { id: ScenarioIntensity; label: string; desc: string }[] = [
+  { id: 'normal', label: 'Normal', desc: 'Everyday situations' },
+  { id: 'adventurous', label: 'Adventurous', desc: 'Unique & colorful' },
+  { id: 'wild', label: 'Wild', desc: 'Bizarre & unforgettable' },
 ];
+
+// ─── Section label ───────────────────────────────────────────────────
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-widest mb-2.5">
+      {children}
+    </p>
+  );
+}
 
 export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   const [theme, setTheme] = useState('random');
   const [intensity, setIntensity] = useState<ScenarioIntensity>('adventurous');
   const [customDescription, setCustomDescription] = useState('');
+  const [selectedTrail, setSelectedTrail] = useState<string | null>(null);
+  const [selectedStep, setSelectedStep] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isCustom = theme === 'custom';
+  const trails = getTrailsForTheme(theme);
+  const showTrails = !isCustom && theme !== 'random' && trails.length > 0;
+  const selectedTrailData = showTrails ? trails.find(t => t.id === selectedTrail) : null;
+  const selectedStepData = selectedTrailData?.steps.find(s => s.id === selectedStep) ?? null;
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    setSelectedTrail(null);
+    setSelectedStep(null);
+  };
 
   const handleGenerate = async () => {
+    // Validation: custom needs a description
+    if (isCustom && !customDescription.trim()) {
+      setError('Please describe your scenario.');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     try {
-      // Determine the theme string to pass to the prompt
       let themeForPrompt: string | undefined;
-      const customDesc = isCustom ? customDescription.trim() : undefined;
-      if (!isCustom && theme !== 'random') {
-        themeForPrompt = theme;
+      let customDesc: string | undefined;
+      if (isCustom) {
+        customDesc = customDescription.trim();
+      } else if (selectedStepData) {
+        customDesc = selectedStepData.scenarioContext;
+        if (theme !== 'random') themeForPrompt = theme;
+      } else {
+        if (theme !== 'random') themeForPrompt = theme;
       }
 
       const prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc);
@@ -76,7 +108,6 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         parsed.openingLine
       );
 
-      // Start image generation in parallel (non-blocking)
       const imagePromise = generateImage(
         getSceneImagePrompt(parsed.brandName, parsed.location, parsed.aiRole)
       ).catch(() => undefined);
@@ -109,181 +140,176 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   };
 
   const selectedTheme = THEMES.find(t => t.id === theme);
-  const displayIcon = isCustom ? '✏️' : selectedTheme?.icon || '🎲';
-  const displayLabel = isCustom ? (customDescription.trim() || 'Custom theme') : selectedTheme?.label || 'Random';
+  const displayLabel = isCustom ? (customDescription.trim() || 'Custom scenario') : selectedTheme?.label || 'Random';
+
+  if (isGenerating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-8">
+        <div className="relative">
+          <div className="size-24 bg-[var(--sky-soft)] rounded-full flex items-center justify-center">
+            <Sparkles size={40} className="text-[var(--sky)] animate-pulse" />
+          </div>
+        </div>
+        <div className="text-center space-y-2">
+          <p className="text-foreground font-bold text-xl">Building Scene...</p>
+          <p className="text-muted-foreground text-sm">{displayLabel}</p>
+        </div>
+        <div className="w-full max-w-xs space-y-2">
+          <div className="h-2 bg-muted rounded-full w-full overflow-hidden">
+            <div className="h-full bg-primary animate-progress-indeterminate rounded-full" />
+          </div>
+          <p className="text-center text-muted-foreground text-xs">
+            Generating illustration & persona
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {!isGenerating ? (
-        <>
-          {/* Header */}
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground">
-              Where will you go today?
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Pick a scene or describe your own, then step into a real conversation.
-            </p>
-          </div>
+    <div className="bg-card rounded-2xl p-5 border border-border space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold text-foreground">Live Roleplay</h2>
+        <p className="text-muted-foreground text-sm">Pick a scene, then step into a real conversation.</p>
+      </div>
 
-          {/* Theme grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            {THEMES.map(t => (
-              <Card
-                key={t.id}
-                onClick={() => setTheme(t.id)}
+      {/* THEME SELECTOR (chips, like Discovery) */}
+      <div>
+        <SectionLabel>Scene / Theme</SectionLabel>
+        <div className="flex gap-2 flex-wrap">
+          {THEMES.map(t => (
+            <button
+              key={t.id}
+              onClick={() => handleThemeChange(t.id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
+                theme === t.id
+                  ? 'bg-[var(--sky)] text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+              )}
+            >
+              <span className="text-base">{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* TRAIL SELECTOR - only when theme has trails (non-custom, non-random) */}
+      {showTrails && (
+        <div>
+          <SectionLabel>Scenario Trail</SectionLabel>
+          <div className="space-y-3">
+            {trails.map(trail => (
+              <button
+                key={trail.id}
+                onClick={() => {
+                  setSelectedTrail(trail.id);
+                  setSelectedStep('random');
+                }}
                 className={cn(
-                  'cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border-transparent',
-                  'bg-gradient-to-br',
-                  t.gradient,
-                  theme === t.id
-                    ? cn('ring-2 ring-primary shadow-md scale-[1.02]', t.activeClass)
-                    : 'hover:bg-opacity-80',
+                  'w-full text-left p-4 rounded-xl border transition-colors duration-200 cursor-pointer',
+                  selectedTrail === trail.id
+                    ? 'bg-[var(--sky-soft)] border-[var(--sky)]'
+                    : 'bg-muted/30 border-border hover:bg-accent/50 hover:border-accent',
                 )}
               >
-                <CardContent className="p-4 flex flex-col items-start gap-3 h-full justify-between">
-                  <span className="text-3xl">{t.icon}</span>
-                  <div>
-                    <p className="font-semibold text-foreground text-sm leading-tight">{t.label}</p>
-                    <p className="text-muted-foreground/80 text-xs mt-0.5">{t.tagline}</p>
-                  </div>
-                  {theme === t.id && (
-                    <div className="absolute top-2 right-2 size-5 bg-primary rounded-full flex items-center justify-center">
-                      <svg className="size-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="2 6 5 9 10 3" />
-                      </svg>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                <p className="font-semibold text-foreground">{trail.label}</p>
+                <p className="text-sm text-muted-foreground mt-1">{trail.description}</p>
+              </button>
             ))}
           </div>
 
-          {/* Custom theme & Intensity row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Custom theme */}
-            <Card
-              onClick={() => setTheme('custom')}
-              className={cn(
-                'cursor-pointer transition-all duration-200 md:col-span-2 border-dashed border-2',
-                isCustom
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                  : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30'
-              )}
-            >
-              <CardContent className="p-6 flex items-center gap-4 h-full">
-                <div className={cn("size-12 rounded-full flex items-center justify-center flex-shrink-0", isCustom ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  <Pencil size={20} />
-                </div>
-                <div>
-                  <p className="font-bold text-foreground text-base">Describe Your Own</p>
-                  <p className="text-muted-foreground text-sm">Type any scenario you want to practice</p>
-                </div>
-                {isCustom && (
-                  <div className="ml-auto size-6 bg-primary rounded-full flex items-center justify-center">
-                    <svg className="size-3.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="2 6 5 9 10 3" />
-                    </svg>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Intensity selector */}
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-muted-foreground ml-1">Intensity</p>
-              <div className="flex flex-col gap-2">
-                {INTENSITIES.map(i => (
+          {selectedTrailData && (
+            <div className="mt-4">
+              <SectionLabel>Step</SectionLabel>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setSelectedStep('random')}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
+                    selectedStep === 'random'
+                      ? 'bg-[var(--sky)] text-white'
+                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+                  )}
+                >
+                  <span>🎲</span>
+                  <span>Random</span>
+                </button>
+                {selectedTrailData.steps.map(step => (
                   <button
-                    key={i.id}
-                    onClick={() => setIntensity(i.id)}
+                    key={step.id}
+                    onClick={() => setSelectedStep(step.id)}
                     className={cn(
-                      'flex items-center gap-3 p-3 rounded-xl transition-all duration-200 border text-left',
-                      intensity === i.id
-                        ? 'border-primary/50 bg-primary/5 shadow-sm'
-                        : 'border-transparent hover:bg-muted text-muted-foreground hover:text-foreground'
+                      'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
+                      selectedStep === step.id
+                        ? 'bg-[var(--sky)] text-white'
+                        : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
                     )}
                   >
-                    <span className="text-xl">{i.icon}</span>
-                    <div>
-                      <span className="text-sm font-semibold block">{i.label}</span>
-                      <span className="text-[10px] text-muted-foreground/80 leading-tight">{i.desc}</span>
-                    </div>
+                    {step.label}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
-
-
-          {/* Custom description input */}
-          {isCustom && (
-            <Card className="animate-in slide-in-from-top-2 duration-300 border-primary/20 shadow-sm">
-              <CardContent className="p-5 space-y-3">
-                <label htmlFor="custom-theme" className="block text-sm font-bold text-foreground">
-                  Describe your scenario
-                </label>
-                <textarea
-                  id="custom-theme"
-                  value={customDescription}
-                  onChange={e => setCustomDescription(e.target.value)}
-                  placeholder={"Try something like:\n• Buying a handmade recycled surfboard from an artisan in Hawaii\n• Convincing a street magician in New Orleans to teach you a trick\n• Ordering a mystery tasting menu at a hidden speakeasy in Tokyo\n• Returning a cursed antique at a flea market in Savannah"}
-                  rows={4}
-                  className={cn(
-                    'w-full px-4 py-3 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground/60 resize-none',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
-                    'transition-colors text-sm leading-relaxed',
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Be as specific or as vague as you want. The AI will build a full scene with a memorable character around your idea.
-                </p>
-              </CardContent>
-            </Card>
           )}
-
-          {/* Start button */}
-          <Button
-            size="lg"
-            onClick={handleGenerate}
-            disabled={isCustom && !customDescription.trim()}
-            className="w-full text-lg font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-          >
-            Step Into the Scene
-            <span className="ml-2">{displayIcon}</span>
-          </Button>
-        </>
-      ) : (
-        /* Loading state */
-        <Card className="p-8 border-none shadow-none bg-transparent">
-          <div className="space-y-8 py-8 flex flex-col items-center justify-center">
-            {/* Animated scene placeholder */}
-            <div className="relative overflow-hidden rounded-full size-64 shadow-2xl ring-4 ring-background">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 animate-spin-slow opacity-20" />
-              <div className="absolute inset-2 bg-background rounded-full flex flex-col items-center justify-center text-center p-6 bg-slate-50">
-                <div className="relative mb-4">
-                  <Sparkles size={48} className="text-primary animate-bounce decoration-clone" style={{ animationDuration: '2s' }} />
-                </div>
-                <div>
-                  <p className="text-foreground font-bold text-xl mb-1">Building Scene...</p>
-                  <p className="text-muted-foreground text-sm font-medium px-4">
-                    {displayIcon} {displayLabel}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full max-w-sm space-y-3">
-              <div className="h-2 bg-muted rounded-full w-full overflow-hidden">
-                <div className="h-full bg-primary animate-progress-indeterminate rounded-full" />
-              </div>
-              <p className="text-center text-muted-foreground text-xs font-mono uppercase tracking-wider">
-                Generating illustration & persona
-              </p>
-            </div>
-          </div>
-        </Card>
+        </div>
       )}
+
+      {/* CUSTOM DESCRIPTION - only when "Custom Topic" is selected */}
+      {isCustom && (
+        <div>
+          <SectionLabel>Describe Your Scenario</SectionLabel>
+          <textarea
+            value={customDescription}
+            onChange={e => setCustomDescription(e.target.value)}
+            placeholder="e.g., Returning a faulty blender at a department store, negotiating a discount at a street market in Bangkok..."
+            rows={3}
+            className={cn(
+              'w-full px-4 py-3 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground/60 resize-none',
+              'focus:outline-none focus:ring-2 focus:ring-[var(--sky)]/50 focus:border-[var(--sky)]',
+              'transition-colors text-sm leading-relaxed',
+            )}
+          />
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Be as specific or as vague as you want. The AI will build a full scene around your idea.
+          </p>
+        </div>
+      )}
+
+      {/* INTENSITY SELECTOR */}
+      <div>
+        <SectionLabel>Intensity</SectionLabel>
+        <div className="flex gap-2">
+          {INTENSITIES.map(i => (
+            <button
+              key={i.id}
+              onClick={() => setIntensity(i.id)}
+              className={cn(
+                'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer text-center',
+                intensity === i.id
+                  ? 'bg-[var(--sky)] text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+              )}
+            >
+              <span className="block">{i.label}</span>
+              <span className="block text-[10px] font-normal opacity-80 mt-0.5">{i.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* GENERATE BUTTON */}
+      <Button
+        size="lg"
+        onClick={handleGenerate}
+        disabled={isCustom && !customDescription.trim()}
+        className="w-full text-lg font-bold py-4 rounded-2xl"
+      >
+        <Sparkles size={20} />
+        Step Into the Scene
+      </Button>
 
       {error && (
         <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-destructive text-sm text-center">{error}</div>

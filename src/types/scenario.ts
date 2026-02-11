@@ -37,3 +37,16 @@ export interface LiveSession {
   startedAt: string;
   endedAt?: string;
 }
+
+export interface RoleplayTrailStep {
+  id: string;
+  label: string;
+  scenarioContext: string;
+}
+
+export interface RoleplayTrail {
+  id: string;
+  label: string;
+  description: string;
+  steps: RoleplayTrailStep[];
+}

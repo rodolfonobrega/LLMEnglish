@@ -1,6 +1,6 @@
-import type { GamificationState, Badge } from '../types/gamification';
+import type { Badge, GamificationState, SessionReport } from '../types/gamification';
 import { BADGES, XP_PER_LEVEL } from '../types/gamification';
-import { getGamification, saveGamification, getCards } from './storage';
+import { getCards, getGamification, saveGamification, saveSessionReport } from './storage';
 
 function isToday(dateStr: string | null): boolean {
   if (!dateStr) return false;
@@ -63,4 +63,30 @@ function checkAndAwardBadges(state: GamificationState): void {
   if (state.totalCards >= 100) award('cards_100');
   if (state.level >= 5) award('level_5');
   if (state.level >= 10) award('level_10');
+}
+
+export function createSessionReport(
+  type: SessionReport['type'],
+  scores: number[],
+  errorsFound: number,
+  xpEarned: number,
+  timeSpentSeconds: number,
+  improvements?: string[]
+): SessionReport {
+  const averageScore =
+    scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const report: SessionReport = {
+    id: crypto.randomUUID(),
+    date: new Date().toISOString(),
+    type,
+    exercisesCompleted: scores.length,
+    scores,
+    averageScore,
+    errorsFound,
+    xpEarned,
+    timeSpentSeconds,
+    improvements: improvements ?? [],
+  };
+  saveSessionReport(report);
+  return report;
 }

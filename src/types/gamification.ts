@@ -17,6 +17,19 @@ export interface Badge {
   earnedAt: string;
 }
 
+export interface SessionReport {
+  id: string;
+  date: string;             // ISO date string
+  type: 'exercise' | 'review' | 'live-roleplay' | 'lesson';
+  exercisesCompleted: number;
+  scores: number[];
+  averageScore: number;
+  errorsFound: number;
+  xpEarned: number;
+  timeSpentSeconds: number;
+  improvements: string[];   // brief notes about what improved
+}
+
 export const XP_PER_EXERCISE = 10;
 export const XP_PER_PERFECT_SCORE = 25;
 export const XP_PER_REVIEW = 5;

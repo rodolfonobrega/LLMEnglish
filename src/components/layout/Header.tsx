@@ -30,17 +30,17 @@ export function Header() {
       <div className="flex items-center justify-between px-6 py-3">
         {/* Logo - Mobile Only */}
         <div className="lg:hidden flex items-center gap-3">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-1.5 rounded-lg">
+          <div className="bg-gradient-to-br from-[var(--sky)] to-[var(--sky-hover)] p-1.5 rounded-lg">
             <Zap className="text-white" size={18} />
           </div>
           <div>
             <h1 className="font-bold text-foreground text-base leading-tight">SpeakLab</h1>
             {stats && (
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-primary">LEVEL {stats.level}</span>
+                <span className="text-xs font-semibold text-[var(--sky)]">LEVEL {stats.level}</span>
                 <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
+                    className="h-full bg-gradient-to-r from-[var(--sky)] to-[var(--sky)]/70 rounded-full transition-all duration-500"
                     style={{ width: `${(stats.xp % XP_PER_LEVEL) / XP_PER_LEVEL * 100}%` }}
                   />
                 </div>
@@ -53,26 +53,26 @@ export function Header() {
         <div className="hidden lg:block" />
 
         {/* User Stats */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {stats && (
             <>
               {/* XP */}
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
-                <Star className="w-4 h-4 text-orange-500 fill-orange-500" />
-                <span className="text-sm font-bold text-orange-600">{stats.xp}</span>
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[var(--amber-soft)] rounded-full">
+                <Star className="w-4 h-4 text-[var(--amber)] fill-[var(--amber)]" />
+                <span className="text-sm font-bold text-[var(--amber)]">{stats.xp}</span>
               </div>
 
               {/* Level */}
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full border border-blue-100">
-                <Zap className="w-4 h-4 text-blue-500 fill-blue-500" />
-                <span className="text-sm font-bold text-blue-600">Lv.{stats.level}</span>
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[var(--sky-soft)] rounded-full">
+                <Zap className="w-4 h-4 text-[var(--sky)] fill-[var(--sky)]" />
+                <span className="text-sm font-bold text-[var(--sky)]">Lv.{stats.level}</span>
               </div>
 
               {/* Streak */}
               {stats.streak > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
-                  <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-                  <span className="text-sm font-bold text-orange-600">{stats.streak}</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--coral-soft)] rounded-full">
+                  <Flame className="w-4 h-4 text-[var(--coral)] fill-[var(--coral)]" />
+                  <span className="text-sm font-bold text-[var(--coral)]">{stats.streak}</span>
                 </div>
               )}
             </>
@@ -82,7 +82,7 @@ export function Header() {
           <button
             onClick={cycle}
             aria-label={`Theme: ${theme}. Click to change.`}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <ThemeIcon size={20} />
           </button>

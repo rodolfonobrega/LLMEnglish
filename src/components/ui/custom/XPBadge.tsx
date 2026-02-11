@@ -15,10 +15,10 @@ export function XPBadge({
   showIcon = true
 }: XPBadgeProps) {
   const variants = {
-    default: 'bg-orange-50 text-orange-600 border-orange-100',
-    bonus: 'bg-yellow-50 text-yellow-600 border-yellow-100',
-    streak: 'bg-red-50 text-red-600 border-red-100',
-    possible: 'bg-blue-50 text-blue-600 border-blue-100',
+    default: 'bg-[var(--coral-soft)] text-[var(--coral)] border-[var(--coral)]/20',
+    bonus: 'bg-[var(--amber-soft)] text-[var(--amber)] border-[var(--amber)]/20',
+    streak: 'bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger)]/20',
+    possible: 'bg-[var(--sky-soft)] text-[var(--sky)] border-[var(--sky)]/20',
   };
 
   const sizes = {

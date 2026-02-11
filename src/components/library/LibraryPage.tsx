@@ -80,8 +80,8 @@ export function LibraryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold text-ink text-balance">Library</h2>
-          <p className="text-ink-muted mt-0.5 tabular-nums text-sm">{cards.length} cards saved</p>
+          <h2 className="text-2xl font-extrabold text-foreground text-balance">Library</h2>
+          <p className="text-muted-foreground mt-0.5 tabular-nums text-sm">{cards.length} cards saved</p>
         </div>
         <Button
           variant={showAddForm ? 'ghost' : 'coral'}
@@ -95,19 +95,19 @@ export function LibraryPage() {
 
       {/* Add form */}
       {showAddForm && (
-        <div className="bg-card rounded-[20px] p-5 space-y-4 shadow-[var(--shadow-md)]">
+        <div className="bg-card rounded-2xl p-5 space-y-4 border border-border">
           <div>
-            <label className="block text-sm font-semibold text-ink-secondary mb-1.5">Type</label>
+            <label className="block text-sm font-semibold text-muted-foreground mb-1.5">Type</label>
             <div className="grid grid-cols-3 gap-2">
               {(['phrase', 'text', 'roleplay'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setNewType(t)}
                   className={cn(
-                    'py-2 rounded-xl text-sm font-semibold transition-all capitalize',
+                    'py-2 rounded-xl text-sm font-semibold transition-colors duration-200 capitalize cursor-pointer',
                     newType === t
-                      ? 'bg-sky text-white shadow-[var(--shadow-sm)]'
-                      : 'bg-card-warm text-ink-muted hover:text-ink-secondary',
+                      ? 'bg-[var(--sky)] text-white'
+                      : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-accent',
                   )}
                 >
                   {t}
@@ -168,17 +168,17 @@ export function LibraryPage() {
       {/* Card list / empty state */}
       {filteredCards.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-          <div className="size-20 bg-sky-soft rounded-full flex items-center justify-center">
-            <BookOpen size={36} className="text-sky" />
+          <div className="size-20 bg-[var(--sky-soft)] rounded-full flex items-center justify-center">
+            <BookOpen size={36} className="text-[var(--sky)]" />
           </div>
           <div className="space-y-1">
-            <p className="text-lg font-bold text-ink text-balance">No cards yet</p>
-            <p className="text-sm text-ink-muted text-pretty max-w-xs mx-auto">
+            <p className="text-lg font-bold text-foreground text-balance">No cards yet</p>
+            <p className="text-sm text-muted-foreground text-pretty max-w-xs mx-auto">
               Practice in Discovery mode and save cards here to review later!
             </p>
           </div>
           <a href="/">
-            <Button variant="primary" size="default">
+            <Button variant="primary" size="default" className="cursor-pointer">
               <Compass size={16} />
               Go to Discovery
             </Button>
@@ -191,7 +191,7 @@ export function LibraryPage() {
             return (
               <div
                 key={card.id}
-                className="bg-card rounded-2xl p-4 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all"
+                className="bg-card rounded-2xl p-4 border border-border hover:bg-accent transition-colors duration-200"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -201,8 +201,8 @@ export function LibraryPage() {
                         <Badge variant="warning">Due</Badge>
                       )}
                     </div>
-                    <p className="text-ink text-sm line-clamp-2 leading-relaxed">{card.prompt}</p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-ink-muted">
+                    <p className="text-foreground text-sm line-clamp-2 leading-relaxed">{card.prompt}</p>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                       <span className="tabular-nums">{stats.totalReviews} reviews</span>
                       <span className="tabular-nums">{stats.correctCount} correct</span>
                       <span className="tabular-nums">avg {stats.averageScore || '-'}</span>
@@ -212,8 +212,8 @@ export function LibraryPage() {
                     <ScoreDisplay score={card.latestEvaluation.score} size="sm" />
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-edge">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedCard(card)} className="text-sky">
+                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedCard(card)} className="text-[var(--sky)] cursor-pointer">
                     <Eye size={14} />
                     View
                   </Button>
@@ -223,14 +223,15 @@ export function LibraryPage() {
                     onClick={() => speak(card.latestEvaluation?.correctedVersion || card.prompt)}
                     disabled={ttsLoading}
                     aria-label="Listen to card"
+                    className="cursor-pointer"
                   >
                     {ttsLoading ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(card)}>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(card)} className="cursor-pointer">
                     <Edit3 size={14} />
                   </Button>
                   {!card.nextReviewAt && (
-                    <Button variant="ghost" size="sm" onClick={() => handleScheduleReview(card)} className="text-sky text-xs">
+                    <Button variant="ghost" size="sm" onClick={() => handleScheduleReview(card)} className="text-[var(--sky)] text-xs cursor-pointer">
                       + Review
                     </Button>
                   )}
@@ -239,7 +240,7 @@ export function LibraryPage() {
                     size="sm"
                     onClick={() => setDeleteTarget(card)}
                     aria-label="Delete card"
-                    className="ml-auto text-danger hover:bg-danger-soft"
+                    className="ml-auto text-[var(--danger)] hover:bg-[var(--danger-soft)] cursor-pointer"
                   >
                     <Trash2 size={14} />
                   </Button>

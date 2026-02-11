@@ -31,18 +31,18 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
       </Button>
 
       {/* Card Info */}
-      <div className="bg-card rounded-[20px] p-6 shadow-[var(--shadow-md)]">
+      <div className="bg-card rounded-2xl p-6 border border-border">
         <div className="flex items-center gap-2 mb-3">
           <Badge className="capitalize">{card.type}</Badge>
-          <span className="text-xs text-ink-faint">
+          <span className="text-xs text-muted-foreground">
             Created {new Date(card.createdAt).toLocaleDateString()}
           </span>
         </div>
 
-        <p className="text-xl text-ink mb-5 text-pretty leading-relaxed font-medium">{card.prompt}</p>
+        <p className="text-xl text-foreground mb-5 text-pretty leading-relaxed font-medium">{card.prompt}</p>
 
         {card.imageUrl && (
-          <img src={card.imageUrl} alt="Card" className="w-full max-h-64 object-cover rounded-2xl mb-5" />
+          <img src={card.imageUrl} alt="Card visual prompt" className="w-full max-h-64 object-cover rounded-2xl mb-5" />
         )}
 
         {/* Listen buttons */}
@@ -72,34 +72,34 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
       </div>
 
       {/* Review Stats */}
-      <div className="bg-card rounded-[20px] p-6 shadow-[var(--shadow-md)]">
+      <div className="bg-card rounded-2xl p-6 border border-border">
         <div className="flex items-center gap-2 mb-5">
-          <div className="size-7 rounded-full bg-sky-soft flex items-center justify-center">
-            <BarChart3 size={14} className="text-sky" />
+          <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
+            <BarChart3 size={14} className="text-[var(--sky)]" />
           </div>
-          <h3 className="text-sm font-bold text-sky uppercase tracking-wide">Review History</h3>
+          <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Review History</h3>
         </div>
         <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="bg-card-warm rounded-2xl p-3">
-            <p className="text-2xl font-extrabold text-ink tabular-nums">{stats.totalReviews}</p>
-            <p className="text-xs text-ink-muted mt-0.5">Total</p>
+          <div className="bg-muted rounded-2xl p-3">
+            <p className="text-2xl font-extrabold text-foreground tabular-nums">{stats.totalReviews}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Total</p>
           </div>
-          <div className="bg-leaf-soft rounded-2xl p-3">
-            <p className="text-2xl font-extrabold text-leaf tabular-nums">{stats.correctCount}</p>
-            <p className="text-xs text-ink-muted mt-0.5">Correct</p>
+          <div className="bg-[var(--leaf-soft)] rounded-2xl p-3">
+            <p className="text-2xl font-extrabold text-[var(--leaf)] tabular-nums">{stats.correctCount}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Correct</p>
           </div>
-          <div className="bg-amber-soft rounded-2xl p-3">
-            <p className="text-2xl font-extrabold text-amber tabular-nums">{stats.averageScore || '-'}</p>
-            <p className="text-xs text-ink-muted mt-0.5">Avg Score</p>
+          <div className="bg-[var(--amber-soft)] rounded-2xl p-3">
+            <p className="text-2xl font-extrabold text-[var(--amber)] tabular-nums">{stats.averageScore || '-'}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Avg Score</p>
           </div>
         </div>
 
         {card.reviews.length > 0 && (
           <div className="mt-5 space-y-2">
-            <h4 className="text-xs text-ink-faint uppercase font-semibold tracking-wide">Recent Reviews</h4>
+            <h4 className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Recent Reviews</h4>
             {card.reviews.slice(-5).reverse().map((review, i) => (
-              <div key={i} className="flex items-center justify-between bg-card-warm rounded-xl px-4 py-2.5">
-                <span className="text-xs text-ink-muted">
+              <div key={i} className="flex items-center justify-between bg-muted rounded-xl px-4 py-2.5">
+                <span className="text-xs text-muted-foreground">
                   {new Date(review.date).toLocaleDateString()}
                 </span>
                 <ScoreDisplay score={review.score} size="sm" />
@@ -111,24 +111,24 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
 
       {/* Evaluation Results */}
       {card.latestEvaluation && (
-        <div className="bg-card rounded-[20px] p-6 shadow-[var(--shadow-md)]">
+        <div className="bg-card rounded-2xl p-6 border border-border">
           <div className="flex items-center gap-2 mb-5">
-            <div className="size-7 rounded-full bg-leaf-soft flex items-center justify-center">
-              <Repeat size={14} className="text-leaf" />
+            <div className="size-7 rounded-full bg-[var(--leaf-soft)] flex items-center justify-center">
+              <Repeat size={14} className="text-[var(--leaf)]" />
             </div>
-            <h3 className="text-sm font-bold text-leaf uppercase tracking-wide">Latest Evaluation</h3>
+            <h3 className="text-sm font-bold text-[var(--leaf)] uppercase tracking-wide">Latest Evaluation</h3>
           </div>
           <EvaluationResults result={card.latestEvaluation} showSaveButton={false} />
         </div>
       )}
 
       {/* Scheduling Info */}
-      <div className="bg-card rounded-[20px] p-6 shadow-[var(--shadow-md)]">
+      <div className="bg-card rounded-2xl p-6 border border-border">
         <div className="flex items-center gap-2 mb-4">
-          <div className="size-7 rounded-full bg-amber-soft flex items-center justify-center">
-            <Calendar size={14} className="text-amber" />
+          <div className="size-7 rounded-full bg-[var(--amber-soft)] flex items-center justify-center">
+            <Calendar size={14} className="text-[var(--amber)]" />
           </div>
-          <h3 className="text-sm font-bold text-amber uppercase tracking-wide">Scheduling</h3>
+          <h3 className="text-sm font-bold text-[var(--amber)] uppercase tracking-wide">Scheduling</h3>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -137,9 +137,9 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
             { label: 'Next Review', value: card.nextReviewAt ? new Date(card.nextReviewAt).toLocaleDateString() : 'Not scheduled' },
             { label: 'Repetitions', value: String(card.repetitions) },
           ].map(item => (
-            <div key={item.label} className="bg-card-warm rounded-xl px-4 py-3">
-              <p className="text-xs text-ink-faint">{item.label}</p>
-              <p className="text-ink font-semibold tabular-nums mt-0.5">{item.value}</p>
+            <div key={item.label} className="bg-muted rounded-xl px-4 py-3">
+              <p className="text-xs text-muted-foreground">{item.label}</p>
+              <p className="text-foreground font-semibold tabular-nums mt-0.5">{item.value}</p>
             </div>
           ))}
         </div>

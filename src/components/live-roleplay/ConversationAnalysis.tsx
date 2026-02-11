@@ -14,7 +14,8 @@ import { cn } from '../../utils/cn';
 
 function getTtsMimeType(): string {
   const config = getModelConfig();
-  return config.ttsProvider === 'gemini' ? 'audio/wav' : 'audio/mp3';
+  // OpenAI returns MP3; Gemini and Groq (Orpheus) return WAV
+  return config.ttsProvider === 'openai' ? 'audio/mp3' : 'audio/wav';
 }
 
 interface ConversationAnalysisProps {

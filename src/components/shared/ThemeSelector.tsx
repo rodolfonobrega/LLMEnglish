@@ -26,10 +26,10 @@ export function ThemeSelector({ selected, onSelect }: ThemeSelectorProps) {
           key={theme.id}
           onClick={() => onSelect(theme.id)}
           className={cn(
-            'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap snap-start transition-all flex-shrink-0',
+            'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
             selected === theme.id
-              ? 'bg-sky text-white shadow-[var(--shadow-md)] scale-[1.02]'
-              : 'bg-card-warm text-ink-secondary hover:bg-card-hover hover:shadow-[var(--shadow-sm)]',
+              ? 'bg-[var(--sky)] text-white'
+              : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
           )}
         >
           <span className="text-base">{theme.icon}</span>

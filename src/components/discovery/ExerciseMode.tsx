@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft } from 'lucide-react';
+import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, MessageCircle, FileText, Theater } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ThemeSelector } from '../shared/ThemeSelector';
@@ -27,6 +27,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { SkeletonText, Skeleton } from '../ui/Skeleton';
 import { cn } from '../../utils/cn';
+import type { LucideIcon } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────
 type ExerciseType = 'phrase' | 'text' | 'roleplay';
@@ -35,7 +36,7 @@ type OutputFormat = 'audio' | 'image';
 // ─── Section label ───────────────────────────────────────────────────
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] text-ink-muted uppercase font-bold tracking-widest mb-2.5">
+    <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-widest mb-2.5">
       {children}
     </p>
   );
@@ -46,7 +47,7 @@ const exerciseConfig: Record<
   ExerciseType,
   {
     label: string;
-    emoji: string;
+    icon: LucideIcon;
     promptLabel: string;
     evalType: string;
     skeletonLines: number;
@@ -55,7 +56,7 @@ const exerciseConfig: Record<
 > = {
   phrase: {
     label: 'Phrase',
-    emoji: '💬',
+    icon: MessageCircle,
     promptLabel: 'Translate this to English',
     evalType: 'phrase translation',
     skeletonLines: 2,
@@ -63,7 +64,7 @@ const exerciseConfig: Record<
   },
   text: {
     label: 'Text',
-    emoji: '📝',
+    icon: FileText,
     promptLabel: 'Translate this to English (spoken)',
     evalType: 'text translation',
     skeletonLines: 4,
@@ -71,7 +72,7 @@ const exerciseConfig: Record<
   },
   roleplay: {
     label: 'Role-Play',
-    emoji: '🎭',
+    icon: Theater,
     promptLabel: "Situation (speak in English how you'd handle this)",
     evalType: 'role-play situation',
     skeletonLines: 3,
@@ -277,7 +278,7 @@ export function ExerciseMode() {
   // ── Render: Setup form ───────────────────────────────────────────
   if (!hasActiveSession && !isGenerating) {
     return (
-      <div className="bg-card rounded-[20px] p-5 shadow-[var(--shadow-md)] space-y-6">
+      <div className="bg-card rounded-2xl p-5 border border-border space-y-6">
         {/* OUTPUT FORMAT */}
         <div>
           <SectionLabel>Output Format</SectionLabel>
@@ -285,26 +286,26 @@ export function ExerciseMode() {
             <button
               onClick={() => setOutputFormat('audio')}
               className={cn(
-                'flex flex-col items-center gap-2 py-5 rounded-2xl transition-all duration-200',
+                'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer',
                 isAudio
-                  ? 'bg-sky-soft ring-2 ring-sky shadow-[var(--shadow-md)] scale-[1.02]'
-                  : 'bg-card-warm text-ink-muted hover:shadow-[var(--shadow-sm)]',
+                  ? 'bg-[var(--sky)] text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
-              <Mic size={24} className={isAudio ? 'text-sky' : 'text-ink-muted'} />
-              <span className="font-semibold text-sm text-ink">Audio + Text</span>
+              <Mic size={24} />
+              <span className="font-semibold text-sm">Audio + Text</span>
             </button>
             <button
               onClick={() => setOutputFormat('image')}
               className={cn(
-                'flex flex-col items-center gap-2 py-5 rounded-2xl transition-all duration-200',
+                'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer',
                 !isAudio
-                  ? 'bg-coral-soft ring-2 ring-coral shadow-[var(--shadow-md)] scale-[1.02]'
-                  : 'bg-card-warm text-ink-muted hover:shadow-[var(--shadow-sm)]',
+                  ? 'bg-[var(--coral)] text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
-              <ImageIcon size={24} className={!isAudio ? 'text-coral' : 'text-ink-muted'} />
-              <span className="font-semibold text-sm text-ink">Visual Prompt</span>
+              <ImageIcon size={24} />
+              <span className="font-semibold text-sm">Visual Prompt</span>
             </button>
           </div>
         </div>
@@ -314,21 +315,24 @@ export function ExerciseMode() {
           <div>
             <SectionLabel>Practice Type</SectionLabel>
             <div className="grid grid-cols-3 gap-2">
-              {exerciseTypes.map(type => (
-                <button
-                  key={type}
-                  onClick={() => setExerciseType(type)}
-                  className={cn(
-                    'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl text-sm font-semibold transition-all duration-200',
-                    exerciseType === type
-                      ? 'bg-sky-soft text-ink ring-2 ring-sky shadow-[var(--shadow-sm)] scale-[1.02]'
-                      : 'bg-card-warm text-ink-muted hover:text-ink-secondary hover:shadow-[var(--shadow-sm)]',
-                  )}
-                >
-                  <span className="text-xl">{exerciseConfig[type].emoji}</span>
-                  <span>{exerciseConfig[type].label}</span>
-                </button>
-              ))}
+              {exerciseTypes.map(type => {
+                const TypeIcon = exerciseConfig[type].icon;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setExerciseType(type)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl text-sm font-semibold transition-colors duration-200 cursor-pointer',
+                      exerciseType === type
+                        ? 'bg-[var(--sky)] text-white'
+                        : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-accent',
+                    )}
+                  >
+                    <TypeIcon size={20} />
+                    <span>{exerciseConfig[type].label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -378,14 +382,14 @@ export function ExerciseMode() {
           variant="coral"
           size="lg"
           onClick={generate}
-          className="w-full text-lg font-bold py-4 rounded-2xl"
+          className="w-full text-lg font-bold py-4 rounded-2xl cursor-pointer"
         >
           <Sparkles size={20} />
           {isAudio ? 'Generate Speech Task' : 'Generate Image Challenge'}
         </Button>
 
         {error && (
-          <div className="bg-danger-soft border border-danger/30 rounded-2xl p-4 text-danger text-sm">
+          <div className="bg-[var(--danger-soft)] border border-[var(--danger)]/30 rounded-2xl p-4 text-[var(--danger)] text-sm">
             {error}
           </div>
         )}
@@ -397,15 +401,14 @@ export function ExerciseMode() {
   if (isGenerating && !hasActiveSession) {
     return (
       <div className="space-y-4">
-        {!isAudio && <Skeleton className="aspect-video w-full rounded-[20px]" />}
-        <div className="bg-card rounded-[20px] p-6 shadow-[var(--shadow-md)]">
+        {!isAudio && <Skeleton className="aspect-video w-full rounded-2xl" />}
+        <div className="bg-card rounded-2xl p-6 border border-border">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles
               size={16}
-              className="text-coral animate-bounce"
-              style={{ animationDuration: '2s' }}
+              className="text-[var(--coral)] animate-pulse"
             />
-            <p className="text-sm text-ink-muted font-semibold">
+            <p className="text-sm text-muted-foreground font-semibold">
               {isAudio
                 ? `Generating ${config.label.toLowerCase()}...`
                 : 'Generating image challenge...'}
@@ -419,22 +422,23 @@ export function ExerciseMode() {
 
   // ── Render: Active session (prompt shown, before evaluation) ─────
   if (hasActiveSession && !evaluation) {
+    const ActiveIcon = isAudio ? config.icon : ImageIcon;
     return (
       <div className="space-y-6">
         {/* Image (visual prompt only) */}
         {imageUrl && (
           <div className="relative">
-            <div className="overflow-hidden rounded-[20px] shadow-[var(--shadow-lg)]">
+            <div className="overflow-hidden rounded-2xl border border-border">
               <img
                 src={imageUrl}
-                alt="Challenge"
+                alt="Challenge image to describe"
                 className="w-full aspect-video object-cover"
               />
             </div>
             <button
               onClick={reset}
               aria-label="Dismiss prompt"
-              className="absolute top-3 right-3 size-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+              className="absolute top-3 right-3 size-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -443,14 +447,14 @@ export function ExerciseMode() {
 
         {/* Prompt card */}
         <div className="relative">
-          <div className="bg-card rounded-[20px] p-6 shadow-[var(--shadow-md)]">
+          <div className="bg-card rounded-2xl p-6 border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">{isAudio ? config.emoji : '🖼️'}</span>
-              <p className="text-xs text-ink-muted uppercase font-bold tracking-wide">
+              <ActiveIcon size={18} className="text-muted-foreground" />
+              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">
                 {isAudio ? config.promptLabel : 'Your Task'}
               </p>
             </div>
-            <p className="text-lg text-ink leading-relaxed whitespace-pre-line text-pretty">
+            <p className="text-lg text-foreground leading-relaxed whitespace-pre-line text-pretty">
               {prompt}
             </p>
           </div>
@@ -459,7 +463,7 @@ export function ExerciseMode() {
             <button
               onClick={reset}
               aria-label="Dismiss prompt"
-              className="absolute top-4 right-4 size-8 rounded-full bg-card-warm flex items-center justify-center text-ink-muted hover:text-ink-secondary hover:bg-card-hover transition-colors"
+              className="absolute top-4 right-4 size-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -471,7 +475,7 @@ export function ExerciseMode() {
               variant="ghost"
               size="sm"
               onClick={reset}
-              className="text-ink-muted hover:text-ink pl-0 gap-1"
+              className="text-muted-foreground hover:text-foreground pl-0 gap-1 cursor-pointer"
             >
               <ChevronLeft size={16} />
               Back to Menu
@@ -481,50 +485,47 @@ export function ExerciseMode() {
 
         <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />
 
-        {
-          isEvaluating && (
-            <div className="flex items-center justify-center gap-2 text-sky">
-              <Loader2 size={20} className="animate-spin" />
-              <span className="font-medium">Evaluating your speech...</span>
-            </div>
-          )
-        }
+        {isEvaluating && (
+          <div className="flex items-center justify-center gap-2 text-[var(--sky)]">
+            <Loader2 size={20} className="animate-spin" />
+            <span className="font-medium">Evaluating your speech...</span>
+          </div>
+        )}
 
-        {
-          error && (
-            <div className="bg-danger-soft border border-danger/30 rounded-2xl p-4 text-danger text-sm">
-              {error}
-            </div>
-          )
-        }
-      </div >
+        {error && (
+          <div className="bg-[var(--danger-soft)] border border-[var(--danger)]/30 rounded-2xl p-4 text-[var(--danger)] text-sm">
+            {error}
+          </div>
+        )}
+      </div>
     );
   }
 
   // ── Render: Evaluation results ───────────────────────────────────
   if (evaluation) {
+    const ResultIcon = isAudio ? config.icon : ImageIcon;
     return (
       <div className="space-y-5">
         {/* Image thumbnail (visual prompt only) */}
         {imageUrl && (
-          <div className="overflow-hidden rounded-[20px] shadow-[var(--shadow-sm)]">
+          <div className="overflow-hidden rounded-2xl border border-border">
             <img
               src={imageUrl}
-              alt="Challenge"
+              alt="Challenge image"
               className="w-full max-h-48 object-cover"
             />
           </div>
         )}
 
         {/* Original prompt */}
-        <div className="bg-card rounded-[20px] p-5 shadow-[var(--shadow-sm)]">
+        <div className="bg-card rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">{isAudio ? config.emoji : '🖼️'}</span>
-            <p className="text-xs text-ink-muted uppercase font-bold tracking-wide">
+            <ResultIcon size={16} className="text-muted-foreground" />
+            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">
               Original Prompt
             </p>
           </div>
-          <p className="text-ink whitespace-pre-line text-pretty">{prompt}</p>
+          <p className="text-foreground whitespace-pre-line text-pretty">{prompt}</p>
         </div>
 
         <EvaluationResults
@@ -534,18 +535,18 @@ export function ExerciseMode() {
         />
 
         {saved && (
-          <div className="bg-leaf-soft rounded-2xl p-4 text-center">
-            <p className="text-leaf font-bold">Saved to Library!</p>
+          <div className="bg-[var(--leaf-soft)] rounded-2xl p-4 text-center">
+            <p className="text-[var(--leaf)] font-bold">Saved to Library!</p>
           </div>
         )}
 
-        <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl">
+        <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl cursor-pointer">
           <RefreshCw size={18} />
           Try Another
         </Button>
 
         {error && (
-          <div className="bg-danger-soft border border-danger/30 rounded-2xl p-4 text-danger text-sm">
+          <div className="bg-[var(--danger-soft)] border border-[var(--danger)]/30 rounded-2xl p-4 text-[var(--danger)] text-sm">
             {error}
           </div>
         )}

@@ -1,9 +1,21 @@
 import { getCards } from './storage';
 import type { Card, EvaluationResult } from '../types/card';
-import type { ErrorPattern, ErrorCategory, ErrorStats, WeakAreas } from '../types/errors';
+import type {
+  ErrorCategory,
+  ErrorCurrency,
+  ErrorPattern,
+  ErrorStats,
+  ProgressSummary,
+  ProgressTimeline,
+  SessionSnapshot,
+  WeakAreas,
+} from '../types/errors';
 
 // Storage key for error patterns
 const ERRORS_KEY = 'el_error_patterns';
+
+// Storage key for session snapshots
+const SNAPSHOTS_KEY = 'el_session_snapshots';
 
 // --- Error Pattern Extraction ---
 
@@ -343,4 +355,176 @@ export function getPrioritizedReviewCards(limit: number = 10): Card[] {
  */
 export function clearErrorPatterns(): void {
   localStorage.removeItem(ERRORS_KEY);
+}
+
+// --- Error Currency & Evolution Tracking ---
+
+/**
+ * Returns error currency based on lastSeen date:
+ * - active: within 14 days
+ * - dormant: 14-60 days
+ * - resolved: 60+ days
+ */
+export function getErrorCurrency(pattern: ErrorPattern): ErrorCurrency {
+  const lastSeen = new Date(pattern.lastSeen).getTime();
+  const now = Date.now();
+  const daysSince = (now - lastSeen) / (1000 * 60 * 60 * 24);
+
+  if (daysSince <= 14) return 'active';
+  if (daysSince <= 60) return 'dormant';
+  return 'resolved';
+}
+
+function getStoredSnapshots(): SessionSnapshot[] {
+  try {
+    const raw = localStorage.getItem(SNAPSHOTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSnapshots(snapshots: SessionSnapshot[]): void {
+  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots));
+}
+
+/**
+ * Creates and saves a snapshot of current error state.
+ * Keeps max 100 snapshots.
+ */
+export function recordSessionSnapshot(): void {
+  const patterns = getStoredPatterns();
+  const stats = getErrorStats();
+
+  const activeCount = patterns.filter(p => getErrorCurrency(p) === 'active').length;
+  const resolvedCount = patterns.filter(p => getErrorCurrency(p) === 'resolved').length;
+
+  let averageScore = 0;
+  if (patterns.length > 0) {
+    const allScores = patterns.flatMap(p => p.recentScores);
+    averageScore = allScores.length > 0
+      ? allScores.reduce((a, b) => a + b, 0) / allScores.length
+      : 0;
+  }
+
+  const snapshot: SessionSnapshot = {
+    date: new Date().toISOString(),
+    totalErrors: stats.totalErrors,
+    averageScore,
+    byCategory: { ...stats.byCategory },
+    activePatterns: activeCount,
+    resolvedPatterns: resolvedCount,
+  };
+
+  let snapshots = getStoredSnapshots();
+  snapshots.push(snapshot);
+  if (snapshots.length > 100) {
+    snapshots = snapshots.slice(-100);
+  }
+  saveSnapshots(snapshots);
+}
+
+/**
+ * Returns all stored snapshots and computes overall trend
+ * by comparing first half vs second half of snapshots.
+ */
+export function getProgressTimeline(): ProgressTimeline {
+  const snapshots = getStoredSnapshots();
+
+  if (snapshots.length < 2) {
+    return { snapshots, overallTrend: 'stable' };
+  }
+
+  const mid = Math.floor(snapshots.length / 2);
+  const firstHalf = snapshots.slice(0, mid);
+  const secondHalf = snapshots.slice(mid);
+
+  const firstAvg = firstHalf.reduce((a, s) => a + s.averageScore, 0) / firstHalf.length;
+  const secondAvg = secondHalf.reduce((a, s) => a + s.averageScore, 0) / secondHalf.length;
+
+  let overallTrend: 'improving' | 'stable' | 'worsening' = 'stable';
+  if (secondAvg > firstAvg + 0.5) overallTrend = 'improving';
+  else if (secondAvg < firstAvg - 0.5) overallTrend = 'worsening';
+
+  return { snapshots, overallTrend };
+}
+
+/**
+ * Computes a human-readable progress summary.
+ * Compares snapshots from last 7 days vs previous 7 days.
+ */
+export function getProgressSummary(): ProgressSummary {
+  const patterns = getStoredPatterns();
+  const snapshots = getStoredSnapshots();
+
+  const activeCount = patterns.filter(p => getErrorCurrency(p) === 'active').length;
+  const resolvedCount = patterns.filter(p => getErrorCurrency(p) === 'resolved').length;
+
+  const now = Date.now();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const last7Days = snapshots.filter(s => (now - new Date(s.date).getTime()) <= 7 * msPerDay);
+  const prev7Days = snapshots.filter(s => {
+    const age = now - new Date(s.date).getTime();
+    return age > 7 * msPerDay && age <= 14 * msPerDay;
+  });
+
+  let improvingCategories: ErrorCategory[] = [];
+  let worseningCategories: ErrorCategory[] = [];
+
+  if (last7Days.length > 0 && prev7Days.length > 0) {
+    const categories: ErrorCategory[] = [
+      'grammar', 'pronunciation', 'vocabulary', 'fluency', 'syntax',
+      'preposition', 'verb-tense', 'article', 'word-order', 'other',
+    ];
+
+    for (const cat of categories) {
+      const lastAvg = last7Days.reduce((a, s) => a + (s.byCategory[cat] ?? 0), 0) / last7Days.length;
+      const prevAvg = prev7Days.reduce((a, s) => a + (s.byCategory[cat] ?? 0), 0) / prev7Days.length;
+
+      if (lastAvg < prevAvg - 0.5) improvingCategories.push(cat);
+      else if (lastAvg > prevAvg + 0.5) worseningCategories.push(cat);
+    }
+  }
+
+  let text: string;
+
+  if (snapshots.length < 2 || (last7Days.length === 0 && prev7Days.length === 0)) {
+    text = "Great start! Keep practicing to see your progress over time.";
+  } else {
+    const parts: string[] = [];
+
+    if (improvingCategories.length > 0) {
+      const names = improvingCategories.map(c => c.charAt(0).toUpperCase() + c.slice(1).replace('-', ' '));
+      parts.push(`You've improved in ${names.join(' and ')}!`);
+    }
+
+    if (resolvedCount > 0) {
+      parts.push(`${resolvedCount} error pattern${resolvedCount === 1 ? '' : 's'} ${resolvedCount === 1 ? 'has' : 'have'} been resolved.`);
+    }
+
+    if (worseningCategories.length > 0) {
+      const names = worseningCategories.map(c => c.charAt(0).toUpperCase() + c.slice(1).replace('-', ' '));
+      parts.push(`Keep working on ${names.join(' and ')}.`);
+    } else if (activeCount > 0 && improvingCategories.length === 0 && resolvedCount === 0) {
+      parts.push('Keep practicing to improve.');
+    }
+
+    text = parts.length > 0 ? parts.join(' ') : 'Keep practicing to see your progress over time.';
+  }
+
+  return {
+    text,
+    improvingCategories,
+    worseningCategories,
+    resolvedCount,
+    activeCount,
+  };
+}
+
+/**
+ * Returns all patterns matching the given currency status.
+ */
+export function getPatternsByStatus(status: ErrorCurrency): ErrorPattern[] {
+  const patterns = getStoredPatterns();
+  return patterns.filter(p => getErrorCurrency(p) === status);
 }

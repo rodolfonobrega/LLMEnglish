@@ -1,26 +1,39 @@
+export type Provider = 'openai' | 'gemini' | 'groq';
+
+export type ConversationTone = 'casual' | 'balanced' | 'formal';
+
 /** All configurable model slots in the app. */
 export interface ModelConfig {
   // --- Text generation (prompts, evaluation, scenario generation) ---
   chatModel: string;
-  chatProvider: 'openai' | 'gemini';
+  chatProvider: Provider;
 
   // --- Speech-to-text ---
   sttModel: string;
-  sttProvider: 'openai' | 'gemini';
+  sttProvider: Provider;
 
   // --- Text-to-speech ---
   ttsModel: string;
   ttsVoice: string;
-  ttsProvider: 'openai' | 'gemini';
+  ttsProvider: Provider;
 
-  // --- Image generation ---
+  // --- Image generation (no Groq support) ---
   imageModel: string;
   imageProvider: 'openai' | 'gemini';
 
-  // --- Live Roleplay (real-time audio) ---
+  // --- Live Roleplay (real-time audio, no Groq support) ---
   liveModel: string;
   liveVoice: string;
   liveProvider: 'openai' | 'gemini';
+
+  // --- Fallbacks (optional -- undefined means no fallback) ---
+  chatFallbackModel?: string;
+  chatFallbackProvider?: Provider;
+  sttFallbackModel?: string;
+  sttFallbackProvider?: Provider;
+  ttsFallbackModel?: string;
+  ttsFallbackProvider?: Provider;
+  ttsFallbackVoice?: string;
 }
 
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
@@ -59,6 +72,11 @@ export const CHAT_MODELS = [
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' as const },
   { value: 'gpt-4o', label: 'GPT-4o', provider: 'openai' as const },
   { value: 'o4-mini', label: 'o4-mini (reasoning)', provider: 'openai' as const },
+  // Groq
+  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (fast & smart)', provider: 'groq' as const },
+  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (fastest)', provider: 'groq' as const },
+  { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick', provider: 'groq' as const },
+  { value: 'qwen/qwen3-32b', label: 'Qwen3 32B', provider: 'groq' as const },
 ];
 
 export const STT_MODELS = [
@@ -70,6 +88,9 @@ export const STT_MODELS = [
   { value: 'whisper-1', label: 'Whisper v1', provider: 'openai' as const },
   { value: 'gpt-4o-mini-transcribe', label: 'GPT-4o Mini Transcribe', provider: 'openai' as const },
   { value: 'gpt-4o-transcribe', label: 'GPT-4o Transcribe', provider: 'openai' as const },
+  // Groq (Whisper on Groq hardware -- very fast)
+  { value: 'whisper-large-v3', label: 'Whisper Large V3 (Groq)', provider: 'groq' as const },
+  { value: 'whisper-large-v3-turbo', label: 'Whisper Large V3 Turbo (Groq)', provider: 'groq' as const },
 ];
 
 export const TTS_MODELS = [
@@ -80,6 +101,8 @@ export const TTS_MODELS = [
   { value: 'tts-1', label: 'TTS-1 (fast)', provider: 'openai' as const },
   { value: 'tts-1-hd', label: 'TTS-1 HD (quality)', provider: 'openai' as const },
   { value: 'gpt-4o-mini-tts', label: 'GPT-4o Mini TTS', provider: 'openai' as const },
+  // Groq (Orpheus -- max 200 chars per request, WAV only)
+  { value: 'canopylabs/orpheus-v1-english', label: 'Orpheus English (Groq)', provider: 'groq' as const },
 ];
 
 export const OPENAI_TTS_VOICES = [
@@ -103,6 +126,15 @@ export const GEMINI_TTS_VOICES = [
   { value: 'Leda', label: 'Leda (soft, calming)' },
   { value: 'Orus', label: 'Orus (rich, resonant)' },
   { value: 'Puck', label: 'Puck (neutral, versatile)' },
+];
+
+export const GROQ_TTS_VOICES = [
+  { value: 'autumn', label: 'Autumn (female)' },
+  { value: 'diana', label: 'Diana (female)' },
+  { value: 'hannah', label: 'Hannah (female)' },
+  { value: 'austin', label: 'Austin (male)' },
+  { value: 'daniel', label: 'Daniel (male)' },
+  { value: 'troy', label: 'Troy (male)' },
 ];
 
 export const IMAGE_MODELS = [

@@ -100,12 +100,12 @@ export function ImageMode() {
       {/* Start button */}
       {!imageUrl && !isGenerating && (
         <div className="text-center space-y-4">
-          <div className="bg-card-warm rounded-[20px] p-8 shadow-[var(--shadow-sm)]">
-            <div className="size-16 bg-sky-soft rounded-full flex items-center justify-center mx-auto mb-4">
-              <ImageIcon size={32} className="text-sky" />
+          <div className="bg-muted rounded-2xl p-8">
+            <div className="size-16 bg-[var(--sky-soft)] rounded-full flex items-center justify-center mx-auto mb-4">
+              <ImageIcon size={32} className="text-[var(--sky)]" />
             </div>
-            <p className="text-ink font-bold text-lg mb-1">Image Challenge</p>
-            <p className="text-ink-muted text-sm text-pretty max-w-sm mx-auto">
+            <p className="text-foreground font-bold text-lg mb-1">Image Challenge</p>
+            <p className="text-muted-foreground text-sm text-pretty max-w-sm mx-auto">
               Describe what you see in an AI-generated image. Great for building descriptive vocabulary!
             </p>
           </div>
@@ -119,8 +119,8 @@ export function ImageMode() {
       {/* Loading skeleton */}
       {isGenerating && !imageUrl && (
         <div className="space-y-4">
-          <Skeleton className="aspect-video w-full rounded-[20px]" />
-          <div className="bg-card rounded-[20px] p-5 shadow-[var(--shadow-sm)]">
+          <Skeleton className="aspect-video w-full rounded-2xl" />
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <SkeletonText lines={2} />
           </div>
         </div>
@@ -130,32 +130,32 @@ export function ImageMode() {
       {imageUrl && !evaluation && (
         <div className="space-y-6">
           <div className="relative">
-            <div className="overflow-hidden rounded-[20px] shadow-[var(--shadow-lg)]">
-              <img src={imageUrl} alt="Challenge" className="w-full aspect-video object-cover" />
+            <div className="overflow-hidden rounded-2xl border border-border">
+              <img src={imageUrl} alt="Challenge image to describe" className="w-full aspect-video object-cover" />
             </div>
             <button
               onClick={reset}
               aria-label="Dismiss prompt"
-              className="absolute top-3 right-3 size-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+              className="absolute top-3 right-3 size-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>
           </div>
 
-          <div className="bg-card rounded-[20px] p-5 shadow-[var(--shadow-md)]">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <div className="size-7 rounded-full bg-sky-soft flex items-center justify-center">
-                <ImageIcon size={14} className="text-sky" />
+              <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
+                <ImageIcon size={14} className="text-[var(--sky)]" />
               </div>
-              <p className="text-xs text-ink-muted uppercase font-bold tracking-wide">Your Task</p>
+              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">Your Task</p>
             </div>
-            <p className="text-lg text-ink text-pretty leading-relaxed">{question}</p>
+            <p className="text-lg text-foreground text-pretty leading-relaxed">{question}</p>
           </div>
 
           <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />
 
           {isEvaluating && (
-            <div className="flex items-center justify-center gap-2 text-sky">
+            <div className="flex items-center justify-center gap-2 text-[var(--sky)]">
               <Loader2 size={20} className="animate-spin" />
               <span className="font-medium">Evaluating your description...</span>
             </div>
@@ -167,18 +167,18 @@ export function ImageMode() {
       {evaluation && (
         <div className="space-y-5">
           {imageUrl && (
-            <div className="overflow-hidden rounded-[20px] shadow-[var(--shadow-sm)]">
-              <img src={imageUrl} alt="Challenge" className="w-full max-h-48 object-cover" />
+            <div className="overflow-hidden rounded-2xl border border-border">
+              <img src={imageUrl} alt="Challenge image" className="w-full max-h-48 object-cover" />
             </div>
           )}
-          <div className="bg-card rounded-[20px] p-4 shadow-[var(--shadow-sm)]">
-            <p className="text-xs text-ink-muted uppercase mb-1 font-bold tracking-wide">Task</p>
-            <p className="text-ink text-pretty">{question}</p>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <p className="text-xs text-muted-foreground uppercase mb-1 font-bold tracking-wide">Task</p>
+            <p className="text-foreground text-pretty">{question}</p>
           </div>
           <EvaluationResults result={evaluation} onSaveToLibrary={handleSaveToLibrary} showSaveButton={!saved} />
           {saved && (
-            <div className="bg-leaf-soft rounded-2xl p-4 text-center">
-              <p className="text-leaf font-bold">Saved to Library!</p>
+            <div className="bg-[var(--leaf-soft)] rounded-2xl p-4 text-center">
+              <p className="text-[var(--leaf)] font-bold">Saved to Library!</p>
             </div>
           )}
           <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl">
@@ -189,7 +189,7 @@ export function ImageMode() {
       )}
 
       {error && (
-        <div className="bg-danger-soft border border-danger/30 rounded-2xl p-4 text-danger text-sm">{error}</div>
+        <div className="bg-[var(--danger-soft)] border border-[var(--danger)]/30 rounded-2xl p-4 text-[var(--danger)] text-sm">{error}</div>
       )}
     </div>
   );

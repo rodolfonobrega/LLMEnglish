@@ -34,9 +34,9 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
   };
 
   return (
-    <div className="bg-card rounded-[20px] p-6 shadow-[var(--shadow-sm)]">
+    <div className="bg-card rounded-2xl p-6 border border-border">
       {error && (
-        <p className="text-danger text-sm text-center mb-3">{error}</p>
+        <p className="text-[var(--danger)] text-sm text-center mb-3">{error}</p>
       )}
 
       <div className="flex flex-col items-center gap-4">
@@ -49,17 +49,17 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
                 disabled={disabled}
                 aria-label="Start recording"
                 className={cn(
-                  'size-16 rounded-full flex items-center justify-center transition-all',
-                  'bg-coral text-white shadow-lg shadow-coral/25',
-                  'hover:bg-coral-hover hover:shadow-xl hover:shadow-coral/35 active:scale-95',
+                  'size-16 rounded-full flex items-center justify-center transition-colors duration-200 cursor-pointer',
+                  'bg-[var(--coral)] text-white',
+                  'hover:bg-[var(--coral-hover)] active:scale-95',
                   'disabled:opacity-40 disabled:cursor-not-allowed',
-                  'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/40',
+                  'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--coral)]/40',
                 )}
               >
                 <Mic size={28} />
               </button>
             </div>
-            <p className="text-sm text-ink-muted font-medium">Tap to Record</p>
+            <p className="text-sm text-muted-foreground font-medium">Tap to Record</p>
           </>
         )}
 
@@ -67,18 +67,18 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
         {isRecording && (
           <>
             <div className="relative">
-              <div className="absolute -inset-3 rounded-full bg-coral/15 animate-ping" style={{ animationDuration: '2s' }} />
-              <div className="absolute -inset-2 rounded-full border-2 border-coral/30 animate-pulse" />
+              <div className="absolute -inset-3 rounded-full bg-[var(--coral)]/15 animate-ping" style={{ animationDuration: '2s' }} />
+              <div className="absolute -inset-2 rounded-full border-2 border-[var(--coral)]/30 animate-pulse" />
               <button
                 onClick={stopRecording}
                 aria-label="Stop recording"
-                className="relative size-16 rounded-full flex items-center justify-center bg-coral text-white shadow-lg shadow-coral/30"
+                className="relative size-16 rounded-full flex items-center justify-center bg-[var(--coral)] text-white cursor-pointer"
               >
                 <Square size={24} />
               </button>
             </div>
-            <div className="flex items-center gap-2 text-coral text-sm font-semibold">
-              <div className="size-2 bg-coral rounded-full animate-pulse" />
+            <div className="flex items-center gap-2 text-[var(--coral)] text-sm font-semibold">
+              <div className="size-2 bg-[var(--coral)] rounded-full animate-pulse" />
               Recording...
             </div>
           </>
@@ -92,7 +92,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
               size="default"
               onClick={handlePlayback}
               aria-label={isPlaying ? 'Pause playback' : 'Play recording'}
-              className="rounded-full"
+              className="rounded-full cursor-pointer"
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
               {isPlaying ? 'Pause' : 'Listen'}
@@ -103,7 +103,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
               size="default"
               onClick={discardRecording}
               aria-label="Discard recording"
-              className="rounded-full text-ink-muted"
+              className="rounded-full text-muted-foreground cursor-pointer"
             >
               <Trash2 size={18} />
             </Button>
@@ -114,7 +114,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
               onClick={handleSubmit}
               disabled={disabled}
               aria-label="Submit recording"
-              className="rounded-full bg-leaf hover:bg-leaf"
+              className="rounded-full bg-[var(--leaf)] hover:bg-[var(--leaf)] cursor-pointer"
             >
               <Send size={18} />
               Submit

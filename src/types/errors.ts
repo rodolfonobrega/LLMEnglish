@@ -44,3 +44,27 @@ export interface WeakAreas {
   patterns: string[];
   recommendedFocus: string;
 }
+
+export type ErrorCurrency = 'active' | 'dormant' | 'resolved';
+
+export interface SessionSnapshot {
+  date: string;
+  totalErrors: number;
+  averageScore: number;
+  byCategory: Record<ErrorCategory, number>;
+  activePatterns: number;
+  resolvedPatterns: number;
+}
+
+export interface ProgressTimeline {
+  snapshots: SessionSnapshot[];
+  overallTrend: 'improving' | 'stable' | 'worsening';
+}
+
+export interface ProgressSummary {
+  text: string;
+  improvingCategories: ErrorCategory[];
+  worseningCategories: ErrorCategory[];
+  resolvedCount: number;
+  activeCount: number;
+}

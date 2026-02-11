@@ -1,13 +1,24 @@
 import { GoogleGenAI, Modality } from '@google/genai';
-import { getOpenAIKey, getGeminiKey, getCachedAudio, setCachedAudio, getModelConfig } from './storage';
+import { getOpenAIKey, getGeminiKey, getGroqKey, getCachedAudio, setCachedAudio, getModelConfig } from './storage';
 import { pcm16Base64ToWavBase64 } from '../utils/audio';
+import type { Provider } from '../types/settings';
 
 const OPENAI_BASE = 'https://api.openai.com/v1';
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const GROQ_BASE = '/api/groq';
 
 function openaiHeaders(): Record<string, string> {
   const key = getOpenAIKey();
   if (!key) throw new Error('OpenAI API key not configured. Go to Settings to add it.');
+  return {
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+function groqHeaders(): Record<string, string> {
+  const key = getGroqKey();
+  if (!key) throw new Error('Groq API key not configured. Go to Settings to add it.');
   return {
     'Authorization': `Bearer ${key}`,
     'Content-Type': 'application/json',
@@ -20,7 +31,62 @@ function getGeminiAI(): GoogleGenAI {
   return new GoogleGenAI({ apiKey: key });
 }
 
-// --- Chat Completions (supports OpenAI and Gemini) ---
+// ---------------------------------------------------------------------------
+// Helpers for provider detection from model overrides
+// ---------------------------------------------------------------------------
+
+function detectProvider(modelId: string): Provider {
+  if (modelId.startsWith('gemini')) return 'gemini';
+  // Groq models use slashes (meta-llama/, qwen/, canopylabs/) or specific IDs
+  if (
+    modelId.startsWith('llama-') ||
+    modelId.startsWith('meta-llama/') ||
+    modelId.startsWith('qwen/') ||
+    modelId.startsWith('canopylabs/') ||
+    modelId.startsWith('whisper-large-v3')
+  ) {
+    return 'groq';
+  }
+  return 'openai';
+}
+
+// ---------------------------------------------------------------------------
+// Internal dispatch helpers (used by both primary and fallback paths)
+// ---------------------------------------------------------------------------
+
+async function callChat(
+  provider: Provider,
+  model: string,
+  systemPrompt: string,
+  userMessage: string,
+): Promise<string> {
+  if (provider === 'gemini') return geminiChat(systemPrompt, userMessage, model);
+  if (provider === 'groq') return groqChat(systemPrompt, userMessage, model);
+  return openaiChat(systemPrompt, userMessage, model);
+}
+
+async function callSTT(
+  provider: Provider,
+  model: string,
+  audioBlob: Blob,
+): Promise<string> {
+  if (provider === 'gemini') return geminiSTT(audioBlob, model);
+  if (provider === 'groq') return groqSTT(audioBlob, model);
+  return openaiSTT(audioBlob, model);
+}
+
+async function callTTS(
+  provider: Provider,
+  model: string,
+  voice: string,
+  text: string,
+): Promise<string> {
+  if (provider === 'gemini') return geminiTTS(text, voice, model);
+  if (provider === 'groq') return groqTTS(text, voice, model);
+  return openaiTTS(text, voice, model);
+}
+
+// ===== Chat Completions (supports OpenAI, Gemini, and Groq) =====
 
 export async function chatCompletion(
   systemPrompt: string,
@@ -29,14 +95,17 @@ export async function chatCompletion(
 ): Promise<string> {
   const config = getModelConfig();
   const model = modelOverride || config.chatModel;
-  const provider = modelOverride
-    ? (modelOverride.startsWith('gemini') ? 'gemini' : 'openai')
-    : config.chatProvider;
+  const provider = modelOverride ? detectProvider(modelOverride) : config.chatProvider;
 
-  if (provider === 'gemini') {
-    return geminiChat(systemPrompt, userMessage, model);
+  try {
+    return await callChat(provider, model, systemPrompt, userMessage);
+  } catch (primaryError) {
+    if (!modelOverride && config.chatFallbackModel && config.chatFallbackProvider) {
+      console.warn('Primary chat failed, trying fallback:', primaryError);
+      return await callChat(config.chatFallbackProvider, config.chatFallbackModel, systemPrompt, userMessage);
+    }
+    throw primaryError;
   }
-  return openaiChat(systemPrompt, userMessage, model);
 }
 
 async function openaiChat(systemPrompt: string, userMessage: string, model: string): Promise<string> {
@@ -88,7 +157,30 @@ async function geminiChat(systemPrompt: string, userMessage: string, model: stri
   return data.candidates[0].content.parts[0].text;
 }
 
-// --- Chat Completions with Image (supports OpenAI and Gemini) ---
+async function groqChat(systemPrompt: string, userMessage: string, model: string): Promise<string> {
+  const resp = await fetch(`${GROQ_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: groqHeaders(),
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.8,
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Groq API error: ${resp.status} - ${err}`);
+  }
+
+  const data = await resp.json();
+  return data.choices[0].message.content;
+}
+
+// ===== Chat Completions with Image (supports OpenAI and Gemini -- Groq not supported) =====
 
 export async function chatCompletionWithImage(
   systemPrompt: string,
@@ -96,10 +188,14 @@ export async function chatCompletionWithImage(
 ): Promise<string> {
   const config = getModelConfig();
 
-  if (config.chatProvider === 'gemini') {
-    return geminiChatWithImage(systemPrompt, imageUrl, config.chatModel);
+  // Groq does not support image input; fall back to chat provider logic for openai/gemini
+  const provider = config.chatProvider === 'groq' ? 'gemini' : config.chatProvider;
+  const model = config.chatProvider === 'groq' ? 'gemini-2.5-flash' : config.chatModel;
+
+  if (provider === 'gemini') {
+    return geminiChatWithImage(systemPrompt, imageUrl, model);
   }
-  return openaiChatWithImage(systemPrompt, imageUrl, config.chatModel);
+  return openaiChatWithImage(systemPrompt, imageUrl, model);
 }
 
 async function openaiChatWithImage(systemPrompt: string, imageUrl: string, model: string): Promise<string> {
@@ -189,7 +285,7 @@ async function geminiChatWithImage(systemPrompt: string, imageUrl: string, model
   return data.candidates[0].content.parts[0].text;
 }
 
-// --- Text to Speech (supports OpenAI and Gemini) ---
+// ===== Text to Speech (supports OpenAI, Gemini, and Groq) =====
 
 export async function textToSpeech(
   text: string,
@@ -198,6 +294,7 @@ export async function textToSpeech(
   const config = getModelConfig();
   const voice = voiceOverride || config.ttsVoice;
   const model = config.ttsModel;
+  const provider = config.ttsProvider;
 
   // Check cache first
   const cacheKey = `tts_${voice}_${text.substring(0, 100)}`;
@@ -206,10 +303,16 @@ export async function textToSpeech(
 
   let base64: string;
 
-  if (config.ttsProvider === 'gemini') {
-    base64 = await geminiTTS(text, voice, model);
-  } else {
-    base64 = await openaiTTS(text, voice, model);
+  try {
+    base64 = await callTTS(provider, model, voice, text);
+  } catch (primaryError) {
+    if (config.ttsFallbackModel && config.ttsFallbackProvider) {
+      console.warn('Primary TTS failed, trying fallback:', primaryError);
+      const fallbackVoice = config.ttsFallbackVoice || voice;
+      base64 = await callTTS(config.ttsFallbackProvider, config.ttsFallbackModel, fallbackVoice, text);
+    } else {
+      throw primaryError;
+    }
   }
 
   // Cache it
@@ -266,7 +369,147 @@ async function geminiTTS(text: string, voice: string, model: string): Promise<st
   return pcm16Base64ToWavBase64(audioData, 24000);
 }
 
-// --- Image Generation (supports OpenAI and Gemini) ---
+/**
+ * Groq Orpheus TTS. Limited to 200 characters per request.
+ * For longer texts, we split into sentence-sized chunks, generate each,
+ * and concatenate the WAV buffers.
+ */
+async function groqTTS(text: string, voice: string, model: string): Promise<string> {
+  const MAX_CHARS = 200;
+
+  if (text.length <= MAX_CHARS) {
+    return groqTTSSingle(text, voice, model);
+  }
+
+  // Split text into chunks on sentence boundaries
+  const chunks = splitTextForTTS(text, MAX_CHARS);
+  const wavBuffers: ArrayBuffer[] = [];
+
+  for (const chunk of chunks) {
+    const base64 = await groqTTSSingle(chunk, voice, model);
+    const binary = atob(base64);
+    const buffer = new ArrayBuffer(binary.length);
+    const view = new Uint8Array(buffer);
+    for (let i = 0; i < binary.length; i++) {
+      view[i] = binary.charCodeAt(i);
+    }
+    wavBuffers.push(buffer);
+  }
+
+  // Concatenate WAV data (skip headers for all but first, then rebuild header)
+  return concatenateWavBuffers(wavBuffers);
+}
+
+async function groqTTSSingle(text: string, voice: string, model: string): Promise<string> {
+  const resp = await fetch(`${GROQ_BASE}/audio/speech`, {
+    method: 'POST',
+    headers: groqHeaders(),
+    body: JSON.stringify({
+      model,
+      input: text,
+      voice,
+      response_format: 'wav',
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Groq TTS error: ${resp.status} - ${err}`);
+  }
+
+  const blob = await resp.blob();
+  return blobToBase64(blob);
+}
+
+/** Split text into chunks of at most maxChars, preferring sentence boundaries. */
+function splitTextForTTS(text: string, maxChars: number): string[] {
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > maxChars) {
+    // Try to find the last sentence-ending punctuation within the limit
+    let splitIdx = -1;
+    for (const sep of ['. ', '! ', '? ', '.\n', '!\n', '?\n']) {
+      const idx = remaining.lastIndexOf(sep, maxChars);
+      if (idx > 0 && idx > splitIdx) {
+        splitIdx = idx + sep.length;
+      }
+    }
+    // Fallback: split on last space
+    if (splitIdx <= 0) {
+      splitIdx = remaining.lastIndexOf(' ', maxChars);
+    }
+    // Last resort: hard cut
+    if (splitIdx <= 0) {
+      splitIdx = maxChars;
+    }
+
+    chunks.push(remaining.substring(0, splitIdx).trim());
+    remaining = remaining.substring(splitIdx).trim();
+  }
+
+  if (remaining.length > 0) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
+}
+
+/** Concatenate multiple WAV buffers (all same format) into a single base64 WAV string. */
+function concatenateWavBuffers(buffers: ArrayBuffer[]): string {
+  if (buffers.length === 0) throw new Error('No WAV buffers to concatenate');
+  if (buffers.length === 1) {
+    const bytes = new Uint8Array(buffers[0]);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  // WAV header is 44 bytes. Extract raw PCM data from each buffer (skip 44-byte header).
+  const headerSize = 44;
+  const pcmChunks: Uint8Array[] = [];
+  let totalPcmLength = 0;
+
+  // Use the header from the first buffer as template
+  const firstHeader = new Uint8Array(buffers[0].slice(0, headerSize));
+
+  for (const buf of buffers) {
+    const pcm = new Uint8Array(buf.slice(headerSize));
+    pcmChunks.push(pcm);
+    totalPcmLength += pcm.length;
+  }
+
+  // Build new WAV with updated sizes
+  const result = new Uint8Array(headerSize + totalPcmLength);
+  result.set(firstHeader, 0);
+
+  // Update RIFF chunk size (offset 4, little-endian uint32): totalSize - 8
+  const riffSize = headerSize + totalPcmLength - 8;
+  result[4] = riffSize & 0xff;
+  result[5] = (riffSize >> 8) & 0xff;
+  result[6] = (riffSize >> 16) & 0xff;
+  result[7] = (riffSize >> 24) & 0xff;
+
+  // Update data sub-chunk size (offset 40, little-endian uint32): totalPcmLength
+  result[40] = totalPcmLength & 0xff;
+  result[41] = (totalPcmLength >> 8) & 0xff;
+  result[42] = (totalPcmLength >> 16) & 0xff;
+  result[43] = (totalPcmLength >> 24) & 0xff;
+
+  // Copy PCM data
+  let offset = headerSize;
+  for (const pcm of pcmChunks) {
+    result.set(pcm, offset);
+    offset += pcm.length;
+  }
+
+  // Convert to base64
+  let binary = '';
+  for (let i = 0; i < result.length; i++) binary += String.fromCharCode(result[i]);
+  return btoa(binary);
+}
+
+// ===== Image Generation (supports OpenAI and Gemini -- no Groq) =====
 
 export async function generateImage(prompt: string): Promise<string> {
   const config = getModelConfig();
@@ -342,15 +585,20 @@ async function geminiImageGeneration(prompt: string, model: string): Promise<str
   throw new Error('Gemini did not return an image.');
 }
 
-// --- Speech to Text (supports OpenAI and Gemini) ---
+// ===== Speech to Text (supports OpenAI, Gemini, and Groq) =====
 
 export async function speechToText(audioBlob: Blob): Promise<string> {
   const config = getModelConfig();
 
-  if (config.sttProvider === 'gemini') {
-    return geminiSTT(audioBlob, config.sttModel);
+  try {
+    return await callSTT(config.sttProvider, config.sttModel, audioBlob);
+  } catch (primaryError) {
+    if (config.sttFallbackModel && config.sttFallbackProvider) {
+      console.warn('Primary STT failed, trying fallback:', primaryError);
+      return await callSTT(config.sttFallbackProvider, config.sttFallbackModel, audioBlob);
+    }
+    throw primaryError;
   }
-  return openaiSTT(audioBlob, config.sttModel);
 }
 
 async function openaiSTT(audioBlob: Blob, model: string): Promise<string> {
@@ -408,7 +656,35 @@ async function geminiSTT(audioBlob: Blob, model: string): Promise<string> {
   return text.trim();
 }
 
-// Helper
+async function groqSTT(audioBlob: Blob, model: string): Promise<string> {
+  const key = getGroqKey();
+  if (!key) throw new Error('Groq API key not configured.');
+
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'audio.webm');
+  formData.append('model', model);
+  formData.append('language', 'en');
+  formData.append('prompt', 'Transcribe exactly what was said, including any errors or mispronunciations. Do not correct or improve the speech.');
+
+  const resp = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${key}`,
+    },
+    body: formData,
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Groq STT error: ${resp.status} - ${err}`);
+  }
+
+  const data = await resp.json();
+  return data.text;
+}
+
+// ===== Helpers =====
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

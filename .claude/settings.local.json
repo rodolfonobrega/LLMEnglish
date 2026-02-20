@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev)",
+      "Bash(make:*)",
+      "Bash(git reset:*)",
+      "Bash(git push:*)",
+      "Bash(git config:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git rm:*)",
+      "Bash(git reflog:*)",
+      "Bash(git gc:*)",
+      "mcp__web-reader__webReader",
+      "mcp__web-search-prime__webSearchPrime",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(del:*)",
+      "Bash(test:*)"
+    ]
+  }
+}

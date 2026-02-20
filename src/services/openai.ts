@@ -511,25 +511,57 @@ function concatenateWavBuffers(buffers: ArrayBuffer[]): string {
 
 // ===== Image Generation (supports OpenAI and Gemini -- no Groq) =====
 
-export async function generateImage(prompt: string): Promise<string> {
+export type ImageGenerationOptions = {
+  // OpenAI parameters
+  size?: 'auto' | '1024x1024' | '1536x1024' | '1024x1536';
+  quality?: 'auto' | 'low' | 'medium' | 'high';
+  format?: 'png' | 'jpeg' | 'webp';
+  compression?: number; // 0-100, for JPEG/WebP
+  background?: 'opaque' | 'transparent';
+  moderation?: 'auto' | 'low';
+
+  // Imagen parameters
+  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  imageSize?: '1K' | '2K';
+  personGeneration?: 'allow_adult' | 'allow_all' | 'dont_allow';
+  numberOfImages?: number; // 1-4
+};
+
+export async function generateImage(
+  prompt: string,
+  options?: ImageGenerationOptions
+): Promise<string> {
   const config = getModelConfig();
 
   if (config.imageProvider === 'gemini') {
-    return geminiImageGeneration(prompt, config.imageModel);
+    return geminiImageGeneration(prompt, config.imageModel, options);
   }
-  return openaiImageGeneration(prompt, config.imageModel);
+  return openaiImageGeneration(prompt, config.imageModel, options);
 }
 
-async function openaiImageGeneration(prompt: string, model: string): Promise<string> {
+async function openaiImageGeneration(
+  prompt: string,
+  model: string,
+  options?: ImageGenerationOptions
+): Promise<string> {
+  const body: Record<string, any> = {
+    model,
+    prompt,
+    n: 1,
+  };
+
+  // Apply options if provided
+  if (options?.size) body.size = options.size;
+  if (options?.quality) body.quality = options.quality;
+  // Note: OpenAI Images API doesn't support format parameter (always returns URL or b64_json)
+  if (options?.compression !== undefined) body.output_compression = options.compression;
+  if (options?.background) body.background = options.background;
+  if (options?.moderation) body.moderation = options.moderation;
+
   const resp = await fetch(`${OPENAI_BASE}/images/generations`, {
     method: 'POST',
     headers: openaiHeaders(),
-    body: JSON.stringify({
-      model,
-      prompt,
-      n: 1,
-      size: '1024x1024',
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!resp.ok) {
@@ -544,6 +576,7 @@ async function openaiImageGeneration(prompt: string, model: string): Promise<str
       return data.data[0].url;
     }
     if (data.data[0].b64_json) {
+      // OpenAI always returns PNG for b64_json
       return `data:image/png;base64,${data.data[0].b64_json}`;
     }
   }
@@ -551,38 +584,110 @@ async function openaiImageGeneration(prompt: string, model: string): Promise<str
   throw new Error(`OpenAI response missing image URL or b64_json: ${JSON.stringify(data)}`);
 }
 
-async function geminiImageGeneration(prompt: string, model: string): Promise<string> {
+async function geminiImageGeneration(
+  prompt: string,
+  model: string,
+  options?: ImageGenerationOptions
+): Promise<string> {
   const key = getGeminiKey();
   if (!key) throw new Error('Gemini API key not configured. Go to Settings to add it.');
 
-  const resp = await fetch(
-    `${GEMINI_BASE}/models/${model}:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
-        },
-      }),
-    }
-  );
+  // Check if it's an Imagen dedicated model or a Gemini multimodal model
+  const isImagenModel = model.startsWith('imagen-');
 
-  if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Gemini Image error: ${resp.status} - ${err}`);
-  }
+  if (isImagenModel) {
+    // Use the 'predict' endpoint for Imagen dedicated models
+    const generationConfig: Record<string, any> = {
+      responseModalities: ['IMAGE'],
+    };
 
-  const data = await resp.json();
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  for (const part of parts) {
-    if (part.inlineData) {
-      const mime = part.inlineData.mimeType || 'image/png';
-      return `data:${mime};base64,${part.inlineData.data}`;
+    // Apply Imagen-specific options
+    if (options?.aspectRatio) {
+      generationConfig.aspectRatio = options.aspectRatio;
     }
+    if (options?.imageSize) {
+      generationConfig.imageSize = options.imageSize;
+    }
+    if (options?.personGeneration) {
+      generationConfig.personGeneration = options.personGeneration;
+    }
+    if (options?.numberOfImages) {
+      generationConfig.numberOfImages = Math.min(Math.max(options.numberOfImages, 1), 4);
+    } else {
+      generationConfig.numberOfImages = 1;
+    }
+
+    const resp = await fetch(
+      `${GEMINI_BASE}/models/${model}:predict?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt }],
+          parameters: generationConfig,
+        }),
+      }
+    );
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(`Gemini Image error: ${resp.status} - ${err}`);
+    }
+
+    const data = await resp.json();
+
+    if (data.predictions && data.predictions[0]) {
+      const bytesBase64 = data.predictions[0].bytesBase64;
+      if (bytesBase64) {
+        return `data:image/png;base64,${bytesBase64}`;
+      }
+    }
+
+    throw new Error('Gemini did not return an image.');
+  } else {
+    // Use 'generateContent' endpoint for Gemini multimodal models
+    const generationConfig: Record<string, any> = {
+      responseModalities: ['IMAGE'],
+    };
+
+    // Apply supported options
+    if (options?.aspectRatio) {
+      generationConfig.aspectRatio = options.aspectRatio;
+    }
+    if (options?.imageSize) {
+      generationConfig.imageSize = options.imageSize;
+    }
+
+    const resp = await fetch(
+      `${GEMINI_BASE}/models/${model}:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig,
+        }),
+      }
+    );
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(`Gemini Image error: ${resp.status} - ${err}`);
+    }
+
+    const data = await resp.json();
+
+    // Gemini multimodal models return data in a different format
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData) {
+        const mime = part.inlineData.mimeType || 'image/png';
+        return `data:${mime};base64,${part.inlineData.data}`;
+      }
+    }
+
+    throw new Error('Gemini did not return an image.');
   }
-  throw new Error('Gemini did not return an image.');
 }
 
 // ===== Speech to Text (supports OpenAI, Gemini, and Groq) =====

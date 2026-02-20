@@ -6,12 +6,13 @@ export interface EvaluationResult {
   correctedVersion: string;
   betterAlternatives: string[];
   corrections: string[];
-  pronunciationFeedback: {
+  // TODO: Reactivate pronunciation feedback when a solid phonetic model is implemented
+  /* pronunciationFeedback?: {
     rhythm: string;
     intonation: string;
     connectedSpeech: string;
     tips: string[];
-  };
+  }; */
   overallFeedback: string;
 }
 

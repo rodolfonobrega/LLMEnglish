@@ -1,4 +1,4 @@
-export type ScenarioIntensity = 'normal' | 'adventurous' | 'wild';
+export type ScenarioIntensity = 'normal' | 'adventurous' | 'wild' | 'skill';
 
 export interface LiveScenario {
   id: string;

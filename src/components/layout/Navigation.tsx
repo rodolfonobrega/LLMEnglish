@@ -7,6 +7,7 @@ const navItems = [
   { to: '/review', icon: RotateCcw, label: 'Review' },
   { to: '/live', icon: Mic, label: 'Live' },
   { to: '/lessons', icon: GraduationCap, label: 'Lessons' },
+  { to: '/practice', icon: BookOpen, label: 'Practice' },
   { to: '/library', icon: BookOpen, label: 'Library' },
   { to: '/errors', icon: AlertTriangle, label: 'Errors' },
   { to: '/settings', icon: Settings, label: 'Settings' },

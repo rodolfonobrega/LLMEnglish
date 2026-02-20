@@ -11,14 +11,16 @@ import type { ConversationTone } from '../types/settings';
 // ---------------------------------------------------------------------------
 
 export function getToneInstruction(tone?: ConversationTone): string {
+  const baseRule = `CRITICAL MACRO-RULE: This application is 100% for SPOKEN English and 0% for written/reading English. All generation and evaluation must reflect how people ACTUALLY TALK in real life, completely ignoring formal written grammar rules if they conflict with natural spoken usage. Include filler words, natural imperfections, slang, and true conversational flow. NEVER output "textbook-style" sentences.`;
+
   switch (tone) {
     case 'casual':
-      return `TONE: CASUAL — Use everyday informal English: contractions, phrasal verbs, filler words (like, you know, I mean), slang. The kind of English you hear at a coffee shop or between friends. Keep it loose, relaxed, and authentic.`;
+      return `${baseRule}\nTONE: CASUAL — Use everyday informal English: contractions, phrasal verbs, filler words (like, you know, I mean), slang, grammatically incomplete but natural sentences. The kind of English you hear at a coffee shop or between friends. Keep it extremely loose, relaxed, and authentic.`;
     case 'formal':
-      return `TONE: FORMAL — Use professional English: complete sentences, precise vocabulary, polite register. Appropriate for business meetings, interviews, and presentations. Avoid slang and contractions.`;
+      return `${baseRule}\nTONE: FORMAL — Use professional SPOKEN English. Appropriate for business meetings, interviews, and presentations. Even in a formal setting, people speak differently than they write. Keep the natural rhythm of speech, but use polite register and precise vocabulary.`;
     case 'balanced':
     default:
-      return `TONE: BALANCED — Use natural conversational English: contractions are fine, moderate use of idioms. Clear but not stiff. How a native speaker talks in a relaxed professional setting.`;
+      return `${baseRule}\nTONE: BALANCED — Use natural conversational English: contractions are required, moderate use of idioms. Clear but not stiff. How a native speaker talks in a relaxed but polite setting.`;
   }
 }
 
@@ -27,16 +29,16 @@ export function getToneInstruction(tone?: ConversationTone): string {
 // ---------------------------------------------------------------------------
 
 export function getPhraseGenerationPrompt(targetVocab?: string[], context?: string, theme?: string, tone?: ConversationTone): string {
-  let prompt = `You are an English language teacher. Generate a short phrase or sentence in Brazilian Portuguese that the student needs to translate into spoken English.
+  let prompt = `You are a native English language teacher. Generate a short phrase or sentence in Brazilian Portuguese that the student needs to translate into spoken English.
 
 ${getToneInstruction(tone)}
 
 Rules:
-- The phrase must be something a person would actually SAY in real life (spoken language, NOT written/formal).
-- The expected English translation should match the tone above — natural and native-sounding.
-- Examples: ordering food, asking for directions, making small talk, etc.
-- Keep it to 1-2 sentences maximum.
-- Make it natural and conversational — avoid textbook-style sentences.`;
+- The phrase MUST be something a person would actually SAY in real life (spoken language, NOT written/formal). Focus on natural, everyday speech, avoiding stiff or textbook-style sentences.
+- Use common expressions, contractions, and appropriate slang if casual.
+- The expected English translation should match the tone above — perfectly natural and native-sounding.
+- Examples: ordering food, asking for directions, making small talk, expressing feelings.
+- Keep it to 1-2 sentences maximum.`;
 
   if (targetVocab && targetVocab.length > 0) {
     prompt += `\n- The English translation MUST use these words: ${targetVocab.join(', ')}.`;
@@ -53,15 +55,15 @@ Rules:
 }
 
 export function getTextGenerationPrompt(targetVocab?: string[], context?: string, theme?: string, tone?: ConversationTone): string {
-  let prompt = `You are an English language teacher. Generate a short paragraph (3-5 sentences) in Brazilian Portuguese that the student needs to translate into spoken English.
+  let prompt = `You are a native English language teacher. Generate a short paragraph (3-5 sentences) in Brazilian Portuguese that the student needs to translate into spoken English.
 
 ${getToneInstruction(tone)}
 
 Rules:
-- The text must represent SPOKEN language — like a presentation at work, ordering at a restaurant, telling a story to a friend, describing a situation to someone.
-- The expected English translation should match the tone above.
-- It should feel like something someone would actually say out loud — not read from a textbook.
-- Make it realistic, with the natural rhythm and flow of real speech.`;
+- The text MUST represent SPOKEN language. It should feel exactly like someone talking out loud—e.g., a presentation at work, ordering at a restaurant, telling a vivid story to a friend.
+- Include natural conversational elements (filler words, self-corrections if casual, idioms).
+- The expected English translation should perfectly match the tone above. Avoid stiff, translated-sounding structures ("engessada").
+- Make it highly realistic, with the natural rhythm and flow of real native speech.`;
 
   if (targetVocab && targetVocab.length > 0) {
     prompt += `\n- The English translation MUST use these words: ${targetVocab.join(', ')}.`;
@@ -78,19 +80,19 @@ Rules:
 }
 
 export function getRoleplayGenerationPrompt(context?: string, theme?: string, targetVocabulary?: string[], tone?: ConversationTone): string {
-  let prompt = `You are an English language teacher. Generate a role-play situation in Brazilian Portuguese for the student.
+  let prompt = `You are a native English language teacher. Generate a role-play situation in Brazilian Portuguese for the student.
 
 ${getToneInstruction(tone)}
 
 Rules:
-- Describe a real-life situation the student needs to handle by speaking English.
-- The situation should naturally call for the tone described above.
-- Examples: checking into a hotel, returning an item at a store, making a doctor's appointment, etc.
+- Describe a highly realistic, everyday situation the student needs to handle by speaking English.
+- The situation should naturally call for the spoken English tone described above (incorporate typical contexts for casual or professional language).
+- Examples: checking into a hotel, dealing with a flight cancellation, making a doctor's appointment, chatting with a coworker at the water cooler.
 - Write ONLY the situation description — do NOT include what the student should say.
 - Do NOT include "your role" or "my role" labels.
 - Do NOT include objectives or hints about what to say.
 - Keep it to 2-3 sentences describing the situation.
-- Write in Portuguese.`;
+- Write in natural Brazilian Portuguese.`;
 
   if (targetVocabulary && targetVocabulary.length > 0) {
     prompt += `\n- Encourage the use of these words/phrases in the response: ${targetVocabulary.join(', ')}.`;
@@ -107,13 +109,13 @@ Rules:
 }
 
 export function getImageQuestionPrompt(tone?: ConversationTone): string {
-  return `You are an English language teacher. Based on this image, create a question or task in Brazilian Portuguese that asks the student to describe what they see or answer a question about the image in English.
+  return `You are a native English language teacher. Based on this image, create a question or task in Brazilian Portuguese that asks the student to describe what they see or answer a question about the image in English.
 
 ${getToneInstruction(tone)}
 
 Rules:
-- The question should encourage the student to speak in English about the image using the tone above.
-- Write the question in Portuguese.
+- The question should encourage the student to speak in natural, everyday English about the image using the tone above.
+- Write the question in natural Brazilian Portuguese.
 - Keep it to 1-2 sentences.
 
 Respond with ONLY the Portuguese question, nothing else.`;
@@ -151,25 +153,19 @@ Evaluate the student's response and provide feedback. Respond in JSON format:
   "correctedVersion": "<the corrected version of what they said>",
   "betterAlternatives": ["<more natural way to say it>", "<another alternative>"],
   "corrections": ["<specific error 1>", "<specific error 2>"],
-  "pronunciationFeedback": {
-    "rhythm": "<feedback on rhythm and stress patterns>",
-    "intonation": "<feedback on intonation patterns>",
-    "connectedSpeech": "<feedback on connected speech, linking, reductions>",
-    "tips": ["<specific tip 1>", "<specific tip 2>"]
-  },
   "overallFeedback": "<encouraging, constructive overall feedback>"
 }
 
 Rules:
-- Score 0 = completely wrong, 10 = perfect native-like speech.
-- Focus on SPOKEN English, not written grammar.
-- Evaluate naturalness, not just correctness — does it sound like a real native speaker using the tone above?
-- NATURALNESS SCORING: Deduct 1-2 points if the speech sounds stiff, overly formal, or textbook-like even when grammatically correct. A grammatically imperfect but natural-sounding response should score higher than a grammatically perfect but robotic one.
-- CORRECTED VERSION: The "correctedVersion" must sound like how a native speaker would ACTUALLY say this in real life — NOT a grammar-textbook correction. It must match the tone (casual, balanced, or formal) and be natural spoken English. Avoid stiff, formal, or robotic phrasing. Use contractions, natural word order, and the register that fits the tone.
-- The "betterAlternatives" MUST match the tone (casual, balanced, or formal).
-- Be encouraging but honest.
+- Score 0 = completely incomprehensible, 10 = perfect native-like SPOKEN speech.
+- Focus STRICTLY on SPOKEN English. IGNORE written grammar rules entirely.
+- Evaluate naturalness above all else — does it sound exactly like a real native speaker using the tone above? Is it fluid or robotic?
+- NATURALNESS PENALTY (CRITICAL): You MUST deduct points if the speech sounds stiff, overly formal, translated, or textbook-like ("engessada"). A grammatically "wrong" but highly natural-sounding slang/colloquial response MUST score higher than a grammatically perfect but robotic reading-style sentence.
+- CORRECTED VERSION: The "correctedVersion" MUST sound exactly like how a native speaker would ACTUALLY say this out loud on the street. Keep it casual if the tone is casual (force contractions, filler words, idioms). Correct for awkwardness/stiffness. NEVER EVER give a textbook grammar correction unless that is exactly how natives speak.
+- The "betterAlternatives" MUST match the tone (casual, balanced, or formal) and provide ONLY heavily native-like, colloquial options.
+- Be encouraging but honest in your feedback.
 - If the transcription seems empty or nonsensical, score it low and explain why.
-- Provide at least 2 better alternatives that sound native.
+- Provide at least 2 better alternatives that sound genuinely native.
 - Respond ONLY with the JSON, nothing else.`;
 }
 
@@ -295,6 +291,54 @@ Respond in JSON format:
 Respond ONLY with the JSON, nothing else.`;
 }
 
+export function getSkillScenarioPrompt(
+  customDescription: string,
+  userProfile: string,
+  userLevel: string,
+  userGoals: string,
+  tone?: ConversationTone
+): string {
+  return `Generate a vivid, highly realistic Skill Training / Interview scenario for an English language learner.
+
+CRITICAL FOCUS: PROFESSIONAL, REALISTIC, AND FOCUSED ON THE USER'S CONTEXT.
+- This is NOT a crazy or adventurous roleplay. This is a serious simulation (e.g., job interview, technical screening, performance review, client pitch).
+
+USER'S CONTEXT:
+- English Level: ${userLevel}
+- Background/Profile: ${userProfile || 'Not specified'}
+- Learning Goals: ${userGoals || 'Not specified'}
+
+SCENARIO REQUEST: "${customDescription}"
+(Adapt this idea into a fully fleshed-out professional scenario based on the User's Context).
+
+${getToneInstruction(tone)}
+
+SCENARIO RULES:
+- The AI must act as a professional interviewer, expert, or client.
+- Create a SPECIFIC company name and context.
+- The character's speech style should be professional but natural (flowing spoken English).
+
+CHARACTER RULES:
+- The AI character usually has a professional role (e.g., 'Senior Technical Recruiter', 'Head of Product').
+- Define what they are looking for and what questions they will ask based on the user's background.
+- If the user is a Software Engineer, the AI should ask relevant technical or behavioral questions.
+
+Respond in JSON format:
+{
+  "descriptionPt": "<2-4 sentence vivid description of the situation in Brazilian Portuguese. Make them FEEL the pressure/context. NO roles, NO objectives, NO instructions.>",
+  "brandName": "<specific company/organization name>",
+  "location": "<e.g. 'Remote Google Meet', 'New York Office'>",
+  "userRole": "<the user's role being simulated, e.g. 'Candidate', 'Presenter'>",
+  "aiRole": "<AI's role, e.g. 'Senior Recruiter'>",
+  "characterPersonality": "<Professional personality, e.g. 'Direct, polite, asks probing questions.'>",
+  "characterSpeechStyle": "<How they talk, e.g. 'Professional but uses industry jargon naturally. Asks clear questions and pauses.'>",
+  "openingLine": "<the FIRST thing the character says. e.g. 'Hi there, thanks for joining. I see your background is in React. Let's start by talking about your last project.'>",
+  "systemDetails": "<internal constraints for the AI: what exactly they should evaluate, what specific things they should ask about the user's profile.>"
+}
+
+Respond ONLY with the JSON, nothing else.`;
+}
+
 // ---------------------------------------------------------------------------
 // Conversation analysis & tutor prompts
 // ---------------------------------------------------------------------------
@@ -320,9 +364,10 @@ Provide a detailed analysis in JSON format:
 }
 
 Rules:
-- The clean dialogue should represent how a native speaker would have the same conversation using the tone above.
-- Keep the clean dialogue natural and realistic — the way real people actually talk, not textbook English.
-- Provide at least 3 specific improvements.
+- Focus the analysis heavily on SPOKEN fluency, rhythm, and natural phrase choices, ignoring standard written grammar if the spoken form is natural.
+- The clean dialogue should represent exactly how a native speaker would have the same conversation out loud using the tone above.
+- Keep the clean dialogue 100% natural and realistic — the way real people actually talk, absolutely no text-book English. Include filler words and natural speech patterns.
+- Provide at least 3 specific improvements focused on sounding more native/fluent.
 - Be encouraging but honest.
 - Respond ONLY with the JSON, nothing else.`;
 }
@@ -332,10 +377,10 @@ export function getTutorExplanationPrompt(
   userTranscription: string,
   correctedVersion: string,
   corrections: string[],
-  pronunciationFeedback: { rhythm: string; intonation: string; connectedSpeech: string; tips: string[] },
   tone?: ConversationTone
 ): string {
-  return `You are a patient, encouraging English tutor. The student just completed this exercise:
+  // TODO: Reactivate pronunciation feedback prompt instructions if a suitable phoneme model is included later.
+  return `You are a patient, encouraging native English tutor. The student just completed this exercise:
 
 Prompt (in Portuguese): "${prompt}"
 Student said: "${userTranscription}"
@@ -346,19 +391,13 @@ ${getToneInstruction(tone)}
 Corrections made:
 ${corrections.map(c => `- ${c}`).join('\n')}
 
-Pronunciation feedback:
-- Rhythm: ${pronunciationFeedback.rhythm}
-- Intonation: ${pronunciationFeedback.intonation}
-- Connected speech: ${pronunciationFeedback.connectedSpeech}
-- Tips: ${pronunciationFeedback.tips.join(', ')}
-
-Explain the student's mistakes in a clear, friendly way. Your explanation should:
-1. Help them understand WHY they made these mistakes
-2. Provide simple examples of correct usage in the tone above
-3. Give them a quick tip to remember for next time
+Explain the student's mistakes or stiffness in a clear, friendly way. Your explanation should:
+1. Help them understand WHY this doesn't sound natural in SPOKEN English (avoid citing strict grammar rules if the focus is flow).
+2. Provide simple examples of how natives ACTUALLY say this in the tone above.
+3. Give them a quick tip to sound more fluent/native next time.
 4. Be encouraging - mistakes are part of learning!
 
-Write in a conversational, warm tone like a supportive teacher talking to a student. Use Portuguese for explanations but include English examples.
+Write in a highly conversational, warm tone like a supportive teacher talking to a student out loud. Use Portuguese for explanations but include English examples.
 
 Keep it to 3-4 sentences maximum.`;
 }
@@ -445,4 +484,36 @@ Rules:
 - The overall feedback should be encouraging and highlight what the student did well.
 - If no pronunciation was discussed, return an empty array for pronunciationTips.
 - Respond ONLY with the JSON, nothing else.`;
+}
+
+// ---------------------------------------------------------------------------
+// Custom Materials Generation Prompts
+// ---------------------------------------------------------------------------
+
+export function getCustomDialoguePrompt(
+  situation: string,
+  profile: string,
+  interests: string,
+  goals: string,
+  currentLevel: string
+): string {
+  return `You are an expert English material creator. Write a completely natural, realistic dialogue based on the user's situation and context.
+
+USER CONTEXT:
+- English Level: ${currentLevel}
+- Profile/Background: ${profile || 'Not specified'}
+- Interests: ${interests || 'Not specified'}
+- Learning Goals: ${goals || 'Not specified'}
+
+SITUATION: "${situation}"
+
+RULES:
+- The dialogue must be between the user and another relevant character (e.g., interviewer, customer service, friend).
+- The language should match natural spoken English, reflecting the fact that the user is practicing for real-world scenarios.
+- Do NOT use robotic or overly formal language unless the situation strictly requires it (like a very formal court setting).
+- Make the dialogue long enough to provide good speaking practice (about 12-20 lines Total).
+- After the dialogue, provide a brief vocabulary list of 5 useful words/expressions used in the dialogue with their Portuguese translations.
+- Start with a clear title for the dialogue.
+
+Respond ONLY with the generated Markdown text, properly formatted for reading (Use bold for character names).`;
 }

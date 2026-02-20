@@ -1,10 +1,11 @@
+import { useState, useRef, useEffect } from 'react';
 import type { Card } from '../../types/card';
 import { computeReviewStats } from '../../types/review';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ScoreDisplay } from '../shared/ScoreDisplay';
 import { useTTS } from '../../hooks/useTTS';
 import { base64ToAudioUrl, playAudioUrl } from '../../utils/audio';
-import { ArrowLeft, Volume2, Loader2, Play, BarChart3, Calendar, Repeat } from 'lucide-react';
+import { ArrowLeft, Volume2, Loader2, Play, Square, BarChart3, Calendar, Repeat } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 
@@ -16,10 +17,38 @@ interface CardDetailProps {
 export function CardDetail({ card, onBack }: CardDetailProps) {
   const { speak, isLoading: ttsLoading } = useTTS();
   const stats = computeReviewStats(card.reviews);
+  const [isPlayingUserAudio, setIsPlayingUserAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playUserAudio = () => {
-    if (card.userAudioBlob) {
-      playAudioUrl(base64ToAudioUrl(card.userAudioBlob, 'audio/webm'));
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const toggleUserAudio = () => {
+    if (isPlayingUserAudio) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsPlayingUserAudio(false);
+    } else if (card.userAudioBlob) {
+      const audio = playAudioUrl(base64ToAudioUrl(card.userAudioBlob, 'audio/webm'));
+      audioRef.current = audio;
+      setIsPlayingUserAudio(true);
+
+      audio.onended = () => {
+        setIsPlayingUserAudio(false);
+        audioRef.current = null;
+      };
+
+      audio.onpause = () => {
+        setIsPlayingUserAudio(false);
+      };
     }
   };
 
@@ -59,13 +88,13 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
           </Button>
           {card.userAudioBlob && (
             <Button
-              variant="secondary"
+              variant={isPlayingUserAudio ? "destructive" : "secondary"}
               size="sm"
-              onClick={playUserAudio}
-              aria-label="Play my recording"
+              onClick={toggleUserAudio}
+              aria-label={isPlayingUserAudio ? "Stop my recording" : "Play my recording"}
             >
-              <Play size={16} />
-              My Recording
+              {isPlayingUserAudio ? <Square size={16} fill="currentColor" /> : <Play size={16} />}
+              {isPlayingUserAudio ? "Stop Recording" : "My Recording"}
             </Button>
           )}
         </div>

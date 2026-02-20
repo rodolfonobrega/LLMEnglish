@@ -3,6 +3,7 @@ import { Loader2, RefreshCw, X, ImageIcon, Sparkles } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { chatCompletion, chatCompletionWithImage, generateImage, speechToText } from '../../services/openai';
+import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images';
 import { getImageQuestionPrompt, getEvaluationPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
@@ -31,10 +32,11 @@ export function ImageMode() {
     setUserAudioBase64(null);
     try {
       const imgUrl = await generateImage(
-        'A realistic photo of an everyday scene that would be interesting to describe: ' +
-        ['a busy street market', 'a cozy coffee shop', 'a park on a sunny day', 'an airport terminal', 'a kitchen with food being prepared', 'a beach scene', 'a city skyline at sunset'][
+        `${BASE_IMAGE_STYLE_PROMPT} A highly detailed, immersive everyday scene that would be interesting to describe: ` +
+        ['a bustling street market with distinct colorful stalls', 'a cozy, warm-lit coffee shop interior', 'a lively park on a clear sunny day', 'a busy airport terminal with diverse travelers', 'a busy authentic kitchen with food being prepared', 'a beautiful, relaxing beach scene at midday', 'a dazzling city skyline at sunset'][
         Math.floor(Math.random() * 7)
-        ]
+        ],
+        getImageConfigAuto('imageMode')
       );
       setImageUrl(imgUrl);
 

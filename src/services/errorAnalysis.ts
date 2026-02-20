@@ -39,10 +39,11 @@ export async function extractErrorPatterns(
   }
 
   // Extract from pronunciation feedback
-  if (evaluation.pronunciationFeedback.tips.length > 0) {
+  // TODO: Reactivate when phonetic models are reintroduced
+  /* if (evaluation.pronunciationFeedback?.tips?.length > 0) {
     const pattern = createPronunciationPattern(evaluation, cardPrompt, cardId);
     if (pattern) patterns.push(pattern);
-  }
+  } */
 
   return patterns;
 }
@@ -103,7 +104,7 @@ function createPatternFromCorrection(
   };
 }
 
-function createPronunciationPattern(
+/* function createPronunciationPattern(
   evaluation: EvaluationResult,
   prompt: string,
   cardId: string
@@ -112,7 +113,8 @@ function createPronunciationPattern(
 
   return {
     id: patternId,
-    pattern: evaluation.pronunciationFeedback.tips.join('; '),
+    // @ts-expect-error - Temporarily removed
+    pattern: evaluation.pronunciationFeedback?.tips?.join('; ') || '',
     category: 'pronunciation',
     occurrences: 1,
     firstSeen: new Date().toISOString(),
@@ -128,7 +130,7 @@ function createPronunciationPattern(
     trend: 'stable',
     recentScores: [evaluation.score],
   };
-}
+} */
 
 // --- Error Storage ---
 

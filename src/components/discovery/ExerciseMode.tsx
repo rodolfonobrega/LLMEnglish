@@ -9,6 +9,7 @@ import {
   generateImage,
   speechToText,
 } from '../../services/openai';
+import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images';
 import {
   getPhraseGenerationPrompt,
   getTextGenerationPrompt,
@@ -186,7 +187,8 @@ export function ExerciseMode() {
         }
 
         const imgUrl = await generateImage(
-          `A realistic photo of an everyday scene that would be interesting to describe: ${scene}`,
+          `${BASE_IMAGE_STYLE_PROMPT} A highly detailed, immersive everyday scene that would be interesting to describe: ${scene}`,
+          getImageConfigAuto('exerciseMode')
         );
         setImageUrl(imgUrl);
 
@@ -425,6 +427,19 @@ export function ExerciseMode() {
     const ActiveIcon = isAudio ? config.icon : ImageIcon;
     return (
       <div className="space-y-6">
+        {/* Back button - positioned above, aligned with page title */}
+        <div className="flex items-center -ml-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={reset}
+            className="text-muted-foreground hover:text-foreground pl-0 gap-1 cursor-pointer"
+          >
+            <ChevronLeft size={16} />
+            Back to Menu
+          </Button>
+        </div>
+
         {/* Image (visual prompt only) */}
         {imageUrl && (
           <div className="relative">
@@ -468,19 +483,6 @@ export function ExerciseMode() {
               <X size={16} />
             </button>
           )}
-
-          {/* Explicit Back/Cancel button for better UX */}
-          <div className="absolute -top-12 left-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={reset}
-              className="text-muted-foreground hover:text-foreground pl-0 gap-1 cursor-pointer"
-            >
-              <ChevronLeft size={16} />
-              Back to Menu
-            </Button>
-          </div>
         </div>
 
         <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />

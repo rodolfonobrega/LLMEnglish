@@ -5,6 +5,7 @@ import { ReviewPage } from './components/review/ReviewPage';
 import { LiveRoleplayPage } from './components/live-roleplay/LiveRoleplayPage';
 import { LessonPage } from './components/lessons/LessonPage';
 import { LibraryPage } from './components/library/LibraryPage';
+import { PracticePage } from './components/practice/PracticePage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { ErrorDashboard } from './components/errors/ErrorDashboard';
 
@@ -18,6 +19,7 @@ function App() {
           <Route path="live" element={<LiveRoleplayPage />} />
           <Route path="lessons" element={<LessonPage />} />
           <Route path="library" element={<LibraryPage />} />
+          <Route path="practice" element={<PracticePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="errors" element={<ErrorDashboard />} />
         </Route>

@@ -1,0 +1,12 @@
+﻿
+> english_learn_app@0.0.0 build
+> tsc -b && vite build
+
+src/components/library/LibraryPage.tsx(127,13): error TS2322: Type '"md"' is not assignable to type '"default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg" | null | undefined'.
+src/components/library/LibraryPage.tsx(181,39): error TS2322: Type '"md"' is not assignable to type '"default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg" | null | undefined'.
+src/components/live-roleplay/ConversationAnalysis.tsx(12,29): error TS6133: 'CardHeader' is declared but its value is never read.
+src/components/live-roleplay/ConversationAnalysis.tsx(12,41): error TS6133: 'CardTitle' is declared but its value is never read.
+src/components/live-roleplay/ConversationAnalysis.tsx(12,52): error TS6133: 'CardDescription' is declared but its value is never read.
+src/components/shared/AudioRecorder.tsx(92,15): error TS2322: Type '"md"' is not assignable to type '"default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg" | null | undefined'.
+src/components/shared/AudioRecorder.tsx(103,15): error TS2322: Type '"md"' is not assignable to type '"default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg" | null | undefined'.
+src/components/shared/AudioRecorder.tsx(113,15): error TS2322: Type '"md"' is not assignable to type '"default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg" | null | undefined'.

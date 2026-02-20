@@ -101,8 +101,7 @@ export function ReviewPage() {
         currentCard.prompt,
         evaluation.userTranscription,
         evaluation.correctedVersion,
-        evaluation.corrections,
-        evaluation.pronunciationFeedback
+        evaluation.corrections
       );
       const explanation = await chatCompletion(
         'You are a patient, encouraging English tutor. Explain mistakes clearly and provide helpful examples.',

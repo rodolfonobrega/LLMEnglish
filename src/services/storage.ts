@@ -201,3 +201,33 @@ export function setCachedAudio(key: string, base64Audio: string): void {
     localStorage.setItem(KEYS.audioCache, JSON.stringify({ [key]: base64Audio }));
   }
 }
+
+// --- User Context ---
+
+export interface UserContext {
+  profile: string;
+  interests: string;
+  goals: string;
+  currentLevel: string;
+}
+
+const DEFAULT_USER_CONTEXT: UserContext = {
+  profile: '',
+  interests: '',
+  goals: '',
+  currentLevel: 'Intermediate',
+};
+
+export function getUserContext(): UserContext {
+  const raw = localStorage.getItem('el_user_context');
+  if (!raw) return { ...DEFAULT_USER_CONTEXT };
+  try {
+    return { ...DEFAULT_USER_CONTEXT, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_USER_CONTEXT };
+  }
+}
+
+export function saveUserContext(context: UserContext): void {
+  localStorage.setItem('el_user_context', JSON.stringify(context));
+}

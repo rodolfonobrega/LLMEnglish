@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { chatCompletion, generateImage } from '../../services/openai';
-import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt } from '../../utils/prompts';
+import { getImageConfigAuto } from '../../config/images';
+import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
 import { getTrailsForTheme } from '../../utils/roleplayTrails';
-import { Sparkles } from 'lucide-react';
+import { getUserContext, type UserContext } from '../../services/storage';
+import { Sparkles, Briefcase, Coffee, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
+import { Link } from 'react-router-dom';
 
 interface ScenarioSetupProps {
   onScenarioReady: (scenario: LiveScenario) => void;
@@ -26,8 +29,11 @@ const THEMES = [
   { id: 'custom', label: 'Custom Topic', icon: '✨' },
 ];
 
-function getSceneImagePrompt(brandName: string, location: string, aiRole: string): string {
-  return `A cozy illustration of ${brandName} in ${location}. The scene shows a ${aiRole} at work in a warm, inviting interior. Anime/cartoon style, soft lighting, vibrant colors, wide shot, no text overlays, suitable as a background for a language learning app.`;
+function getSceneImagePrompt(brandName: string, location: string, aiRole: string, isSkill: boolean): string {
+  const style = isSkill
+    ? 'Professional, clean, corporate illustration, well-lit modern office or professional setting.'
+    : 'Cozy, warm, inviting interior.';
+  return `A ${style} illustration of ${brandName} in ${location}. The scene shows a ${aiRole} at work. Anime/cartoon style, soft lighting, vibrant colors, wide shot, no text overlays, suitable as a background for an app.`;
 }
 
 const INTENSITIES: { id: ScenarioIntensity; label: string; desc: string }[] = [
@@ -45,7 +51,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+type SimulationMode = 'everyday' | 'skill';
+
 export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
+  const [mode, setMode] = useState<SimulationMode>('everyday');
   const [theme, setTheme] = useState('random');
   const [intensity, setIntensity] = useState<ScenarioIntensity>('adventurous');
   const [customDescription, setCustomDescription] = useState('');
@@ -53,6 +62,11 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   const [selectedStep, setSelectedStep] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userContext, setUserContext] = useState<UserContext | null>(null);
+
+  useEffect(() => {
+    setUserContext(getUserContext());
+  }, [mode]);
 
   const isCustom = theme === 'custom';
   const trails = getTrailsForTheme(theme);
@@ -67,27 +81,44 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   };
 
   const handleGenerate = async () => {
-    // Validation: custom needs a description
-    if (isCustom && !customDescription.trim()) {
+    // Validation:
+    if (mode === 'everyday' && isCustom && !customDescription.trim()) {
       setError('Please describe your scenario.');
+      return;
+    }
+    if (mode === 'skill' && !customDescription.trim()) {
+      setError('Please describe the interview or skill scenario you want to practice.');
       return;
     }
 
     setIsGenerating(true);
     setError(null);
     try {
-      let themeForPrompt: string | undefined;
-      let customDesc: string | undefined;
-      if (isCustom) {
-        customDesc = customDescription.trim();
-      } else if (selectedStepData) {
-        customDesc = selectedStepData.scenarioContext;
-        if (theme !== 'random') themeForPrompt = theme;
+      let prompt = '';
+      let activeTheme = theme;
+
+      if (mode === 'everyday') {
+        let themeForPrompt: string | undefined;
+        let customDesc: string | undefined;
+        if (isCustom) {
+          customDesc = customDescription.trim();
+        } else if (selectedStepData) {
+          customDesc = selectedStepData.scenarioContext;
+          if (theme !== 'random') themeForPrompt = theme;
+        } else {
+          if (theme !== 'random') themeForPrompt = theme;
+        }
+        prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc);
       } else {
-        if (theme !== 'random') themeForPrompt = theme;
+        activeTheme = 'custom';
+        prompt = getSkillScenarioPrompt(
+          customDescription.trim(),
+          userContext?.profile || '',
+          userContext?.currentLevel || 'Intermediate',
+          userContext?.goals || ''
+        );
       }
 
-      const prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc);
       const response = await chatCompletion(
         'You are a world-class creative director who designs immersive role-play scenarios. You create vivid, specific characters with distinct voices and personalities. Respond only with valid JSON.',
         prompt,
@@ -97,7 +128,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
       const parsed = JSON.parse(cleanResponse);
 
       const systemPrompt = getLiveRoleplaySystemPrompt(
-        isCustom ? customDescription.trim() || 'custom' : theme,
+        mode === 'skill' ? 'Professional Interview/Skill Practice' : (isCustom ? customDescription.trim() || 'custom' : theme),
         parsed.userRole,
         parsed.aiRole,
         parsed.brandName,
@@ -109,13 +140,14 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
       );
 
       const imagePromise = generateImage(
-        getSceneImagePrompt(parsed.brandName, parsed.location, parsed.aiRole)
+        getSceneImagePrompt(parsed.brandName, parsed.location, parsed.aiRole, mode === 'skill'),
+        getImageConfigAuto('scenarioThumbnail')
       ).catch(() => undefined);
 
       const scenario: LiveScenario = {
         id: crypto.randomUUID(),
-        theme: isCustom ? 'custom' : theme,
-        intensity,
+        theme: activeTheme,
+        intensity: mode === 'skill' ? 'skill' : intensity,
         descriptionPt: parsed.descriptionPt,
         systemPrompt,
         brandName: parsed.brandName,
@@ -168,104 +200,143 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
 
   return (
     <div className="bg-card rounded-2xl p-5 border border-border space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-foreground">Live Roleplay</h2>
-        <p className="text-muted-foreground text-sm">Pick a scene, then step into a real conversation.</p>
-      </div>
+      {/* Header & Mode Switcher */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Live Simulation</h2>
+          <p className="text-muted-foreground text-sm">Step into a real conversation.</p>
+        </div>
 
-      {/* THEME SELECTOR (chips, like Discovery) */}
-      <div>
-        <SectionLabel>Scene / Theme</SectionLabel>
-        <div className="flex gap-2 flex-wrap">
-          {THEMES.map(t => (
-            <button
-              key={t.id}
-              onClick={() => handleThemeChange(t.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
-                theme === t.id
-                  ? 'bg-[var(--sky)] text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
-              )}
-            >
-              <span className="text-base">{t.icon}</span>
-              <span>{t.label}</span>
-            </button>
-          ))}
+        <div className="flex bg-muted p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setMode('everyday')}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2',
+              mode === 'everyday' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Coffee size={16} /> Everyday Scenarios
+          </button>
+          <button
+            onClick={() => setMode('skill')}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2',
+              mode === 'skill' ? 'bg-background text-[var(--sky)] shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Briefcase size={16} /> Skill & Interview
+          </button>
         </div>
       </div>
 
-      {/* TRAIL SELECTOR - only when theme has trails (non-custom, non-random) */}
-      {showTrails && (
-        <div>
-          <SectionLabel>Scenario Trail</SectionLabel>
-          <div className="space-y-3">
-            {trails.map(trail => (
-              <button
-                key={trail.id}
-                onClick={() => {
-                  setSelectedTrail(trail.id);
-                  setSelectedStep('random');
-                }}
-                className={cn(
-                  'w-full text-left p-4 rounded-xl border transition-colors duration-200 cursor-pointer',
-                  selectedTrail === trail.id
-                    ? 'bg-[var(--sky-soft)] border-[var(--sky)]'
-                    : 'bg-muted/30 border-border hover:bg-accent/50 hover:border-accent',
-                )}
-              >
-                <p className="font-semibold text-foreground">{trail.label}</p>
-                <p className="text-sm text-muted-foreground mt-1">{trail.description}</p>
-              </button>
-            ))}
-          </div>
+      {mode === 'skill' && (
+        <div className="bg-[var(--sky-soft)] border border-[var(--sky)]/20 rounded-xl p-4 flex gap-3 text-sm text-[var(--sky-dark)]">
+          <UserIcon size={20} className="shrink-0 text-[var(--sky)]" />
+          <p>
+            <strong>Skill Simulator</strong> will use your saved Profile (Current Level: {userContext?.currentLevel || 'Intermediate'}) to generate a highly realistic interview or professional simulation. You can update your context in the <Link to="/practice" className="underline font-bold">Practice area</Link>.
+          </p>
+        </div>
+      )}
 
-          {selectedTrailData && (
-            <div className="mt-4">
-              <SectionLabel>Step</SectionLabel>
-              <div className="flex gap-2 flex-wrap">
+      {/* THEME SELECTOR (chips, like Discovery) */}
+      {mode === 'everyday' && (
+        <div className="space-y-6">
+          <div>
+            <SectionLabel>Scene / Theme</SectionLabel>
+
+            <div className="flex gap-2 flex-wrap">
+              {THEMES.map(t => (
                 <button
-                  onClick={() => setSelectedStep('random')}
+                  key={t.id}
+                  onClick={() => handleThemeChange(t.id)}
                   className={cn(
                     'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
-                    selectedStep === 'random'
+                    theme === t.id
                       ? 'bg-[var(--sky)] text-white'
                       : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
                   )}
                 >
-                  <span>🎲</span>
-                  <span>Random</span>
+                  <span className="text-base">{t.icon}</span>
+                  <span>{t.label}</span>
                 </button>
-                {selectedTrailData.steps.map(step => (
+              ))}
+            </div>
+          </div>
+
+          {/* TRAIL SELECTOR - only when theme has trails (non-custom, non-random) */}
+          {showTrails && (
+            <div>
+              <SectionLabel>Scenario Trail</SectionLabel>
+              <div className="space-y-3">
+                {trails.map(trail => (
                   <button
-                    key={step.id}
-                    onClick={() => setSelectedStep(step.id)}
+                    key={trail.id}
+                    onClick={() => {
+                      setSelectedTrail(trail.id);
+                      setSelectedStep('random');
+                    }}
                     className={cn(
-                      'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
-                      selectedStep === step.id
-                        ? 'bg-[var(--sky)] text-white'
-                        : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+                      'w-full text-left p-4 rounded-xl border transition-colors duration-200 cursor-pointer',
+                      selectedTrail === trail.id
+                        ? 'bg-[var(--sky-soft)] border-[var(--sky)]'
+                        : 'bg-muted/30 border-border hover:bg-accent/50 hover:border-accent',
                     )}
                   >
-                    {step.label}
+                    <p className="font-semibold text-foreground">{trail.label}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{trail.description}</p>
                   </button>
                 ))}
               </div>
+
+              {selectedTrailData && (
+                <div className="mt-4">
+                  <SectionLabel>Step</SectionLabel>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setSelectedStep('random')}
+                      className={cn(
+                        'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
+                        selectedStep === 'random'
+                          ? 'bg-[var(--sky)] text-white'
+                          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+                      )}
+                    >
+                      <span>🎲</span>
+                      <span>Random</span>
+                    </button>
+                    {selectedTrailData.steps.map(step => (
+                      <button
+                        key={step.id}
+                        onClick={() => setSelectedStep(step.id)}
+                        className={cn(
+                          'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
+                          selectedStep === step.id
+                            ? 'bg-[var(--sky)] text-white'
+                            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+                        )}
+                      >
+                        {step.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* CUSTOM DESCRIPTION - only when "Custom Topic" is selected */}
-      {isCustom && (
+      {/* CUSTOM DESCRIPTION - only when "Custom Topic" is selected or Skill Mode is active */}
+      {(isCustom || mode === 'skill') && (
         <div>
-          <SectionLabel>Describe Your Scenario</SectionLabel>
+          <SectionLabel>{mode === 'skill' ? 'Describe the Interview / Skill Scenario' : 'Describe Your Scenario'}</SectionLabel>
           <textarea
             value={customDescription}
             onChange={e => setCustomDescription(e.target.value)}
-            placeholder="e.g., Returning a faulty blender at a department store, negotiating a discount at a street market in Bangkok..."
-            rows={3}
+            placeholder={mode === 'skill'
+              ? "e.g., Technical interview with a recruiter at Google for a Front-End position. Ask me about React."
+              : "e.g., Returning a faulty blender at a department store, negotiating a discount at a street market in Bangkok..."}
+            rows={4}
             className={cn(
               'w-full px-4 py-3 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground/60 resize-none',
               'focus:outline-none focus:ring-2 focus:ring-[var(--sky)]/50 focus:border-[var(--sky)]',
@@ -273,42 +344,46 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
             )}
           />
           <p className="text-xs text-muted-foreground mt-1.5">
-            Be as specific or as vague as you want. The AI will build a full scene around your idea.
+            {mode === 'skill'
+              ? "The AI will act as the interviewer or expert and will grill you based on your profile context."
+              : "Be as specific or as vague as you want. The AI will build a full scene around your idea."}
           </p>
         </div>
       )}
 
-      {/* INTENSITY SELECTOR */}
-      <div>
-        <SectionLabel>Intensity</SectionLabel>
-        <div className="flex gap-2">
-          {INTENSITIES.map(i => (
-            <button
-              key={i.id}
-              onClick={() => setIntensity(i.id)}
-              className={cn(
-                'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer text-center',
-                intensity === i.id
-                  ? 'bg-[var(--sky)] text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
-              )}
-            >
-              <span className="block">{i.label}</span>
-              <span className="block text-[10px] font-normal opacity-80 mt-0.5">{i.desc}</span>
-            </button>
-          ))}
+      {/* INTENSITY SELECTOR - Only for everyday mode */}
+      {mode === 'everyday' && (
+        <div>
+          <SectionLabel>Intensity</SectionLabel>
+          <div className="flex gap-2">
+            {INTENSITIES.map(i => (
+              <button
+                key={i.id}
+                onClick={() => setIntensity(i.id)}
+                className={cn(
+                  'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer text-center',
+                  intensity === i.id
+                    ? 'bg-[var(--sky)] text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+                )}
+              >
+                <span className="block">{i.label}</span>
+                <span className="block text-[10px] font-normal opacity-80 mt-0.5">{i.desc}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* GENERATE BUTTON */}
       <Button
         size="lg"
         onClick={handleGenerate}
-        disabled={isCustom && !customDescription.trim()}
+        disabled={(mode === 'everyday' && isCustom && !customDescription.trim()) || (mode === 'skill' && !customDescription.trim())}
         className="w-full text-lg font-bold py-4 rounded-2xl"
       >
-        <Sparkles size={20} />
-        Step Into the Scene
+        {mode === 'skill' ? <Briefcase size={20} /> : <Sparkles size={20} />}
+        {mode === 'skill' ? 'Start Training' : 'Step Into the Scene'}
       </Button>
 
       {error && (

@@ -47,7 +47,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   ttsVoice: 'Kore',
   ttsProvider: 'gemini',
 
-  imageModel: 'gemini-2.5-flash-image',
+  imageModel: 'gemini-2.5-flash-image', // Nano Banana
   imageProvider: 'gemini',
 
   liveModel: 'gemini-2.5-flash-native-audio-preview-12-2025',
@@ -138,12 +138,20 @@ export const GROQ_TTS_VOICES = [
 ];
 
 export const IMAGE_MODELS = [
-  // Gemini
-  { value: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image', provider: 'gemini' as const },
-  { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image', provider: 'gemini' as const },
-  // OpenAI
-  { value: 'gpt-image-1', label: 'GPT Image 1 (best)', provider: 'openai' as const },
-  { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini (fast & affordable)', provider: 'openai' as const },
+  // === Nano Banana (Gemini Multimodal - requires Google Cloud billing) ===
+  { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash)', provider: 'gemini' as const },
+  { value: 'gemini-3-pro-image', label: 'Nano Banana Pro (Gemini 3 Pro)', provider: 'gemini' as const },
+
+  // === Imagen (requires Google Cloud billing account) ===
+  // Dedicated image generation models via Vertex AI or Generative Language API
+  { value: 'imagen-4.0-ultra-generate-001', label: 'Imagen 4.0 Ultra (Best Quality)', provider: 'gemini' as const },
+  { value: 'imagen-4.0-generate-001', label: 'Imagen 4.0 (Balanced)', provider: 'gemini' as const },
+  { value: 'imagen-4.0-fast-generate-001', label: 'Imagen 4.0 Fast (Fastest)', provider: 'gemini' as const },
+
+  // === OpenAI GPT Image (works with API key - no billing required) ===
+  { value: 'gpt-image-1.5', label: 'GPT Image 1.5 (Best)', provider: 'openai' as const },
+  { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini (Fast & Affordable)', provider: 'openai' as const },
+  { value: 'gpt-image-1', label: 'GPT Image 1 (Balanced)', provider: 'openai' as const },
 ];
 
 export const LIVE_MODELS = [

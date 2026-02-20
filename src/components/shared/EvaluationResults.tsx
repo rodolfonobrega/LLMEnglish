@@ -98,37 +98,11 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
         </div>
       )}
 
-      {/* Pronunciation Feedback */}
-      <div className="bg-card rounded-2xl p-5 border border-border">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="size-6 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
-            <Volume2 size={12} className="text-[var(--sky)]" />
-          </div>
-          <h4 className="text-xs font-bold text-[var(--sky)] uppercase tracking-wide">Pronunciation Feedback</h4>
-        </div>
-        <div className="space-y-3">
-          {[
-            { label: 'Rhythm', value: result.pronunciationFeedback.rhythm },
-            { label: 'Intonation', value: result.pronunciationFeedback.intonation },
-            { label: 'Connected Speech', value: result.pronunciationFeedback.connectedSpeech },
-          ].filter(item => item.value).map(item => (
-            <div key={item.label} className="bg-muted rounded-xl px-4 py-3">
-              <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wide mb-0.5">{item.label}</p>
-              <p className="text-foreground text-sm leading-relaxed">{item.value}</p>
-            </div>
-          ))}
-          {result.pronunciationFeedback.tips.length > 0 && (
-            <div className="bg-muted rounded-xl px-4 py-3">
-              <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wide mb-1.5">Tips</p>
-              <ul className="space-y-1">
-                {result.pronunciationFeedback.tips.map((tip, i) => (
-                  <li key={i} className="text-foreground text-sm leading-relaxed">&bull; {tip}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Pronunciation Feedback Oculto Temporariamente
+          TODO: Os modelos testados (como Whisper) não fornecem análise fonêmica precisa/confiável.
+          Eles estavam inventando correções. Manter esta parte do código comentada para
+          reativar quando um modelo de avaliação de pronúncia adequado for integrado.
+      */}`
 
       {/* Overall Feedback */}
       <div className="bg-card rounded-2xl p-5 border border-border">

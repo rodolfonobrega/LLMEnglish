@@ -20,7 +20,7 @@ clean: ## Remove build artifacts and dependencies
 	rm -rf dist node_modules
 
 # ──────────────────────────────────────────────
-# Docker
+# Docker (cross-platform: Windows & Linux/Mac)
 # ──────────────────────────────────────────────
 
 IMAGE_NAME := speaklab
@@ -39,12 +39,15 @@ docker-run: ## Run container
 	@echo "✓ Container started: http://localhost:$(PORT)"
 
 docker-stop: ## Stop and remove container (no error if not running)
-	docker stop $(CONTAINER_NAME) || true
-	docker rm $(CONTAINER_NAME) || true
+	@$(MAKE) -s docker-stop-internal
+
+docker-stop-internal:
+	-@docker stop $(CONTAINER_NAME) 2>NUL
+	-@docker rm $(CONTAINER_NAME) 2>NUL
 	@echo "✓ Container stopped and removed"
 
 docker-clean: docker-stop ## Stop container and remove image
-	docker rmi $(IMAGE_NAME) || true
+	-docker rmi $(IMAGE_NAME) 2>NUL || docker rmi $(IMAGE_NAME)
 	@echo "✓ Image removed: $(IMAGE_NAME)"
 
 docker-restart: docker-stop docker-run ## Restart container

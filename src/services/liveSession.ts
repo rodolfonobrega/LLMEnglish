@@ -21,7 +21,7 @@ export interface LiveSessionCallbacks {
 }
 
 export interface ILiveSession {
-  connect(systemInstruction: string): Promise<void>;
+  connect(systemInstruction: string, voiceOverride?: string): Promise<void>;
   startMicrophone(): Promise<void>;
   stopMicrophone(): void;
   sendTextMessage(text: string): void;

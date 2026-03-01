@@ -20,7 +20,7 @@ export interface Badge {
 export interface SessionReport {
   id: string;
   date: string;             // ISO date string
-  type: 'exercise' | 'review' | 'live-roleplay' | 'lesson';
+  type: 'exercise' | 'review' | 'live-roleplay';
   exercisesCompleted: number;
   scores: number[];
   averageScore: number;

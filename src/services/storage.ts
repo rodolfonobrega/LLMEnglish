@@ -1,6 +1,6 @@
 import type { Card } from '../types/card';
 import type { GamificationState, SessionReport } from '../types/gamification';
-import type { LiveSession } from '../types/scenario';
+import type { LiveSession, PathProgress } from '../types/scenario';
 import type { ModelConfig, ConversationTone } from '../types/settings';
 import { DEFAULT_MODEL_CONFIG } from '../types/settings';
 
@@ -9,6 +9,7 @@ const KEYS = {
   gamification: 'el_gamification',
   liveSessions: 'el_live_sessions',
   sessionReports: 'el_session_reports',
+  pathProgress: 'el_path_progress',
   openaiKey: 'el_openai_key',
   geminiKey: 'el_gemini_key',
   groqKey: 'el_groq_key',
@@ -91,6 +92,43 @@ export function saveLiveSession(session: LiveSession): void {
     sessions.push(session);
   }
   localStorage.setItem(KEYS.liveSessions, JSON.stringify(sessions));
+}
+
+// --- Path Progress ---
+
+const DEFAULT_PATH_PROGRESS: PathProgress = { completedSteps: {} };
+
+export function getPathProgress(): PathProgress {
+  const raw = localStorage.getItem(KEYS.pathProgress);
+  if (!raw) return { ...DEFAULT_PATH_PROGRESS };
+  try {
+    return { ...DEFAULT_PATH_PROGRESS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_PATH_PROGRESS };
+  }
+}
+
+export function savePathProgress(progress: PathProgress): void {
+  localStorage.setItem(KEYS.pathProgress, JSON.stringify(progress));
+}
+
+export function markStepComplete(trailId: string, stepId: string): void {
+  const progress = getPathProgress();
+  const steps = progress.completedSteps[trailId] ?? [];
+  if (!steps.includes(stepId)) {
+    progress.completedSteps[trailId] = [...steps, stepId];
+    savePathProgress(progress);
+  }
+}
+
+export function isStepComplete(trailId: string, stepId: string): boolean {
+  const progress = getPathProgress();
+  return (progress.completedSteps[trailId] ?? []).includes(stepId);
+}
+
+export function getTrailCompletedCount(trailId: string): number {
+  const progress = getPathProgress();
+  return (progress.completedSteps[trailId] ?? []).length;
 }
 
 // --- Session Reports ---

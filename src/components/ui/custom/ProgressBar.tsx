@@ -26,7 +26,7 @@ export function ProgressBar({ current, max, level, streak = 0, className }: Prog
         </div>
 
         {streak > 0 && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--coral-soft)] rounded-full">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--coral-soft)] rounded-full border border-[var(--coral)]/20">
             <Flame className="w-4 h-4 text-[var(--coral)] fill-[var(--coral)]" />
             <span className="text-sm font-bold text-[var(--coral)]">{streak} day streak</span>
           </div>
@@ -38,11 +38,11 @@ export function ProgressBar({ current, max, level, streak = 0, className }: Prog
         <div className="h-4 bg-muted rounded-full overflow-hidden">
           {/* Progress Fill */}
           <div
-            className="h-full bg-gradient-to-r from-[var(--sky)] via-[var(--sky)]/80 to-[var(--sky)]/60 rounded-full transition-all duration-500 relative"
+            className="h-full bg-gradient-to-r from-[var(--sky)] via-[var(--sky)]/80 to-[var(--sky)]/60 rounded-full transition-all duration-500 relative overflow-hidden"
             style={{ width: `${percentage}%` }}
           >
-            {/* Shine Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            {/* Animated Shine Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
           </div>
         </div>
 

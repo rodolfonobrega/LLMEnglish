@@ -1,16 +1,16 @@
 import { cn } from '../../utils/cn';
 
 const THEMES = [
-  { id: 'food', label: 'Food & Dining', icon: '🍽️' },
-  { id: 'travel', label: 'Travel & Hotels', icon: '✈️' },
-  { id: 'shopping', label: 'Shopping', icon: '🛍️' },
-  { id: 'work', label: 'Work & Business', icon: '💼' },
-  { id: 'health', label: 'Healthcare', icon: '🏥' },
-  { id: 'social', label: 'Social & Friends', icon: '👋' },
-  { id: 'transport', label: 'Transportation', icon: '🚕' },
-  { id: 'entertainment', label: 'Entertainment', icon: '🎬' },
-  { id: 'education', label: 'Education', icon: '📖' },
-  { id: 'custom', label: 'Custom Topic', icon: '✨' },
+  { id: 'food', label: 'Comida & Restaurantes', icon: '🍽️' },
+  { id: 'travel', label: 'Viagem & Hotéis', icon: '✈️' },
+  { id: 'shopping', label: 'Compras', icon: '🛍️' },
+  { id: 'work', label: 'Trabalho & Negócios', icon: '💼' },
+  { id: 'health', label: 'Saúde', icon: '🏥' },
+  { id: 'social', label: 'Social & Amigos', icon: '👋' },
+  { id: 'transport', label: 'Transporte', icon: '🚕' },
+  { id: 'entertainment', label: 'Entretenimento', icon: '🎬' },
+  { id: 'education', label: 'Educação', icon: '📖' },
+  { id: 'custom', label: 'Tópico Livre', icon: '✨' },
 ];
 
 interface ThemeSelectorProps {

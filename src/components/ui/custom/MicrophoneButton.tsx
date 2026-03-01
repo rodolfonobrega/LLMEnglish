@@ -96,7 +96,7 @@ export function MicrophoneButton({
             {isRecording && (
                 <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
                     <span className="text-red-500 font-semibold text-sm animate-pulse">
-                        Recording...
+                        Gravando...
                     </span>
                 </div>
             )}

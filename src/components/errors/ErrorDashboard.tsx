@@ -24,16 +24,16 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 
 const CATEGORY_LABELS: Record<ErrorCategory, string> = {
-  grammar: 'Grammar',
-  pronunciation: 'Pronunciation',
-  vocabulary: 'Vocabulary',
-  fluency: 'Fluency',
-  syntax: 'Syntax',
-  preposition: 'Prepositions',
-  'verb-tense': 'Verb Tenses',
-  article: 'Articles',
-  'word-order': 'Word Order',
-  other: 'Other',
+  grammar: 'Gramática',
+  pronunciation: 'Pronúncia',
+  vocabulary: 'Vocabulário',
+  fluency: 'Fluência',
+  syntax: 'Sintaxe',
+  preposition: 'Preposições',
+  'verb-tense': 'Tempos Verbais',
+  article: 'Artigos',
+  'word-order': 'Ordem das Palavras',
+  other: 'Outros',
 };
 
 const CATEGORY_COLORS: Record<ErrorCategory, string> = {
@@ -76,7 +76,7 @@ export function ErrorDashboard() {
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
           <RefreshCw className="animate-spin text-ink-muted mx-auto mb-3" size={32} />
-          <p className="text-ink-muted">Loading error analysis...</p>
+          <p className="text-ink-muted">Carregando análise de erros...</p>
         </div>
       </div>
     );
@@ -92,22 +92,20 @@ export function ErrorDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Back */}
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate('/')}
+        onClick={() => navigate(-1)}
         className="text-muted-foreground hover:text-foreground -ml-2"
       >
         <ChevronLeft size={18} />
-        Back
+        Voltar
       </Button>
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold text-foreground text-balance">Error Analysis</h2>
-          <p className="text-muted-foreground text-sm">Track your progress and identify areas for improvement</p>
+          <h2 className="text-2xl font-extrabold text-foreground text-balance">Análise de Erros</h2>
+          <p className="text-muted-foreground text-sm">Acompanhe seu progresso e identifique pontos fracos</p>
         </div>
         <Button
           variant="ghost"
@@ -116,7 +114,7 @@ export function ErrorDashboard() {
           className="text-[var(--danger)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] cursor-pointer"
         >
           <Trash2 size={16} />
-          Clear Data
+          Limpar
         </Button>
       </div>
 
@@ -126,9 +124,9 @@ export function ErrorDashboard() {
             <CheckCircle2 size={40} className="text-[var(--leaf)]" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-foreground">No Errors Recorded Yet</h3>
+            <h3 className="text-xl font-bold text-foreground">Nenhum erro registrado</h3>
             <p className="text-muted-foreground max-w-sm">
-              Complete more exercises to see your error patterns and get personalized recommendations.
+              Complete mais exercícios para ver seus padrões de erro e receber recomendações personalizadas.
             </p>
           </div>
         </div>
@@ -138,11 +136,11 @@ export function ErrorDashboard() {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-card rounded-2xl p-4 border border-border">
               <p className="text-3xl font-extrabold text-foreground tabular-nums">{stats.totalErrors}</p>
-              <p className="text-xs text-muted-foreground">Total Errors Recorded</p>
+              <p className="text-xs text-muted-foreground">Total de Erros</p>
             </div>
             <div className="bg-card rounded-2xl p-4 border border-border">
               <p className="text-3xl font-extrabold text-[var(--coral)] tabular-nums">{stats.criticalErrors.length}</p>
-              <p className="text-xs text-muted-foreground">Critical Issues</p>
+              <p className="text-xs text-muted-foreground">Problemas Críticos</p>
             </div>
           </div>
 
@@ -161,7 +159,7 @@ export function ErrorDashboard() {
                 )}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold text-muted-foreground mb-1">Progress Summary</p>
+                <p className="text-sm font-bold text-muted-foreground mb-1">Resumo do Progresso</p>
                 <p className="text-lg font-bold text-foreground">{progressSummary.text}</p>
               </div>
             </div>
@@ -169,10 +167,10 @@ export function ErrorDashboard() {
 
           {/* Progress Over Time */}
           <div>
-            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Progress Over Time</h3>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Progresso ao Longo do Tempo</h3>
             {progressTimeline.snapshots.length < 2 ? (
               <div className="bg-card rounded-2xl p-6 text-center text-muted-foreground border border-border">
-                Complete more sessions to see your progress timeline
+                Complete mais sessões para ver sua linha do tempo de progresso
               </div>
             ) : (
               <div className="bg-card rounded-2xl p-5 border border-border">
@@ -197,7 +195,7 @@ export function ErrorDashboard() {
                             />
                           </div>
                           <span className="text-[10px] text-muted-foreground truncate w-full text-center">
-                            {new Date(snapshot.date).toLocaleDateString(undefined, {
+                            {new Date(snapshot.date).toLocaleDateString('pt-BR', {
                               month: 'short',
                               day: 'numeric',
                             })}
@@ -217,7 +215,7 @@ export function ErrorDashboard() {
                 <Target className="text-[var(--sky)]" size={20} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold text-muted-foreground mb-1">Recommended Focus</p>
+                <p className="text-sm font-bold text-muted-foreground mb-1">Foco Recomendado</p>
                 <p className="text-lg font-bold text-foreground">{weakAreas.recommendedFocus}</p>
               </div>
             </div>
@@ -225,7 +223,7 @@ export function ErrorDashboard() {
 
           {/* Error Categories */}
           <div>
-            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Errors by Category</h3>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Erros por Categoria</h3>
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(stats.byCategory)
                 .filter(([, count]) => count > 0)
@@ -254,7 +252,7 @@ export function ErrorDashboard() {
                     </div>
                     {selectedCategory === category && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        Click to deselect
+                        Toque para desselecionar
                       </p>
                     )}
                   </button>
@@ -267,7 +265,7 @@ export function ErrorDashboard() {
             <div>
               <h3 className="text-sm font-bold text-[var(--danger)] uppercase tracking-wide mb-3 flex items-center gap-2">
                 <AlertCircle size={16} />
-                Needs Immediate Attention
+                Precisa de Atenção Imediata
               </h3>
               <div className="space-y-2">
                 {stats.criticalErrors.map((pattern) => (
@@ -281,7 +279,7 @@ export function ErrorDashboard() {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">
-                {selectedCategory ? `${CATEGORY_LABELS[selectedCategory]} Errors` : 'Most Frequent Errors'}
+                {selectedCategory ? `Erros de ${CATEGORY_LABELS[selectedCategory]}` : 'Erros Mais Frequentes'}
               </h3>
               <div className="flex gap-1">
                 <button
@@ -292,7 +290,7 @@ export function ErrorDashboard() {
                       : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
-                  Active
+                  Ativos
                 </button>
                 <button
                   onClick={() => setCurrencyFilter(currencyFilter === 'dormant' ? null : 'dormant')}
@@ -302,7 +300,7 @@ export function ErrorDashboard() {
                       : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
-                  Dormant
+                  Dormentes
                 </button>
                 <button
                   onClick={() => setCurrencyFilter(currencyFilter === 'resolved' ? null : 'resolved')}
@@ -312,15 +310,15 @@ export function ErrorDashboard() {
                       : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
-                  Resolved
+                  Resolvidos
                 </button>
               </div>
             </div>
             {filteredPatterns.length === 0 ? (
               <div className="bg-card rounded-2xl p-6 text-center text-muted-foreground border border-border">
                 {selectedCategory || currencyFilter
-                  ? 'No errors found for this filter'
-                  : 'No errors found'}
+                  ? 'Nenhum erro encontrado para este filtro'
+                  : 'Nenhum erro encontrado'}
               </div>
             ) : (
               <div className="space-y-2">
@@ -337,9 +335,9 @@ export function ErrorDashboard() {
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-card rounded-2xl p-6 max-w-sm w-full border border-border">
-            <h3 className="text-lg font-bold text-foreground mb-2">Clear Error Data?</h3>
+            <h3 className="text-lg font-bold text-foreground mb-2">Limpar Dados de Erros?</h3>
             <p className="text-muted-foreground text-sm mb-4">
-              This will delete all recorded error patterns. This action cannot be undone.
+              Isso vai excluir todos os padrões de erro registrados. Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-2">
               <Button
@@ -347,14 +345,14 @@ export function ErrorDashboard() {
                 onClick={() => setShowClearConfirm(false)}
                 className="flex-1 cursor-pointer"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleClear}
                 className="flex-1 cursor-pointer"
               >
-                Clear
+                Limpar
               </Button>
             </div>
           </div>
@@ -378,9 +376,9 @@ const CURRENCY_STYLES: Record<ErrorCurrency, string> = {
 };
 
 const CURRENCY_LABELS: Record<ErrorCurrency, string> = {
-  active: 'Active',
-  dormant: 'Dormant',
-  resolved: 'Resolved',
+  active: 'Ativo',
+  dormant: 'Dormente',
+  resolved: 'Resolvido',
 };
 
 function ErrorPatternCard({ pattern, expanded = false }: ErrorPatternCardProps) {
@@ -427,13 +425,13 @@ function ErrorPatternCard({ pattern, expanded = false }: ErrorPatternCardProps) 
 
       {isExpanded && pattern.examples.length > 0 && (
         <div className="mt-3 pt-3 border-t border-border space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground">Recent Examples</p>
+          <p className="text-xs font-semibold text-muted-foreground">Exemplos Recentes</p>
           {pattern.examples.slice(0, 3).map((example, idx) => (
             <div key={idx} className="bg-muted rounded-lg p-3 text-xs space-y-1">
               <p className="text-muted-foreground">Prompt: {example.prompt}</p>
-              <p className="text-[var(--danger)]">You: {example.userTranscription}</p>
-              <p className="text-[var(--leaf)]">Better: {example.correctedVersion}</p>
-              <p className="text-muted-foreground">Score: {example.score}/10</p>
+              <p className="text-[var(--danger)]">Você: {example.userTranscription}</p>
+              <p className="text-[var(--leaf)]">Melhor: {example.correctedVersion}</p>
+              <p className="text-muted-foreground">Nota: {example.score}/10</p>
             </div>
           ))}
         </div>
@@ -444,7 +442,7 @@ function ErrorPatternCard({ pattern, expanded = false }: ErrorPatternCardProps) 
           onClick={() => setIsExpanded(!isExpanded)}
           className="mt-2 text-xs text-[var(--sky)] font-medium hover:text-[var(--sky-hover)] cursor-pointer"
         >
-          {isExpanded ? 'Show less' : 'Show examples'}
+          {isExpanded ? 'Mostrar menos' : 'Ver exemplos'}
         </button>
       )}
     </div>

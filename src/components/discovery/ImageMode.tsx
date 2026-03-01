@@ -106,14 +106,14 @@ export function ImageMode() {
             <div className="size-16 bg-[var(--sky-soft)] rounded-full flex items-center justify-center mx-auto mb-4">
               <ImageIcon size={32} className="text-[var(--sky)]" />
             </div>
-            <p className="text-foreground font-bold text-lg mb-1">Image Challenge</p>
+            <p className="text-foreground font-bold text-lg mb-1">Desafio Visual</p>
             <p className="text-muted-foreground text-sm text-pretty max-w-sm mx-auto">
-              Describe what you see in an AI-generated image. Great for building descriptive vocabulary!
+              Descreva em inglês o que você vê na imagem gerada por IA. Ótimo para treinar vocabulário descritivo!
             </p>
           </div>
           <Button variant="coral" size="lg" onClick={generateImageAndQuestion} disabled={isGenerating} className="w-full text-lg font-bold py-4 rounded-2xl">
             <Sparkles size={20} />
-            Generate Image Challenge
+            Gerar Desafio Visual
           </Button>
         </div>
       )}
@@ -149,7 +149,7 @@ export function ImageMode() {
               <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
                 <ImageIcon size={14} className="text-[var(--sky)]" />
               </div>
-              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">Your Task</p>
+              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">Sua Tarefa</p>
             </div>
             <p className="text-lg text-foreground text-pretty leading-relaxed">{question}</p>
           </div>
@@ -159,7 +159,7 @@ export function ImageMode() {
           {isEvaluating && (
             <div className="flex items-center justify-center gap-2 text-[var(--sky)]">
               <Loader2 size={20} className="animate-spin" />
-              <span className="font-medium">Evaluating your description...</span>
+              <span className="font-medium">Avaliando sua descrição...</span>
             </div>
           )}
         </div>
@@ -174,18 +174,18 @@ export function ImageMode() {
             </div>
           )}
           <div className="bg-card rounded-2xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground uppercase mb-1 font-bold tracking-wide">Task</p>
+            <p className="text-xs text-muted-foreground uppercase mb-1 font-bold tracking-wide">Tarefa</p>
             <p className="text-foreground text-pretty">{question}</p>
           </div>
           <EvaluationResults result={evaluation} onSaveToLibrary={handleSaveToLibrary} showSaveButton={!saved} />
           {saved && (
             <div className="bg-[var(--leaf-soft)] rounded-2xl p-4 text-center">
-              <p className="text-[var(--leaf)] font-bold">Saved to Library!</p>
+              <p className="text-[var(--leaf)] font-bold">Salvo na Biblioteca!</p>
             </div>
           )}
           <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl">
             <RefreshCw size={18} />
-            Try Another
+            Tentar Outro
           </Button>
         </div>
       )}

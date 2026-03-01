@@ -1,16 +1,15 @@
 import { NavLink } from 'react-router-dom';
-import { Compass, RotateCcw, Mic, GraduationCap, BookOpen, Settings, AlertTriangle } from 'lucide-react';
+import { Compass, RotateCcw, Mic, Map, Sparkles, FileText, Settings } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const navItems = [
-  { to: '/', icon: Compass, label: 'Discovery' },
-  { to: '/review', icon: RotateCcw, label: 'Review' },
-  { to: '/live', icon: Mic, label: 'Live' },
-  { to: '/lessons', icon: GraduationCap, label: 'Lessons' },
-  { to: '/practice', icon: BookOpen, label: 'Practice' },
-  { to: '/library', icon: BookOpen, label: 'Library' },
-  { to: '/errors', icon: AlertTriangle, label: 'Errors' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/', icon: Compass, label: 'Início' },
+  { to: '/exercises', icon: Sparkles, label: 'Exercícios' },
+  { to: '/paths', icon: Map, label: 'Trilhas' },
+  { to: '/live', icon: Mic, label: 'Simulação' },
+  { to: '/review', icon: RotateCcw, label: 'Revisão' },
+  { to: '/scripts', icon: FileText, label: 'Scripts' },
+  { to: '/settings', icon: Settings, label: 'Config' },
 ];
 
 export function Navigation() {

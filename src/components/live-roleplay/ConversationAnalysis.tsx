@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { LiveScenario, ConversationTurn } from '../../types/scenario';
+import type { LiveScenario, ConversationTurn, LiveSession as LiveSessionData } from '../../types/scenario';
 import { chatCompletion, textToSpeech } from '../../services/openai';
-import { getModelConfig } from '../../services/storage';
+import { getModelConfig, saveLiveSession } from '../../services/storage';
 import { getConversationAnalysisPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';
-import { addXP } from '../../services/gamification';
+import { addXP, createSessionReport } from '../../services/gamification';
 import { XP_PER_LIVE_SESSION } from '../../types/gamification';
-import { Loader2, Volume2, Play, Square, RotateCcw, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
+import { recordSessionSnapshot } from '../../services/errorAnalysis';
+import { Loader2, Volume2, Play, Square, RotateCcw, CheckCircle2, AlertTriangle, Sparkles, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/card';
 import { cn } from '../../utils/cn';
@@ -50,6 +52,7 @@ function getShadowingVoices(): { userVoice: string; aiVoice: string } {
 }
 
 export function ConversationAnalysis({ scenario, turns, onReset }: ConversationAnalysisProps) {
+  const navigate = useNavigate();
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +96,38 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
 
       addXP(XP_PER_LIVE_SESSION);
       window.dispatchEvent(new Event('gamification-update'));
+
+      const sessionData: LiveSessionData = {
+        id: scenario.id,
+        scenario,
+        turns,
+        analysis: {
+          improvements: data.improvements,
+          cleanDialogue: data.cleanDialogue.map(d => ({
+            role: d.role as 'user' | 'ai',
+            text: d.text,
+            timestamp: Date.now(),
+          })),
+          overallFeedback: data.overallFeedback,
+        },
+        startedAt: new Date(turns[0]?.timestamp || Date.now()).toISOString(),
+        endedAt: new Date().toISOString(),
+      };
+      saveLiveSession(sessionData);
+
+      const durationSec = turns.length > 0
+        ? Math.round((Date.now() - turns[0].timestamp) / 1000)
+        : 0;
+      createSessionReport(
+        'live-roleplay',
+        [],
+        data.improvements.length,
+        XP_PER_LIVE_SESSION,
+        durationSec,
+        data.improvements,
+      );
+
+      recordSessionSnapshot();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed');
     } finally {
@@ -197,7 +232,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
           <Sparkles size={48} className="text-primary animate-bounce" style={{ animationDuration: '2s' }} />
         </div>
         <div className="text-center">
-          <p className="text-foreground font-bold text-lg">Analyzing your conversation...</p>
+          <p className="text-foreground font-bold text-lg">Analisando sua conversa...</p>
           <p className="text-muted-foreground text-sm mt-1">
             {themeEmoji} {scenario.brandName}
           </p>
@@ -210,7 +245,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
     return (
       <div className="space-y-4">
         <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-destructive">{error}</div>
-        <Button variant="ghost" onClick={onReset} className="text-primary hover:text-primary/80">Try Again</Button>
+        <Button variant="ghost" onClick={onReset} className="text-primary hover:text-primary/80">Tentar Novamente</Button>
       </div>
     );
   }
@@ -232,7 +267,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
             <div className="absolute bottom-4 left-6 right-6">
-              <h2 className="text-2xl font-bold text-foreground text-balance">Conversation Analysis</h2>
+              <h2 className="text-2xl font-bold text-foreground text-balance">Análise da Conversa</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {themeEmoji} {scenario.brandName} &middot; {scenario.location}
               </p>
@@ -241,7 +276,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
         </Card>
       ) : (
         <div className="space-y-1 px-1">
-          <h2 className="text-2xl font-bold text-foreground text-balance">Conversation Analysis</h2>
+          <h2 className="text-2xl font-bold text-foreground text-balance">Análise da Conversa</h2>
           <p className="text-sm text-muted-foreground">
             {themeEmoji} {scenario.brandName} &middot; {scenario.location}
           </p>
@@ -255,7 +290,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
             <div className="size-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
               <CheckCircle2 size={18} />
             </div>
-            <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Overall Feedback</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Feedback Geral</h3>
           </div>
           <p className="text-muted-foreground leading-relaxed text-pretty">{analysis.overallFeedback}</p>
         </CardContent>
@@ -269,7 +304,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
               <div className="size-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
                 <AlertTriangle size={18} />
               </div>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Areas for Improvement</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Pontos para Melhorar</h3>
             </div>
             <ul className="space-y-4">
               {analysis.improvements.map((imp, i) => (
@@ -293,7 +328,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
               <div className="size-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                 <Volume2 size={18} />
               </div>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Shadowing Lab</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Laboratório de Shadowing</h3>
             </div>
             <div className="flex items-center gap-2">
               {dialogueAudioReady && (
@@ -304,14 +339,14 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
                   className={cn("gap-2", isPlayingDialogue ? "bg-destructive hover:bg-destructive/90 text-white" : "")}
                 >
                   {isPlayingDialogue ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                  {isPlayingDialogue ? 'Stop' : 'Play All'}
+                  {isPlayingDialogue ? 'Parar' : 'Ouvir Tudo'}
                 </Button>
               )}
             </div>
           </div>
 
           <p className="text-sm text-muted-foreground mb-6 text-pretty">
-            Native version of your conversation. Tap any line to hear it, or play all for full shadowing practice.
+            Versão nativa da sua conversa. Toque em qualquer linha para ouvir, ou ouça tudo para praticar shadowing.
           </p>
 
           {/* Audio generation progress bar */}
@@ -319,7 +354,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
             <div className="mb-6 space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 size={12} className="animate-spin text-primary" />
-                <span>Generating audio... {audioProgress}/{audioTotal}</span>
+                <span>Gerando áudio... {audioProgress}/{audioTotal}</span>
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
@@ -354,7 +389,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-bold">
-                        {turn.role === 'user' ? 'You (native)' : scenario.aiRole}
+                        {turn.role === 'user' ? 'Você (nativo)' : scenario.aiRole}
                       </p>
                       {canPlay && (
                         <div className={cn(
@@ -384,16 +419,27 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
         </CardContent>
       </Card>
 
-      {/* Action */}
-      <Button
-        size="lg"
-        onClick={onReset}
-        variant="default"
-        className="w-full text-lg font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
-      >
-        <RotateCcw size={18} className="mr-2" />
-        Start New Conversation
-      </Button>
+      {/* Actions */}
+      <div className="flex gap-3">
+        <Button
+          size="lg"
+          onClick={() => navigate('/history')}
+          variant="outline"
+          className="flex-1 text-base font-bold py-6 rounded-xl"
+        >
+          <Clock size={18} className="mr-2" />
+          Histórico
+        </Button>
+        <Button
+          size="lg"
+          onClick={onReset}
+          variant="default"
+          className="flex-1 text-base font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+        >
+          <RotateCcw size={18} className="mr-2" />
+          Nova Conversa
+        </Button>
+      </div>
     </div>
   );
 }

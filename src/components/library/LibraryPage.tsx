@@ -80,8 +80,8 @@ export function LibraryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold text-foreground text-balance">Library</h2>
-          <p className="text-muted-foreground mt-0.5 tabular-nums text-sm">{cards.length} cards saved</p>
+          <h2 className="text-2xl font-extrabold text-foreground text-balance">Seus Flashcards</h2>
+          <p className="text-muted-foreground mt-0.5 tabular-nums text-sm">{cards.length} cards salvos</p>
         </div>
         <Button
           variant={showAddForm ? 'ghost' : 'coral'}
@@ -89,7 +89,7 @@ export function LibraryPage() {
           onClick={() => setShowAddForm(!showAddForm)}
         >
           {showAddForm ? <X size={16} /> : <Plus size={16} />}
-          {showAddForm ? 'Cancel' : 'Add Card'}
+          {showAddForm ? 'Cancelar' : 'Adicionar Card'}
         </Button>
       </div>
 
@@ -97,29 +97,29 @@ export function LibraryPage() {
       {showAddForm && (
         <div className="bg-card rounded-2xl p-5 space-y-4 border border-border">
           <div>
-            <label className="block text-sm font-semibold text-muted-foreground mb-1.5">Type</label>
+            <label className="block text-sm font-semibold text-muted-foreground mb-1.5">Tipo</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['phrase', 'text', 'roleplay'] as const).map(t => (
+              {([['phrase', 'Frase'], ['text', 'Texto'], ['roleplay', 'Situação']] as const).map(([t, label]) => (
                 <button
                   key={t}
                   onClick={() => setNewType(t)}
                   className={cn(
-                    'py-2 rounded-xl text-sm font-semibold transition-colors duration-200 capitalize cursor-pointer',
+                    'py-2 rounded-xl text-sm font-semibold transition-colors duration-200 cursor-pointer',
                     newType === t
                       ? 'bg-[var(--sky)] text-white'
                       : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-accent',
                   )}
                 >
-                  {t}
+                  {label}
                 </button>
               ))}
             </div>
           </div>
           <Textarea
-            label="Prompt (Portuguese)"
+            label="Prompt (Português)"
             value={newPrompt}
             onChange={e => setNewPrompt(e.target.value)}
-            placeholder="Enter the prompt in Portuguese..."
+            placeholder="Digite o prompt em português..."
             rows={3}
           />
           <Button
@@ -130,7 +130,7 @@ export function LibraryPage() {
             className="w-full rounded-xl"
           >
             <Save size={16} />
-            Save Card
+            Salvar Card
           </Button>
         </div>
       )}
@@ -140,28 +140,28 @@ export function LibraryPage() {
         icon={<Search size={18} />}
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
-        placeholder="Search cards..."
+        placeholder="Buscar cards..."
       />
 
       {/* Dialogs */}
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={open => { if (!open) setDeleteTarget(null); }}
-        title="Delete card"
-        description="This action cannot be undone. The card and its review history will be permanently removed."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title="Excluir card"
+        description="Esta ação não pode ser desfeita. O card e seu histórico de revisão serão removidos permanentemente."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
         onConfirm={handleDeleteConfirm}
       />
 
       <Dialog open={!!editingCard} onOpenChange={open => { if (!open) setEditingCard(null); }}>
-        <Dialog.Title>Edit Card</Dialog.Title>
+        <Dialog.Title>Editar Card</Dialog.Title>
         <div className="mt-4">
           <Textarea value={editPrompt} onChange={e => setEditPrompt(e.target.value)} rows={4} />
         </div>
         <div className="flex gap-3 justify-end mt-6">
-          <Button variant="secondary" onClick={() => setEditingCard(null)}>Cancel</Button>
-          <Button variant="primary" onClick={handleSaveEdit}>Save</Button>
+          <Button variant="secondary" onClick={() => setEditingCard(null)}>Cancelar</Button>
+          <Button variant="primary" onClick={handleSaveEdit}>Salvar</Button>
         </div>
       </Dialog>
 
@@ -172,15 +172,15 @@ export function LibraryPage() {
             <BookOpen size={36} className="text-[var(--sky)]" />
           </div>
           <div className="space-y-1">
-            <p className="text-lg font-bold text-foreground text-balance">No cards yet</p>
+            <p className="text-lg font-bold text-foreground text-balance">Nenhum card ainda</p>
             <p className="text-sm text-muted-foreground text-pretty max-w-xs mx-auto">
-              Practice in Discovery mode and save cards here to review later!
+              Pratique nos Exercícios e salve cards aqui para revisar depois!
             </p>
           </div>
           <a href="/">
             <Button variant="primary" size="default" className="cursor-pointer">
               <Compass size={16} />
-              Go to Discovery
+              Ir para Exercícios
             </Button>
           </a>
         </div>
@@ -198,14 +198,14 @@ export function LibraryPage() {
                     <div className="flex items-center gap-2 mb-1.5">
                       <Badge className="capitalize">{card.type}</Badge>
                       {card.nextReviewAt && new Date(card.nextReviewAt) <= new Date() && (
-                        <Badge variant="warning">Due</Badge>
+                        <Badge variant="warning">Pendente</Badge>
                       )}
                     </div>
                     <p className="text-foreground text-sm line-clamp-2 leading-relaxed">{card.prompt}</p>
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span className="tabular-nums">{stats.totalReviews} reviews</span>
-                      <span className="tabular-nums">{stats.correctCount} correct</span>
-                      <span className="tabular-nums">avg {stats.averageScore || '-'}</span>
+                      <span className="tabular-nums">{stats.totalReviews} revisões</span>
+                      <span className="tabular-nums">{stats.correctCount} corretas</span>
+                      <span className="tabular-nums">média {stats.averageScore || '-'}</span>
                     </div>
                   </div>
                   {card.latestEvaluation && (
@@ -215,14 +215,14 @@ export function LibraryPage() {
                 <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
                   <Button variant="ghost" size="sm" onClick={() => setSelectedCard(card)} className="text-[var(--sky)] cursor-pointer">
                     <Eye size={14} />
-                    View
+                    Ver
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => speak(card.latestEvaluation?.correctedVersion || card.prompt)}
                     disabled={ttsLoading}
-                    aria-label="Listen to card"
+                    aria-label="Ouvir card"
                     className="cursor-pointer"
                   >
                     {ttsLoading ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />}
@@ -232,14 +232,14 @@ export function LibraryPage() {
                   </Button>
                   {!card.nextReviewAt && (
                     <Button variant="ghost" size="sm" onClick={() => handleScheduleReview(card)} className="text-[var(--sky)] text-xs cursor-pointer">
-                      + Review
+                      + Revisão
                     </Button>
                   )}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setDeleteTarget(card)}
-                    aria-label="Delete card"
+                    aria-label="Excluir card"
                     className="ml-auto text-[var(--danger)] hover:bg-[var(--danger-soft)] cursor-pointer"
                   >
                     <Trash2 size={14} />

@@ -12,6 +12,7 @@ export interface LiveScenario {
   aiRole: string; // e.g., "waiter", "receptionist"
   characterPersonality?: string; // e.g., "gruff but warm ex-surfer"
   characterSpeechStyle?: string; // e.g., "uses surf slang, speaks slowly"
+  suggestedVoice?: string; // Gemini voice name picked for this character
   sceneImageUrl?: string; // AI-generated scene illustration
 }
 
@@ -41,6 +42,7 @@ export interface LiveSession {
 export interface RoleplayTrailStep {
   id: string;
   label: string;
+  descriptionPt: string;
   scenarioContext: string;
 }
 
@@ -49,4 +51,8 @@ export interface RoleplayTrail {
   label: string;
   description: string;
   steps: RoleplayTrailStep[];
+}
+
+export interface PathProgress {
+  completedSteps: Record<string, string[]>;
 }

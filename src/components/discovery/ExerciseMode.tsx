@@ -56,25 +56,25 @@ const exerciseConfig: Record<
   }
 > = {
   phrase: {
-    label: 'Phrase',
+    label: 'Frase',
     icon: MessageCircle,
-    promptLabel: 'Translate this to English',
+    promptLabel: 'Fale isso em inglês',
     evalType: 'phrase translation',
     skeletonLines: 2,
     hasVocab: true,
   },
   text: {
-    label: 'Text',
+    label: 'Texto',
     icon: FileText,
-    promptLabel: 'Translate this to English (spoken)',
+    promptLabel: 'Fale isso em inglês (naturalmente)',
     evalType: 'text translation',
     skeletonLines: 4,
     hasVocab: true,
   },
   roleplay: {
-    label: 'Role-Play',
+    label: 'Situação',
     icon: Theater,
-    promptLabel: "Situation (speak in English how you'd handle this)",
+    promptLabel: 'Situação (fale em inglês como lidaria com isso)',
     evalType: 'role-play situation',
     skeletonLines: 3,
     hasVocab: true,
@@ -156,7 +156,7 @@ export function ExerciseMode() {
 
     // VALIDATION: Require either a theme or a specific context
     if (!theme && !context?.trim()) {
-      setError('Please select a theme or provide a specific topic.');
+      setError('Selecione um tema ou escreva um tópico específico.');
       setIsGenerating(false);
       return;
     }
@@ -283,7 +283,7 @@ export function ExerciseMode() {
       <div className="bg-card rounded-2xl p-5 border border-border space-y-6">
         {/* OUTPUT FORMAT */}
         <div>
-          <SectionLabel>Output Format</SectionLabel>
+          <SectionLabel>Formato</SectionLabel>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setOutputFormat('audio')}
@@ -295,7 +295,7 @@ export function ExerciseMode() {
               )}
             >
               <Mic size={24} />
-              <span className="font-semibold text-sm">Audio + Text</span>
+              <span className="font-semibold text-sm">Áudio + Texto</span>
             </button>
             <button
               onClick={() => setOutputFormat('image')}
@@ -307,7 +307,7 @@ export function ExerciseMode() {
               )}
             >
               <ImageIcon size={24} />
-              <span className="font-semibold text-sm">Visual Prompt</span>
+              <span className="font-semibold text-sm">Desafio Visual</span>
             </button>
           </div>
         </div>
@@ -315,7 +315,7 @@ export function ExerciseMode() {
         {/* PRACTICE TYPE — only for audio mode */}
         {isAudio && (
           <div>
-            <SectionLabel>Practice Type</SectionLabel>
+            <SectionLabel>Tipo de Prática</SectionLabel>
             <div className="grid grid-cols-3 gap-2">
               {exerciseTypes.map(type => {
                 const TypeIcon = exerciseConfig[type].icon;
@@ -341,7 +341,7 @@ export function ExerciseMode() {
 
         {/* CONTEXT / THEME */}
         <div>
-          <SectionLabel>Context / Theme</SectionLabel>
+          <SectionLabel>Contexto / Tema</SectionLabel>
           <ThemeSelector
             selected={theme || ''}
             onSelect={(t) => setTheme(t)}
@@ -351,12 +351,12 @@ export function ExerciseMode() {
         {/* TARGET VOCABULARY — only for phrase/text in audio mode */}
         {isAudio && config.hasVocab && (
           <div>
-            <SectionLabel>Target Vocabulary</SectionLabel>
+            <SectionLabel>Vocabulário Alvo</SectionLabel>
             <Input
               value={targetVocab}
               onChange={e => setTargetVocab(e.target.value)}
-              placeholder="e.g., gonna, would, might"
-              hint="Separate with commas"
+              placeholder="ex: gonna, would, might"
+              hint="Separe com vírgulas"
             />
           </div>
         )}
@@ -364,16 +364,16 @@ export function ExerciseMode() {
         {/* SPECIFIC TOPIC / CONTEXT - Only shown when "Custom Topic" is selected */}
         {theme === 'custom' && (
           <div>
-            <SectionLabel>Specific Topic / Context</SectionLabel>
+            <SectionLabel>Tópico / Contexto Específico</SectionLabel>
             <Input
               value={context}
               onChange={e => setContext(e.target.value)}
               placeholder={
                 !isAudio
-                  ? 'e.g., a busy street market, cozy coffee shop'
+                  ? 'ex: um mercado movimentado, cafeteria aconchegante'
                   : exerciseType === 'roleplay'
-                    ? 'e.g., returning a product, doctor appointment'
-                    : 'e.g., ordering coffee, job interview'
+                    ? 'ex: devolver um produto, consulta médica'
+                    : 'ex: pedir um café, entrevista de emprego'
               }
             />
           </div>
@@ -387,7 +387,7 @@ export function ExerciseMode() {
           className="w-full text-lg font-bold py-4 rounded-2xl cursor-pointer"
         >
           <Sparkles size={20} />
-          {isAudio ? 'Generate Speech Task' : 'Generate Image Challenge'}
+          {isAudio ? 'Gerar Exercício de Fala' : 'Gerar Desafio Visual'}
         </Button>
 
         {error && (
@@ -412,8 +412,8 @@ export function ExerciseMode() {
             />
             <p className="text-sm text-muted-foreground font-semibold">
               {isAudio
-                ? `Generating ${config.label.toLowerCase()}...`
-                : 'Generating image challenge...'}
+                ? `Gerando ${config.label.toLowerCase()}...`
+                : 'Gerando desafio visual...'}
             </p>
           </div>
           <SkeletonText lines={isAudio ? config.skeletonLines : 2} />
@@ -436,7 +436,7 @@ export function ExerciseMode() {
             className="text-muted-foreground hover:text-foreground pl-0 gap-1 cursor-pointer"
           >
             <ChevronLeft size={16} />
-            Back to Menu
+            Voltar
           </Button>
         </div>
 
@@ -466,7 +466,7 @@ export function ExerciseMode() {
             <div className="flex items-center gap-2 mb-3">
               <ActiveIcon size={18} className="text-muted-foreground" />
               <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">
-                {isAudio ? config.promptLabel : 'Your Task'}
+                {isAudio ? config.promptLabel : 'Sua Tarefa'}
               </p>
             </div>
             <p className="text-lg text-foreground leading-relaxed whitespace-pre-line text-pretty">
@@ -490,7 +490,7 @@ export function ExerciseMode() {
         {isEvaluating && (
           <div className="flex items-center justify-center gap-2 text-[var(--sky)]">
             <Loader2 size={20} className="animate-spin" />
-            <span className="font-medium">Evaluating your speech...</span>
+            <span className="font-medium">Avaliando sua fala...</span>
           </div>
         )}
 
@@ -524,7 +524,7 @@ export function ExerciseMode() {
           <div className="flex items-center gap-2 mb-2">
             <ResultIcon size={16} className="text-muted-foreground" />
             <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">
-              Original Prompt
+              Exercício Original
             </p>
           </div>
           <p className="text-foreground whitespace-pre-line text-pretty">{prompt}</p>
@@ -538,13 +538,13 @@ export function ExerciseMode() {
 
         {saved && (
           <div className="bg-[var(--leaf-soft)] rounded-2xl p-4 text-center">
-            <p className="text-[var(--leaf)] font-bold">Saved to Library!</p>
+            <p className="text-[var(--leaf)] font-bold">Salvo na Biblioteca!</p>
           </div>
         )}
 
         <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl cursor-pointer">
           <RefreshCw size={18} />
-          Try Another
+          Tentar Outro
         </Button>
 
         {error && (

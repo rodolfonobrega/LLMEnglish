@@ -85,7 +85,7 @@ export class GeminiLiveSession implements ILiveSession {
     this.callbacks = callbacks;
   }
 
-  async connect(systemInstruction: string): Promise<void> {
+  async connect(systemInstruction: string, voiceOverride?: string): Promise<void> {
     const key = getGeminiKey();
     if (!key) {
       this.callbacks.onError('Gemini API key not configured. Go to Settings to add it.');
@@ -94,7 +94,7 @@ export class GeminiLiveSession implements ILiveSession {
 
     const config = getModelConfig();
     const model = config.liveModel;
-    const voice = config.liveVoice;
+    const voice = voiceOverride || config.liveVoice;
 
     try {
       const ai = new GoogleGenAI({ apiKey: key });

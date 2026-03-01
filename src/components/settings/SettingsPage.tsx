@@ -5,6 +5,8 @@ import {
   getGroqKey, setGroqKey,
   getModelConfig, saveModelConfig,
   getConversationTone, saveConversationTone,
+  getUserContext, saveUserContext,
+  type UserContext,
 } from '../../services/storage';
 import type { ModelConfig, Provider, ConversationTone } from '../../types/settings';
 import {
@@ -13,13 +15,11 @@ import {
   OPENAI_TTS_VOICES, GEMINI_TTS_VOICES, GROQ_TTS_VOICES,
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
 } from '../../types/settings';
-import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale } from 'lucide-react';
+import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-
-// --- Helpers ---
 
 function providerLabel(provider: Provider | 'openai' | 'gemini'): string {
   if (provider === 'groq') return 'Groq';
@@ -39,7 +39,7 @@ function defaultTtsVoice(provider: Provider): string {
   return 'nova';
 }
 
-const NONE_OPTION = { value: '', label: 'None (no fallback)' };
+const NONE_OPTION = { value: '', label: 'Nenhum (sem fallback)' };
 
 export function SettingsPage() {
   const [openaiKey, setOpenaiKeyState] = useState('');
@@ -48,6 +48,12 @@ export function SettingsPage() {
   const [config, setConfig] = useState<ModelConfig>({ ...DEFAULT_MODEL_CONFIG });
   const [tone, setTone] = useState<ConversationTone>('balanced');
   const [saved, setSaved] = useState(false);
+  const [userCtx, setUserCtx] = useState<UserContext>({
+    profile: '',
+    interests: '',
+    goals: '',
+    currentLevel: 'Intermediate',
+  });
 
   useEffect(() => {
     setOpenaiKeyState(getOpenAIKey());
@@ -55,13 +61,20 @@ export function SettingsPage() {
     setGroqKeyState(getGroqKey());
     setConfig(getModelConfig());
     setTone(getConversationTone());
+    setUserCtx(getUserContext());
   }, []);
 
   const updateConfig = (partial: Partial<ModelConfig>) => {
     setConfig(prev => ({ ...prev, ...partial }));
   };
 
-  // --- Primary model change handlers ---
+  const handleUserCtxChange = (field: keyof UserContext, value: string) => {
+    setUserCtx(prev => {
+      const next = { ...prev, [field]: value };
+      saveUserContext(next);
+      return next;
+    });
+  };
 
   const handleChatModelChange = (model: string) => {
     const entry = CHAT_MODELS.find(m => m.value === model);
@@ -93,8 +106,6 @@ export function SettingsPage() {
       liveVoice: newProvider === 'openai' ? 'marin' : 'Aoede',
     });
   };
-
-  // --- Fallback model change handlers ---
 
   const handleChatFallbackChange = (model: string) => {
     if (!model) {
@@ -128,15 +139,11 @@ export function SettingsPage() {
     });
   };
 
-  // --- Computed voice lists ---
-
   const ttsVoiceOptions = ttsVoicesForProvider(config.ttsProvider);
   const liveVoiceOptions = config.liveProvider === 'openai' ? OPENAI_LIVE_VOICES : GEMINI_LIVE_VOICES;
   const ttsFallbackVoiceOptions = config.ttsFallbackProvider
     ? ttsVoicesForProvider(config.ttsFallbackProvider)
     : [];
-
-  // --- Save / Reset ---
 
   const handleSave = () => {
     setOpenAIKey(openaiKey);
@@ -144,13 +151,12 @@ export function SettingsPage() {
     setGroqKey(groqKey);
     saveModelConfig(config);
     saveConversationTone(tone);
+    saveUserContext(userCtx);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
   const handleReset = () => setConfig({ ...DEFAULT_MODEL_CONFIG });
-
-  // --- Fallback sub-component ---
 
   function FallbackSection({
     label,
@@ -180,7 +186,7 @@ export function SettingsPage() {
         </div>
         <div className={cn('grid gap-3', voiceOptions && currentModel ? 'grid-cols-2' : 'grid-cols-1')}>
           <Select
-            label="Fallback Model"
+            label="Modelo Fallback"
             value={currentModel || ''}
             options={options}
             onChange={onModelChange}
@@ -188,7 +194,7 @@ export function SettingsPage() {
           />
           {voiceOptions && currentModel && onVoiceChange && (
             <Select
-              label="Fallback Voice"
+              label="Voz Fallback"
               value={currentVoice || ''}
               options={voiceOptions}
               onChange={onVoiceChange}
@@ -199,14 +205,12 @@ export function SettingsPage() {
     );
   }
 
-  // --- Render ---
-
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-8 pb-20">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-extrabold text-foreground text-balance">Settings</h2>
-        <p className="text-muted-foreground text-pretty">Configure your API keys and choose which models to use.</p>
+        <h2 className="text-3xl font-extrabold text-foreground text-balance">Configurações</h2>
+        <p className="text-muted-foreground text-pretty">Configure suas API keys, perfil e modelos de IA.</p>
       </div>
 
       {/* Security Warning */}
@@ -215,12 +219,58 @@ export function SettingsPage() {
           <Shield size={16} className="text-[var(--amber)]" />
         </div>
         <div>
-          <h4 className="text-[var(--amber)] font-bold text-sm">Security Notice</h4>
+          <h4 className="text-[var(--amber)] font-bold text-sm">Aviso de Segurança</h4>
           <p className="text-muted-foreground text-sm mt-1 text-pretty">
-            API keys are stored in your browser's local storage. This is suitable for personal use only.
+            As API keys ficam armazenadas no localStorage do seu navegador. Adequado apenas para uso pessoal.
           </p>
         </div>
       </div>
+
+      {/* User Profile */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
+            <UserIcon size={14} className="text-[var(--sky)]" />
+          </div>
+          <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Seu Perfil</h3>
+        </div>
+        <p className="text-xs text-muted-foreground text-pretty">
+          Este contexto é salvo automaticamente e usado para personalizar seus exercícios e scripts.
+        </p>
+
+        <div className="bg-card rounded-2xl p-5 border border-border space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Nível Atual</label>
+            <select
+              value={userCtx.currentLevel}
+              onChange={(e) => handleUserCtxChange('currentLevel', e.target.value)}
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none"
+            >
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+          <Input
+            label="Perfil / Background"
+            value={userCtx.profile}
+            onChange={e => handleUserCtxChange('profile', e.target.value)}
+            placeholder="ex: Engenheiro de Software buscando vagas no Canadá"
+          />
+          <Input
+            label="Interesses"
+            value={userCtx.interests}
+            onChange={e => handleUserCtxChange('interests', e.target.value)}
+            placeholder="ex: Tecnologia, Games, Culinária, Viagem"
+          />
+          <Input
+            label="Objetivos de Aprendizado"
+            value={userCtx.goals}
+            onChange={e => handleUserCtxChange('goals', e.target.value)}
+            placeholder="ex: Falar com mais fluência em reuniões, passar em entrevistas"
+          />
+        </div>
+      </section>
 
       {/* API Keys */}
       <section className="space-y-4">
@@ -239,8 +289,8 @@ export function SettingsPage() {
             onChange={e => setOpenaiKeyState(e.target.value)}
             placeholder="sk-..."
             hint={import.meta.env.VITE_OPENAI_API_KEY && !localStorage.getItem('el_openai_key')
-              ? 'Loaded from .env file'
-              : 'Get your key at platform.openai.com/api-keys'}
+              ? 'Carregada do arquivo .env'
+              : 'Obtenha em platform.openai.com/api-keys'}
           />
           <Input
             label="Google Gemini API Key"
@@ -249,8 +299,8 @@ export function SettingsPage() {
             onChange={e => setGeminiKeyState(e.target.value)}
             placeholder="AI..."
             hint={import.meta.env.VITE_GEMINI_API_KEY && !localStorage.getItem('el_gemini_key')
-              ? 'Loaded from .env file'
-              : 'Get your key at aistudio.google.com/apikey'}
+              ? 'Carregada do arquivo .env'
+              : 'Obtenha em aistudio.google.com/apikey'}
           />
           <Input
             label="Groq API Key"
@@ -259,8 +309,8 @@ export function SettingsPage() {
             onChange={e => setGroqKeyState(e.target.value)}
             placeholder="gsk_..."
             hint={import.meta.env.VITE_GROQ_API_KEY && !localStorage.getItem('el_groq_key')
-              ? 'Loaded from .env file'
-              : 'Get your key at console.groq.com'}
+              ? 'Carregada do arquivo .env'
+              : 'Obtenha em console.groq.com'}
           />
         </div>
       </section>
@@ -271,10 +321,10 @@ export function SettingsPage() {
           <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
             <MessagesSquare size={14} className="text-[var(--sky)]" />
           </div>
-          <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Conversation Tone</h3>
+          <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Tom da Conversa</h3>
         </div>
         <p className="text-xs text-muted-foreground text-pretty">
-          Choose the overall tone for AI conversations, exercises, and evaluations across the app.
+          Escolha o tom geral para conversas, exercícios e avaliações da IA no app.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -283,19 +333,19 @@ export function SettingsPage() {
               id: 'casual' as const,
               icon: Coffee,
               label: 'Casual',
-              desc: 'Everyday English. Contractions, slang, relaxed rhythm. Like chatting with a friend.',
+              desc: 'Inglês do dia a dia. Contrações, gírias, ritmo relaxado. Como conversar com um amigo.',
             },
             {
               id: 'balanced' as const,
               icon: Scale,
-              label: 'Balanced',
-              desc: 'Natural and clear. Conversational but well-structured. The default.',
+              label: 'Equilibrado',
+              desc: 'Natural e claro. Conversacional mas bem estruturado. O padrão.',
             },
             {
               id: 'formal' as const,
               icon: Briefcase,
               label: 'Formal',
-              desc: 'Professional and polished. Business English, meetings, presentations.',
+              desc: 'Profissional e polido. Business English, reuniões, apresentações.',
             },
           ]).map(option => (
             <button
@@ -340,25 +390,24 @@ export function SettingsPage() {
             <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
               <Cpu size={14} className="text-[var(--sky)]" />
             </div>
-            <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Model Configuration</h3>
+            <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Configuração de Modelos</h3>
           </div>
           <button
             onClick={handleReset}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 font-semibold cursor-pointer"
           >
             <RotateCcw size={12} />
-            Reset
+            Resetar
           </button>
         </div>
 
-        {/* Model sections */}
         {[
           {
-            icon: MessageSquare, color: 'sky' as const, title: 'Text Generation',
-            desc: 'Generating prompts, evaluating speech, creating scenarios.',
+            icon: MessageSquare, color: 'sky' as const, title: 'Geração de Texto',
+            desc: 'Gera prompts, avalia fala, cria cenários.',
             content: (
               <>
-                <Select label="Model" value={config.chatModel} options={CHAT_MODELS} onChange={handleChatModelChange}
+                <Select label="Modelo" value={config.chatModel} options={CHAT_MODELS} onChange={handleChatModelChange}
                   hint={`Provider: ${providerLabel(config.chatProvider)}`} />
                 <FallbackSection
                   label="Fallback"
@@ -371,11 +420,11 @@ export function SettingsPage() {
             ),
           },
           {
-            icon: Mic, color: 'coral' as const, title: 'Speech-to-Text',
-            desc: `Transcribes your spoken audio. Requires ${providerLabel(config.sttProvider)} key.`,
+            icon: Mic, color: 'coral' as const, title: 'Fala para Texto (STT)',
+            desc: `Transcreve seu áudio falado. Requer key do ${providerLabel(config.sttProvider)}.`,
             content: (
               <>
-                <Select label="Model" value={config.sttModel} options={STT_MODELS} onChange={handleSttModelChange}
+                <Select label="Modelo" value={config.sttModel} options={STT_MODELS} onChange={handleSttModelChange}
                   hint={`Provider: ${providerLabel(config.sttProvider)}${config.sttProvider === 'gemini' ? ' (multimodal)' : ''}`} />
                 <FallbackSection
                   label="Fallback"
@@ -388,14 +437,14 @@ export function SettingsPage() {
             ),
           },
           {
-            icon: Volume2, color: 'leaf' as const, title: 'Text-to-Speech',
-            desc: `Audio for phrases and corrections. Requires ${providerLabel(config.ttsProvider)} key.`,
+            icon: Volume2, color: 'leaf' as const, title: 'Texto para Fala (TTS)',
+            desc: `Áudio para frases e correções. Requer key do ${providerLabel(config.ttsProvider)}.`,
             content: (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <Select label="Model" value={config.ttsModel} options={TTS_MODELS} onChange={handleTtsModelChange}
+                  <Select label="Modelo" value={config.ttsModel} options={TTS_MODELS} onChange={handleTtsModelChange}
                     hint={`Provider: ${providerLabel(config.ttsProvider)}`} />
-                  <Select label="Voice" value={config.ttsVoice} options={ttsVoiceOptions} onChange={v => updateConfig({ ttsVoice: v })} />
+                  <Select label="Voz" value={config.ttsVoice} options={ttsVoiceOptions} onChange={v => updateConfig({ ttsVoice: v })} />
                 </div>
                 <FallbackSection
                   label="Fallback"
@@ -411,21 +460,21 @@ export function SettingsPage() {
             ),
           },
           {
-            icon: ImageIcon, color: 'amber' as const, title: 'Image Generation',
-            desc: 'Generates images for the Image Description mode.',
+            icon: ImageIcon, color: 'amber' as const, title: 'Geração de Imagem',
+            desc: 'Gera imagens para o modo de Desafio Visual.',
             content: (
-              <Select label="Model" value={config.imageModel} options={IMAGE_MODELS} onChange={handleImageModelChange}
+              <Select label="Modelo" value={config.imageModel} options={IMAGE_MODELS} onChange={handleImageModelChange}
                 hint={`Provider: ${providerLabel(config.imageProvider)}`} />
             ),
           },
           {
-            icon: Radio, color: 'coral' as const, title: 'Live Roleplay',
-            desc: `Real-time audio conversation. Requires ${providerLabel(config.liveProvider)} key.`,
+            icon: Radio, color: 'coral' as const, title: 'Simulação ao Vivo',
+            desc: `Conversa de áudio em tempo real. Requer key do ${providerLabel(config.liveProvider)}.`,
             content: (
               <div className="grid grid-cols-2 gap-3">
-                <Select label="Model" value={config.liveModel} options={LIVE_MODELS} onChange={handleLiveModelChange}
+                <Select label="Modelo" value={config.liveModel} options={LIVE_MODELS} onChange={handleLiveModelChange}
                   hint={`Provider: ${config.liveProvider === 'openai' ? 'OpenAI Realtime' : 'Gemini Live'}`} />
-                <Select label="Voice" value={config.liveVoice} options={liveVoiceOptions} onChange={v => updateConfig({ liveVoice: v })} />
+                <Select label="Voz" value={config.liveVoice} options={liveVoiceOptions} onChange={v => updateConfig({ liveVoice: v })} />
               </div>
             ),
           },
@@ -460,7 +509,7 @@ export function SettingsPage() {
         className={cn('w-full text-lg font-bold py-4 rounded-2xl cursor-pointer', saved && 'bg-[var(--leaf)] hover:bg-[var(--leaf)]')}
       >
         {saved ? <Check size={20} /> : <Save size={20} />}
-        {saved ? 'Saved!' : 'Save Settings'}
+        {saved ? 'Salvo!' : 'Salvar Configurações'}
       </Button>
     </div>
   );

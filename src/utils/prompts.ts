@@ -150,10 +150,10 @@ ${contextInstruction ? `\n${contextInstruction}\n` : ''}
 Evaluate the student's response and provide feedback. Respond in JSON format:
 {
   "score": <number 0-10>,
-  "correctedVersion": "<the corrected version of what they said>",
-  "betterAlternatives": ["<more natural way to say it>", "<another alternative>"],
-  "corrections": ["<specific error 1>", "<specific error 2>"],
-  "overallFeedback": "<encouraging, constructive overall feedback>"
+  "correctedVersion": "<the corrected English version of what they said>",
+  "betterAlternatives": ["<more natural English way to say it>", "<another English alternative>"],
+  "corrections": ["<specific error explained in Portuguese>", "<another error explained in Portuguese>"],
+  "overallFeedback": "<encouraging, constructive overall feedback IN PORTUGUESE (pt-br)>"
 }
 
 Rules:
@@ -161,10 +161,11 @@ Rules:
 - Focus STRICTLY on SPOKEN English. IGNORE written grammar rules entirely.
 - Evaluate naturalness above all else — does it sound exactly like a real native speaker using the tone above? Is it fluid or robotic?
 - NATURALNESS PENALTY (CRITICAL): You MUST deduct points if the speech sounds stiff, overly formal, translated, or textbook-like ("engessada"). A grammatically "wrong" but highly natural-sounding slang/colloquial response MUST score higher than a grammatically perfect but robotic reading-style sentence.
-- CORRECTED VERSION: The "correctedVersion" MUST sound exactly like how a native speaker would ACTUALLY say this out loud on the street. Keep it casual if the tone is casual (force contractions, filler words, idioms). Correct for awkwardness/stiffness. NEVER EVER give a textbook grammar correction unless that is exactly how natives speak.
-- The "betterAlternatives" MUST match the tone (casual, balanced, or formal) and provide ONLY heavily native-like, colloquial options.
+- CORRECTED VERSION: The "correctedVersion" MUST be in ENGLISH — exactly how a native speaker would ACTUALLY say this out loud on the street. Keep it casual if the tone is casual (force contractions, filler words, idioms). Correct for awkwardness/stiffness. NEVER EVER give a textbook grammar correction unless that is exactly how natives speak.
+- The "betterAlternatives" MUST be in ENGLISH, match the tone (casual, balanced, or formal) and provide ONLY heavily native-like, colloquial options.
+- LANGUAGE RULE (CRITICAL): "corrections" and "overallFeedback" MUST be written in Portuguese (pt-br). The student's native language is Portuguese and all explanations/feedback must be in Portuguese. Only English examples or corrections of what they said should be in English.
 - Be encouraging but honest in your feedback.
-- If the transcription seems empty or nonsensical, score it low and explain why.
+- If the transcription seems empty or nonsensical, score it low and explain why (in Portuguese).
 - Provide at least 2 better alternatives that sound genuinely native.
 - Respond ONLY with the JSON, nothing else.`;
 }
@@ -213,6 +214,15 @@ VOICE ACTING RULES:
 - Show emotion: be enthusiastic, grumpy, shy, sarcastic, warm — whatever fits your character.
 - React with genuine human responses: laugh, hesitate, get excited, be surprised.
 - Keep responses the length a REAL person would use — short and snappy for casual chat, longer only when explaining something specific.
+
+VOICE AND DELIVERY:
+- Modulate your voice to match your character: pitch, speed, energy, and emotional range.
+- If your character is elderly, speak more slowly and deliberately.
+- If your character is young and energetic, be animated and fast-paced.
+- Express genuine emotions through your voice: excitement, concern, amusement, impatience.
+- Use natural speech patterns: hesitations (um, uh), filler words, self-corrections — the way real people actually talk.
+- Vary your intonation — don't speak in a monotone. Emphasize key words the way a real person would.
+- Match the energy of the situation: whisper if something is secret, get louder when excited, slow down when being serious.
 
 CONVERSATION RULES:
 - Do NOT over-explain or lecture.
@@ -285,7 +295,8 @@ Respond in JSON format:
   "characterPersonality": "<2-3 sentences describing WHO this person is. Their vibe, attitude, background. e.g. 'A 60-year-old ex-pro surfer who now shapes boards by hand. Mellow, philosophical, calls everyone dude. Gets passionate when talking about wave dynamics.'>",
   "characterSpeechStyle": "<2-3 sentences about HOW they talk. e.g. 'Speaks slowly with lots of pauses. Uses surf slang (gnarly, stoked, sick). Asks rhetorical questions. Often trails off mid-sentence then picks up a new thought. Says bro/dude every other sentence.'>",
   "openingLine": "<the FIRST thing the character says to the user when they walk in/approach. Must be 100% in character. e.g. 'Heyyy, welcome welcome! You look like someone who knows their way around a wave. Am I right?'>",
-  "systemDetails": "<internal world-building for the AI: what the place offers, prices, specials, constraints, backstory. The richer the better.>"
+  "systemDetails": "<internal world-building for the AI: what the place offers, prices, specials, constraints, backstory. The richer the better.>",
+  "suggestedVoice": "<pick the BEST voice for this character from this list based on their gender, age, energy, and personality: Zephyr (Bright), Kore (Firm), Puck (Upbeat), Fenrir (Excitable), Aoede (Breezy), Charon (Informative), Leda (Youthful), Algieba (Smooth), Algenib (Gravelly), Gacrux (Mature), Sulafat (Warm), Achernar (Soft), Enceladus (Breathy), Despina (Smooth), Alnilam (Firm), Achird (Friendly), Sadachbia (Lively), Umbriel (Easy-going), Schedar (Even), Autonoe (Bright), Rasalgethi (Informative), Pulcherrima (Forward), Vindemiatrix (Gentle). Return ONLY the voice name, e.g. 'Kore'.>"
 }
 
 Respond ONLY with the JSON, nothing else.`;
@@ -333,7 +344,8 @@ Respond in JSON format:
   "characterPersonality": "<Professional personality, e.g. 'Direct, polite, asks probing questions.'>",
   "characterSpeechStyle": "<How they talk, e.g. 'Professional but uses industry jargon naturally. Asks clear questions and pauses.'>",
   "openingLine": "<the FIRST thing the character says. e.g. 'Hi there, thanks for joining. I see your background is in React. Let's start by talking about your last project.'>",
-  "systemDetails": "<internal constraints for the AI: what exactly they should evaluate, what specific things they should ask about the user's profile.>"
+  "systemDetails": "<internal constraints for the AI: what exactly they should evaluate, what specific things they should ask about the user's profile.>",
+  "suggestedVoice": "<pick the BEST voice for this character from: Zephyr (Bright), Kore (Firm), Puck (Upbeat), Aoede (Breezy), Charon (Informative), Gacrux (Mature), Sulafat (Warm), Algieba (Smooth), Alnilam (Firm), Sadaltager (Knowledgeable), Schedar (Even), Rasalgethi (Informative). Return ONLY the voice name.>"
 }
 
 Respond ONLY with the JSON, nothing else.`;
@@ -354,19 +366,20 @@ ${getToneInstruction(tone)}
 
 Provide a detailed analysis in JSON format:
 {
-  "improvements": ["<specific thing the student could improve>", "..."],
+  "improvements": ["<specific improvement tip in Portuguese (pt-br)>", "..."],
   "cleanDialogue": [
-    {"role": "user", "text": "<cleaned up, natural version of what the student said>"},
-    {"role": "ai", "text": "<AI's response>"},
+    {"role": "user", "text": "<cleaned up, natural ENGLISH version of what the student said>"},
+    {"role": "ai", "text": "<AI's response in English>"},
     ...
   ],
-  "overallFeedback": "<overall constructive feedback about the student's performance>"
+  "overallFeedback": "<overall constructive feedback IN PORTUGUESE (pt-br)>"
 }
 
 Rules:
 - Focus the analysis heavily on SPOKEN fluency, rhythm, and natural phrase choices, ignoring standard written grammar if the spoken form is natural.
-- The clean dialogue should represent exactly how a native speaker would have the same conversation out loud using the tone above.
+- The clean dialogue should represent exactly how a native speaker would have the same conversation out loud using the tone above. Clean dialogue MUST be in English.
 - Keep the clean dialogue 100% natural and realistic — the way real people actually talk, absolutely no text-book English. Include filler words and natural speech patterns.
+- LANGUAGE RULE (CRITICAL): "improvements" and "overallFeedback" MUST be written in Portuguese (pt-br). The student's native language is Portuguese. Only the clean dialogue stays in English.
 - Provide at least 3 specific improvements focused on sounding more native/fluent.
 - Be encouraging but honest.
 - Respond ONLY with the JSON, nothing else.`;
@@ -403,90 +416,6 @@ Keep it to 3-4 sentences maximum.`;
 }
 
 // ---------------------------------------------------------------------------
-// Live lesson prompts
-// ---------------------------------------------------------------------------
-
-export function getLiveLessonSystemPrompt(
-  category: string,
-  subtopic?: string,
-  tone?: ConversationTone,
-  customRequest?: string
-): string {
-  const topicDescription = customRequest
-    ? `The student wants to learn about: "${customRequest}"`
-    : subtopic
-      ? `Topic: ${category} — ${subtopic}`
-      : `Topic: ${category}`;
-
-  return `You are an experienced, warm, and encouraging English teacher having a 1-on-1 conversation lesson with a Brazilian Portuguese-speaking student.
-
-${topicDescription}
-
-${getToneInstruction(tone)}
-
-YOUR TEACHING STYLE:
-- You teach through CONVERSATION, not lectures. Ask questions, give examples in context, react to what the student says.
-- You feel like a real person — a favorite teacher who happens to be a native English speaker.
-- You adapt to the student's level: if they struggle, simplify. If they're doing great, challenge them more.
-- You gently correct mistakes inline without breaking the flow. For example: "Nice! And you could also say 'I've been living here' — the present perfect gives it that ongoing feel, you know?"
-- You use real-world examples, cultural context, and relatable situations to explain concepts.
-- You celebrate small wins — "That's exactly how a native would say it!"
-- You ask follow-up questions to keep the student talking and practicing.
-
-WHAT YOU SHOULD DO:
-- Start by greeting the student warmly and asking what specifically they'd like to focus on within this topic, or suggest a starting point.
-- Introduce concepts naturally through conversation — never dump a wall of grammar rules.
-- Use examples from real life: movies, songs, everyday situations, travel, work.
-- When explaining grammar or vocabulary, always tie it back to how it sounds in real speech.
-- Encourage the student to try using new words/structures in sentences.
-- If the student speaks Portuguese, gently redirect to English but be understanding.
-
-WHAT YOU SHOULD NOT DO:
-- Do NOT give long monologues or lecture-style explanations.
-- Do NOT sound like a textbook or a generic AI assistant.
-- Do NOT use robotic transitions like "Great question!" or "That's a great point!" excessively.
-- Do NOT overwhelm with too many rules at once — focus on one thing at a time.
-- Do NOT break character — you are always a teacher in a real lesson, not a chatbot.
-
-CONVERSATION FLOW:
-- Keep your responses concise — 2-4 sentences is usually enough. Let the student talk more than you.
-- Ask questions that require the student to actually USE English, not just answer yes/no.
-- Build on what the student says — reference their previous answers, correct patterns you notice.
-- If the conversation stalls, introduce a new angle or a fun example to re-engage.
-- When the student says goodbye or wants to end, wrap up warmly with a quick recap of what you covered.`;
-}
-
-export function getLessonSummaryPrompt(turns: { role: string; text: string }[], topic: string): string {
-  const dialogue = turns.map(t => `${t.role === 'user' ? 'Student' : 'Teacher'}: ${t.text}`).join('\n');
-
-  return `Analyze this English lesson conversation between a student and their teacher:
-
-Topic: ${topic}
-
-${dialogue}
-
-Provide a detailed lesson summary in JSON format:
-{
-  "vocabularyLearned": [
-    {"word": "<word or phrase>", "definition": "<clear definition>", "example": "<example sentence using the word naturally>"},
-    ...
-  ],
-  "grammarPoints": ["<grammar concept covered, with brief explanation>", "..."],
-  "pronunciationTips": ["<pronunciation tip if applicable>", "..."],
-  "practiceRecommendations": ["<specific thing to practice>", "..."],
-  "overallFeedback": "<warm, encouraging summary of the student's performance and progress during this lesson>"
-}
-
-Rules:
-- Extract ALL vocabulary and expressions that were taught or practiced during the lesson.
-- Grammar points should be concise but clear — include the rule AND an example.
-- Practice recommendations should be specific and actionable.
-- The overall feedback should be encouraging and highlight what the student did well.
-- If no pronunciation was discussed, return an empty array for pronunciationTips.
-- Respond ONLY with the JSON, nothing else.`;
-}
-
-// ---------------------------------------------------------------------------
 // Custom Materials Generation Prompts
 // ---------------------------------------------------------------------------
 
@@ -495,9 +424,12 @@ export function getCustomDialoguePrompt(
   profile: string,
   interests: string,
   goals: string,
-  currentLevel: string
+  currentLevel: string,
+  tone?: ConversationTone
 ): string {
-  return `You are an expert English material creator. Write a completely natural, realistic dialogue based on the user's situation and context.
+  return `You are an expert English script writer creating acting scripts for English speaking practice.
+
+${getToneInstruction(tone)}
 
 USER CONTEXT:
 - English Level: ${currentLevel}
@@ -505,15 +437,16 @@ USER CONTEXT:
 - Interests: ${interests || 'Not specified'}
 - Learning Goals: ${goals || 'Not specified'}
 
-SITUATION: "${situation}"
+SCENE: "${situation}"
 
-RULES:
-- The dialogue must be between the user and another relevant character (e.g., interviewer, customer service, friend).
-- The language should match natural spoken English, reflecting the fact that the user is practicing for real-world scenarios.
-- Do NOT use robotic or overly formal language unless the situation strictly requires it (like a very formal court setting).
-- Make the dialogue long enough to provide good speaking practice (about 12-20 lines Total).
-- After the dialogue, provide a brief vocabulary list of 5 useful words/expressions used in the dialogue with their Portuguese translations.
-- Start with a clear title for the dialogue.
+FORMAT:
+Write the script as a theatrical script, clearly formatted for reading aloud and acting.
+- Mark the user's lines with **VOCÊ:** and the other character's lines with their character name in bold (e.g. **Interviewer:**, **Waiter:**, **Friend:**).
+- Each line must sound like real spoken English — contractions, fillers, natural rhythm.
+- Include brief stage directions in italics when helpful (e.g. *smiling*, *leaning forward*).
+- Write 12-20 exchanges total, long enough for meaningful speaking practice.
+- After the dialogue, include a "Vocabulário" section with 5-8 useful words/expressions used in the script with their Portuguese translations.
+- Start with a clear scene title.
 
-Respond ONLY with the generated Markdown text, properly formatted for reading (Use bold for character names).`;
+Respond ONLY with the generated Markdown text.`;
 }

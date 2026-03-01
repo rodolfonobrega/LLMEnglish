@@ -59,7 +59,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
                 <Mic size={28} />
               </button>
             </div>
-            <p className="text-sm text-muted-foreground font-medium">Tap to Record</p>
+            <p className="text-sm text-muted-foreground font-medium">Toque para Gravar</p>
           </>
         )}
 
@@ -79,7 +79,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
             </div>
             <div className="flex items-center gap-2 text-[var(--coral)] text-sm font-semibold">
               <div className="size-2 bg-[var(--coral)] rounded-full animate-pulse" />
-              Recording...
+              Gravando...
             </div>
           </>
         )}
@@ -95,7 +95,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
               className="rounded-full cursor-pointer"
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-              {isPlaying ? 'Pause' : 'Listen'}
+              {isPlaying ? 'Pausar' : 'Ouvir'}
             </Button>
 
             <Button
@@ -117,7 +117,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
               className="rounded-full bg-[var(--leaf)] hover:bg-[var(--leaf)] cursor-pointer"
             >
               <Send size={18} />
-              Submit
+              Enviar
             </Button>
           </div>
         )}

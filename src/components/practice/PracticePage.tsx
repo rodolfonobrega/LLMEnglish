@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
-import { Loader2, FileText, Download, User as UserIcon, BookOpen } from 'lucide-react';
+import { Loader2, FileText, Download, Clapperboard } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { chatCompletion } from '../../services/openai';
-import { getUserContext, saveUserContext, type UserContext } from '../../services/storage';
+import { getUserContext, type UserContext } from '../../services/storage';
 import { getCustomDialoguePrompt } from '../../utils/prompts';
+import { getConversationTone } from '../../services/storage';
+import type { ConversationTone } from '../../types/settings';
 
 export function PracticePage() {
     const [context, setContext] = useState<UserContext>({
@@ -18,20 +20,16 @@ export function PracticePage() {
     const [generatedDialogue, setGeneratedDialogue] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [tone, setTone] = useState<ConversationTone>('Casual');
 
     useEffect(() => {
         setContext(getUserContext());
+        setTone(getConversationTone());
     }, []);
-
-    const handleContextChange = (field: keyof UserContext, value: string) => {
-        const newContext = { ...context, [field]: value };
-        setContext(newContext);
-        saveUserContext(newContext); // Auto-save
-    };
 
     const handleGenerate = async () => {
         if (!situation.trim()) {
-            setError('Please provide a situation.');
+            setError('Descreva uma cena para gerar o script.');
             return;
         }
 
@@ -45,17 +43,18 @@ export function PracticePage() {
                 context.profile,
                 context.interests,
                 context.goals,
-                context.currentLevel
+                context.currentLevel,
+                tone
             );
 
             const response = await chatCompletion(
-                'You are an expert English material creator. Produce natural, conversational dialogue without json formatting. Only use Markdown layout.',
+                'You are an expert English script writer. Produce natural, conversational dialogue scripts for acting practice. Only use Markdown layout.',
                 prompt
             );
 
             setGeneratedDialogue(response);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to generate dialogue.');
+            setError(err instanceof Error ? err.message : 'Falha ao gerar o script.');
         } finally {
             setIsGenerating(false);
         }
@@ -77,13 +76,11 @@ export function PracticePage() {
             const lineHeight = 7;
             let yOffset = 20;
 
-            // Add simple title
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(16);
-            doc.text('Personalized Practice Dialogue', margin, yOffset);
+            doc.text('Script de Atuação', margin, yOffset);
             yOffset += 12;
 
-            // Reset to normal font for parsing
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(12);
 
@@ -92,11 +89,10 @@ export function PracticePage() {
             for (let i = 0; i < paragraphs.length; i++) {
                 let text = paragraphs[i].trim();
                 if (!text) {
-                    yOffset += lineHeight; // Empty line
+                    yOffset += lineHeight;
                     continue;
                 }
 
-                // Extremely hacky markdown to jsPDF translation for basic **bold** support
                 if (text.startsWith('##') || text.startsWith('#')) {
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(14);
@@ -110,7 +106,6 @@ export function PracticePage() {
                     const height = wrapText(doc, text.substring(2), margin + 5, yOffset, maxWidth - 5, lineHeight);
                     yOffset += height;
                 } else {
-                    // check for bold names like **Interviewer:** Hello
                     const boldMatch = text.match(/^\*\*(.*?)\*\*(.*)/);
                     if (boldMatch) {
                         const name = boldMatch[1];
@@ -135,122 +130,61 @@ export function PracticePage() {
                 }
             }
 
-            doc.save('practice-dialogue.pdf');
+            doc.save('script-atuacao.pdf');
         } catch (e) {
             console.error(e);
-            setError('Failed to generate PDF. Make sure your browser allows downloads.');
+            setError('Falha ao gerar PDF.');
         }
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
+        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto pb-20">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="p-3 bg-[var(--coral-soft)] rounded-2xl">
-                    <FileText size={24} className="text-[var(--coral)]" />
+                    <Clapperboard size={24} className="text-[var(--coral)]" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-extrabold text-foreground">Practice Materials</h2>
-                    <p className="text-muted-foreground">Generate personalized dialogues and export to PDF.</p>
+                    <h2 className="text-2xl font-extrabold text-foreground">Scripts</h2>
+                    <p className="text-muted-foreground">Pratique como um ator. Gere diálogos e atue as falas em voz alta.</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* User Context Form */}
-                <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <UserIcon size={18} className="text-[var(--primary)]" />
-                        <h3 className="font-bold text-lg text-foreground">My Profile Context</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground pb-2">
-                        This context is saved automatically and used to personalize your generated materials.
-                    </p>
-
-                    <div className="space-y-3">
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Current Level</label>
-                            <select
-                                value={context.currentLevel}
-                                onChange={(e) => handleContextChange('currentLevel', e.target.value)}
-                                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none"
-                            >
-                                <option value="Beginner">Beginner</option>
-                                <option value="Intermediate">Intermediate</option>
-                                <option value="Advanced">Advanced</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Profile / Background</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Software Engineer looking for jobs in Canada"
-                                value={context.profile}
-                                onChange={(e) => handleContextChange('profile', e.target.value)}
-                                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Interests</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Technology, Gaming, Cooking, Travel"
-                                value={context.interests}
-                                onChange={(e) => handleContextChange('interests', e.target.value)}
-                                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Learning Goals</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Speak more fluidly in meetings, pass interviews"
-                                value={context.goals}
-                                onChange={(e) => handleContextChange('goals', e.target.value)}
-                                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none"
-                            />
-                        </div>
-                    </div>
+            {/* Generate Script */}
+            <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                    <FileText size={18} className="text-[var(--coral)]" />
+                    <h3 className="font-bold text-lg text-foreground">Descreva a Cena</h3>
                 </div>
 
-                {/* Generate Dialogue */}
-                <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <BookOpen size={18} className="text-[var(--leaf)]" />
-                        <h3 className="font-bold text-lg text-foreground">Situation</h3>
-                    </div>
+                <div className="space-y-4">
+                    <textarea
+                        placeholder="ex: Entrevista técnica com um recrutador do Google para vaga de Front-End. Me pergunte sobre React e minha experiência."
+                        value={situation}
+                        onChange={(e) => setSituation(e.target.value)}
+                        rows={4}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none resize-none"
+                    />
 
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Describe a scenario</label>
-                            <textarea
-                                placeholder="e.g. Technical interview with a recruiter at Google for a Front-End position. Ask me about React and my past experience."
-                                value={situation}
-                                onChange={(e) => setSituation(e.target.value)}
-                                rows={4}
-                                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none resize-none"
-                            />
-                        </div>
-
-                        <Button
-                            variant="coral"
-                            onClick={handleGenerate}
-                            disabled={isGenerating || !situation.trim()}
-                            className="w-full justify-center"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <Loader2 size={18} className="animate-spin mr-2" />
-                                    Generating...
-                                </>
-                            ) : (
-                                'Generate Custom Dialogue'
-                            )}
-                        </Button>
-
-                        {error && (
-                            <p className="text-[var(--danger)] text-sm mt-2">{error}</p>
+                    <Button
+                        variant="coral"
+                        onClick={handleGenerate}
+                        disabled={isGenerating || !situation.trim()}
+                        className="w-full justify-center"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <Loader2 size={18} className="animate-spin mr-2" />
+                                Gerando...
+                            </>
+                        ) : (
+                            'Gerar Script'
                         )}
-                    </div>
+                    </Button>
+
+                    {error && (
+                        <p className="text-[var(--danger)] text-sm mt-2">{error}</p>
+                    )}
                 </div>
             </div>
 
@@ -258,12 +192,15 @@ export function PracticePage() {
             {generatedDialogue && (
                 <div className="bg-card rounded-2xl p-6 border border-border space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="flex items-center justify-between border-b border-border pb-4">
-                        <h3 className="font-bold text-xl text-foreground">Generated Material</h3>
+                        <h3 className="font-bold text-xl text-foreground">Seu Script</h3>
                         <Button variant="outline" onClick={handleExportPDF} className="flex gap-2">
                             <Download size={16} />
-                            Export PDF
+                            Exportar PDF
                         </Button>
                     </div>
+                    <p className="text-sm text-muted-foreground">
+                        Leia o script em voz alta, atuando cada fala como se fosse de verdade.
+                    </p>
                     <div className="prose prose-sm dark:prose-invert max-w-none text-foreground bg-muted p-6 rounded-xl border border-border whitespace-pre-wrap leading-relaxed">
                         {generatedDialogue}
                     </div>

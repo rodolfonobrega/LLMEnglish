@@ -26,9 +26,9 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
           <div className="size-6 rounded-full bg-muted flex items-center justify-center">
             <MessageCircle size={12} className="text-muted-foreground" />
           </div>
-          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">What you said</h4>
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">O que você disse</h4>
         </div>
-        <p className="text-muted-foreground leading-relaxed">{result.userTranscription || '(no speech detected)'}</p>
+        <p className="text-muted-foreground leading-relaxed">{result.userTranscription || '(nenhuma fala detectada)'}</p>
       </div>
 
       {/* Corrected version */}
@@ -38,12 +38,12 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             <div className="size-6 rounded-full bg-[var(--leaf-soft)] flex items-center justify-center">
               <CheckCircle2 size={12} className="text-[var(--leaf)]" />
             </div>
-            <h4 className="text-xs font-bold text-[var(--leaf)] uppercase tracking-wide">Corrected Version</h4>
+            <h4 className="text-xs font-bold text-[var(--leaf)] uppercase tracking-wide">Versão Corrigida</h4>
           </div>
           <button
             onClick={() => speak(result.correctedVersion)}
             disabled={ttsLoading}
-            aria-label="Listen to corrected version"
+            aria-label="Ouvir versão corrigida"
             className="size-8 rounded-full bg-[var(--sky-soft)] flex items-center justify-center text-[var(--sky)] hover:bg-[var(--sky)]/20 transition-colors cursor-pointer disabled:opacity-50"
           >
             {ttsLoading ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />}
@@ -59,7 +59,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             <div className="size-6 rounded-full bg-[var(--amber-soft)] flex items-center justify-center">
               <Lightbulb size={12} className="text-[var(--amber)]" />
             </div>
-            <h4 className="text-xs font-bold text-[var(--amber)] uppercase tracking-wide">More Natural Ways</h4>
+            <h4 className="text-xs font-bold text-[var(--amber)] uppercase tracking-wide">Formas Mais Naturais</h4>
           </div>
           <ul className="space-y-2.5">
             {result.betterAlternatives.map((alt, i) => (
@@ -85,7 +85,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             <div className="size-6 rounded-full bg-[var(--danger-soft)] flex items-center justify-center">
               <AlertTriangle size={12} className="text-[var(--danger)]" />
             </div>
-            <h4 className="text-xs font-bold text-[var(--danger)] uppercase tracking-wide">Corrections</h4>
+            <h4 className="text-xs font-bold text-[var(--danger)] uppercase tracking-wide">Correções</h4>
           </div>
           <ul className="space-y-2">
             {result.corrections.map((c, i) => (
@@ -110,7 +110,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
           <div className="size-6 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
             <Star size={12} className="text-[var(--sky)]" />
           </div>
-          <h4 className="text-xs font-bold text-[var(--sky)] uppercase tracking-wide">Overall Feedback</h4>
+          <h4 className="text-xs font-bold text-[var(--sky)] uppercase tracking-wide">Feedback Geral</h4>
         </div>
         <p className="text-muted-foreground leading-relaxed">{result.overallFeedback}</p>
       </div>
@@ -118,7 +118,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
       {/* Save Button */}
       {showSaveButton && onSaveToLibrary && (
         <Button variant="coral" size="lg" onClick={onSaveToLibrary} className="w-full rounded-2xl text-lg font-bold py-4 cursor-pointer">
-          Save to Library
+          Salvar na Biblioteca
         </Button>
       )}
     </div>

@@ -19,7 +19,7 @@ import {
 } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/storage';
+import { addCard, getConversationTone } from '../../services/storage';
 import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
 import { addXP } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
@@ -100,13 +100,14 @@ function getSystemPrompt(
   context: string | undefined,
   theme: string | null,
 ) {
+  const tone = getConversationTone();
   switch (type) {
     case 'phrase':
-      return getPhraseGenerationPrompt(vocabArr, context, theme || undefined);
+      return getPhraseGenerationPrompt(vocabArr, context, theme || undefined, tone);
     case 'text':
-      return getTextGenerationPrompt(vocabArr, context, theme || undefined);
+      return getTextGenerationPrompt(vocabArr, context, theme || undefined, tone);
     case 'roleplay':
-      return getRoleplayGenerationPrompt(context, theme || undefined, vocabArr);
+      return getRoleplayGenerationPrompt(context, theme || undefined, vocabArr, tone);
   }
 }
 
@@ -192,7 +193,7 @@ export function ExerciseMode() {
         );
         setImageUrl(imgUrl);
 
-        const questionPrompt = getImageQuestionPrompt();
+        const questionPrompt = getImageQuestionPrompt(getConversationTone());
         const q = await chatCompletionWithImage(questionPrompt, imgUrl);
         setPrompt(q.trim());
       }
@@ -211,7 +212,7 @@ export function ExerciseMode() {
     try {
       const transcription = await speechToText(blob);
       const evalType = isAudio ? config.evalType : 'image description';
-      const evalPrompt = getEvaluationPrompt(prompt, transcription, evalType);
+      const evalPrompt = getEvaluationPrompt(prompt, transcription, evalType, getConversationTone());
       const evalResponse = await chatCompletion(
         'You are an expert English language evaluator. Respond only with valid JSON.',
         evalPrompt,

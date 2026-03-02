@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCardsDueForReview, updateCard } from '../../services/storage';
+import { getCardsDueForReview, updateCard, getConversationTone } from '../../services/storage';
 import { updateCardSchedule } from '../../services/spacedRepetition';
 import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
 import { extractErrorPatterns, recordErrorPatterns, recordSessionSnapshot } from '../../services/errorAnalysis';
@@ -62,7 +62,7 @@ export function ReviewPage() {
     setTutorExplanation(null);
     try {
       const transcription = await speechToText(blob);
-      const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`);
+      const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`, getConversationTone());
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
       const evalResult: EvaluationResult = JSON.parse(evalResponse);
       evalResult.userTranscription = transcription;
@@ -100,7 +100,8 @@ export function ReviewPage() {
         currentCard.prompt,
         evaluation.userTranscription,
         evaluation.correctedVersion,
-        evaluation.corrections
+        evaluation.corrections,
+        getConversationTone()
       );
       const explanation = await chatCompletion(
         'You are a patient, encouraging English tutor. Explain mistakes clearly and provide helpful examples.',

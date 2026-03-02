@@ -7,7 +7,7 @@ import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images
 import { getImageQuestionPrompt, getEvaluationPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/storage';
+import { addCard, getConversationTone } from '../../services/storage';
 import { addXP } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';
@@ -40,7 +40,7 @@ export function ImageMode() {
       );
       setImageUrl(imgUrl);
 
-      const questionPrompt = getImageQuestionPrompt();
+      const questionPrompt = getImageQuestionPrompt(getConversationTone());
       const q = await chatCompletionWithImage(questionPrompt, imgUrl);
       setQuestion(q.trim());
     } catch (err) {
@@ -56,7 +56,7 @@ export function ImageMode() {
     setUserAudioBase64(base64);
     try {
       const transcription = await speechToText(blob);
-      const evalPrompt = getEvaluationPrompt(question, transcription, 'image description');
+      const evalPrompt = getEvaluationPrompt(question, transcription, 'image description', getConversationTone());
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
       const cleanResponse = cleanJson(evalResponse);
       const evalResult: EvaluationResult = JSON.parse(cleanResponse);

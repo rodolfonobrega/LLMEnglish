@@ -7,7 +7,7 @@ import { cleanJson } from '../../utils/cleanJson';
 import { getTrailsForTheme, THEMES_WITH_TRAILS } from '../../utils/roleplayTrails';
 import type { ThemeMeta } from '../../utils/roleplayTrails';
 import type { LiveScenario, ConversationTurn, RoleplayTrail, RoleplayTrailStep } from '../../types/scenario';
-import { getPathProgress, markStepComplete, getTrailCompletedCount, isStepComplete } from '../../services/storage';
+import { getPathProgress, markStepComplete, getTrailCompletedCount, isStepComplete, getConversationTone } from '../../services/storage';
 import { LiveSession } from '../live-roleplay/LiveSession';
 import { ConversationAnalysis } from '../live-roleplay/ConversationAnalysis';
 import { PathCard } from '../ui/custom/PathCard';
@@ -55,7 +55,8 @@ export function PathsPage() {
     setError(null);
 
     try {
-      const prompt = getScenarioGenerationPrompt(theme.id, 'adventurous', step.scenarioContext);
+      const tone = getConversationTone();
+      const prompt = getScenarioGenerationPrompt(theme.id, 'adventurous', step.scenarioContext, tone);
 
       const response = await chatCompletion(
         'You are a world-class creative director who designs immersive role-play scenarios. You create vivid, specific characters with distinct voices and personalities. Respond only with valid JSON.',
@@ -74,6 +75,7 @@ export function PathsPage() {
         parsed.characterPersonality,
         parsed.characterSpeechStyle,
         parsed.openingLine,
+        tone,
       );
 
       const imagePromise = generateImage(

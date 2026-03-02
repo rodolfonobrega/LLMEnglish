@@ -4,7 +4,7 @@ import { getImageConfigAuto } from '../../config/images';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
-import { getUserContext, type UserContext } from '../../services/storage';
+import { getUserContext, getConversationTone, type UserContext } from '../../services/storage';
 import { Sparkles, Briefcase, Coffee, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
@@ -85,6 +85,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
     setIsGenerating(true);
     setError(null);
     try {
+      const tone = getConversationTone();
       let prompt = '';
       let activeTheme = theme;
 
@@ -96,14 +97,15 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         } else {
           if (theme !== 'random') themeForPrompt = theme;
         }
-        prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc);
+        prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc, tone);
       } else {
         activeTheme = 'custom';
         prompt = getSkillScenarioPrompt(
           customDescription.trim(),
           userContext?.profile || '',
           userContext?.currentLevel || 'Intermediate',
-          userContext?.goals || ''
+          userContext?.goals || '',
+          tone
         );
       }
 
@@ -124,7 +126,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         parsed.systemDetails,
         parsed.characterPersonality,
         parsed.characterSpeechStyle,
-        parsed.openingLine
+        parsed.openingLine,
+        tone,
       );
 
       const imagePromise = generateImage(

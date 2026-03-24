@@ -28,7 +28,7 @@ async function getSessionToken(): Promise<string> {
  * Generic function to call the AI proxy
  */
 async function callAIProxy(request: {
-  action: 'chat' | 'tts' | 'stt' | 'image'
+  action: 'chat' | 'tts' | 'stt' | 'image' | 'get_key'
   provider?: string
   model?: string
   [key: string]: unknown

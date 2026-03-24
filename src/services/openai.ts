@@ -1,5 +1,5 @@
 import { GoogleGenAI, Modality } from '@google/genai';
-import { getOpenAIKey, getGeminiKey, getGroqKey, getCachedAudio, setCachedAudio, getModelConfig } from './storage';
+import { getOpenAIKey, getGeminiKey, getGroqKey, getModelConfig, getCachedAudio, setCachedAudio } from './storage';
 import { pcm16Base64ToWavBase64 } from '../utils/audio';
 import type { Provider } from '../types/settings';
 

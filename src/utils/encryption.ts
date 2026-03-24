@@ -21,29 +21,30 @@ export interface EncryptedData {
 }
 
 /**
- * Generate a random salt for key derivation
- */
-function generateSalt(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
-}
-
-/**
  * Generate a random IV for AES-GCM
  */
 function generateIV(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  return new Uint8Array(crypto.getRandomValues(new Uint8Array(IV_LENGTH)))
 }
 
 /**
  * Convert ArrayBuffer to base64 string
  */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
+function arrayBufferToBase64(buffer: ArrayBufferLike): string {
   const bytes = new Uint8Array(buffer)
   let binary = ''
   for (const byte of bytes) {
     binary += String.fromCharCode(byte)
   }
   return btoa(binary)
+}
+
+function copyBytes(bytes: Uint8Array): Uint8Array {
+  return new Uint8Array(bytes)
+}
+
+function toBufferSource(bytes: Uint8Array): BufferSource {
+  return copyBytes(bytes) as BufferSource
 }
 
 /**
@@ -59,37 +60,6 @@ function base64ToUint8Array(base64: string): Uint8Array {
 }
 
 /**
- * Derive a cryptographic key from a password and salt
- *
- * @param password - The password to derive from (user's API key or a master key)
- * @param salt - The salt to use
- * @returns The derived CryptoKey
- */
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
-  const encoder = new TextEncoder()
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(password),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  )
-
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: ALGORITHM, length: KEY_LENGTH },
-    false,
-    ['encrypt', 'decrypt']
-  )
-}
-
-/**
  * Derive a key from user-specific data (user ID + a secret)
  * This ensures each user's keys are encrypted with a unique key
  *
@@ -102,7 +72,7 @@ export async function deriveUserKey(userId: string, secret: string): Promise<Cry
   const saltInput = encoder.encode(userId + '-salt')
   // Create a deterministic salt from user ID for key derivation
   const saltHash = await crypto.subtle.digest('SHA-256', saltInput)
-  const salt = new Uint8Array(saltHash.slice(0, SALT_LENGTH))
+  const salt = copyBytes(new Uint8Array(saltHash).slice(0, SALT_LENGTH))
 
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -115,7 +85,7 @@ export async function deriveUserKey(userId: string, secret: string): Promise<Cry
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt,
+      salt: toBufferSource(salt),
       iterations: 100000,
       hash: 'SHA-256',
     },
@@ -135,16 +105,16 @@ export async function deriveUserKey(userId: string, secret: string): Promise<Cry
  */
 export async function encrypt(plaintext: string, key: CryptoKey): Promise<EncryptedData> {
   const encoder = new TextEncoder()
-  const data = encoder.encode(plaintext)
+  const data = copyBytes(encoder.encode(plaintext))
   const iv = generateIV()
 
   const ciphertext = await crypto.subtle.encrypt(
     {
       name: ALGORITHM,
-      iv,
+      iv: toBufferSource(iv),
     },
     key,
-    data
+    toBufferSource(data)
   )
 
   return {
@@ -162,16 +132,16 @@ export async function encrypt(plaintext: string, key: CryptoKey): Promise<Encryp
  * @returns The decrypted plaintext
  */
 export async function decrypt(encryptedData: EncryptedData, key: CryptoKey): Promise<string> {
-  const ciphertext = base64ToUint8Array(encryptedData.ciphertext)
-  const iv = base64ToUint8Array(encryptedData.iv)
+  const ciphertext = copyBytes(base64ToUint8Array(encryptedData.ciphertext))
+  const iv = copyBytes(base64ToUint8Array(encryptedData.iv))
 
   const decrypted = await crypto.subtle.decrypt(
     {
       name: ALGORITHM,
-      iv,
+      iv: toBufferSource(iv),
     },
     key,
-    ciphertext
+    toBufferSource(ciphertext)
   )
 
   const decoder = new TextDecoder()
@@ -270,10 +240,10 @@ export async function exportKeyToBase64(key: CryptoKey): Promise<string> {
  * Import a CryptoKey from base64
  */
 export async function importKeyFromBase64(base64: string): Promise<CryptoKey> {
-  const raw = base64ToUint8Array(base64)
+  const raw = copyBytes(base64ToUint8Array(base64))
   return crypto.subtle.importKey(
     'raw',
-    raw,
+    toBufferSource(raw),
     { name: ALGORITHM, length: KEY_LENGTH },
     true,
     ['encrypt', 'decrypt']

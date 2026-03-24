@@ -6,10 +6,17 @@
 
 import { supabase } from '../services/supabase/client'
 import type { Card } from '../types/card'
-import type { GamificationState, Badge, SessionReport } from '../types/gamification'
+import type { ErrorPattern, SessionSnapshot } from '../types/errors'
+import type { GamificationState, SessionReport } from '../types/gamification'
 import type { LiveSession, PathProgress } from '../types/scenario'
 import type { ModelConfig, UserContext } from '../types/settings'
-import type { Profile, Gamification, Card as SupabaseCard, CardReview, CardEvaluation, Badge as SupabaseBadge, LiveSession as SupabaseLiveSession, ConversationTurn, SessionReport as SupabaseSessionReport, PathProgress as SupabasePathProgress, ModelConfig as SupabaseModelConfig } from '../types/supabase'
+import type {
+  Badge as SupabaseBadge,
+  CardReview,
+  ConversationTurn,
+  PathProgress as SupabasePathProgress,
+  SessionReport as SupabaseSessionReport,
+} from '../types/supabase'
 
 export interface MigrationProgress {
   stage: string
@@ -29,6 +36,8 @@ const KEYS = {
   modelConfig: 'el_model_config',
   userContext: 'el_user_context',
   conversationTone: 'el_conversation_tone',
+  errorPatterns: 'el_error_patterns',
+  errorSnapshots: 'el_session_snapshots',
 }
 
 /**
@@ -71,6 +80,10 @@ export async function migrateToSupabase(
 
   if (localStorage.getItem(KEYS.conversationTone)) {
     stages.push({ name: 'Migrating preferences...', fn: () => migrateConversationTone(userId) })
+  }
+
+  if (localStorage.getItem(KEYS.errorPatterns) || localStorage.getItem(KEYS.errorSnapshots)) {
+    stages.push({ name: 'Migrating error analytics...', fn: () => migrateErrorAnalytics(userId) })
   }
 
   const total = stages.length
@@ -422,5 +435,58 @@ async function migrateConversationTone(userId: string): Promise<void> {
 
   if (error) {
     console.error('Error updating conversation tone:', error)
+  }
+}
+
+/**
+ * Migrate error analytics
+ */
+async function migrateErrorAnalytics(userId: string): Promise<void> {
+  const rawPatterns = localStorage.getItem(KEYS.errorPatterns)
+  const rawSnapshots = localStorage.getItem(KEYS.errorSnapshots)
+
+  if (rawPatterns) {
+    const patterns: ErrorPattern[] = JSON.parse(rawPatterns)
+    if (patterns.length > 0) {
+      const { error } = await supabase
+        .from('error_patterns')
+        .insert(patterns.map(pattern => ({
+          user_id: userId,
+          pattern_key: pattern.id,
+          pattern: pattern.pattern,
+          category: pattern.category,
+          occurrences: pattern.occurrences,
+          first_seen: pattern.firstSeen,
+          last_seen: pattern.lastSeen,
+          examples: pattern.examples,
+          trend: pattern.trend,
+          recent_scores: pattern.recentScores,
+        })))
+
+      if (error) {
+        console.error('Error inserting error patterns:', error)
+      }
+    }
+  }
+
+  if (rawSnapshots) {
+    const snapshots: SessionSnapshot[] = JSON.parse(rawSnapshots)
+    if (snapshots.length > 0) {
+      const { error } = await supabase
+        .from('error_snapshots')
+        .insert(snapshots.map(snapshot => ({
+          user_id: userId,
+          date: snapshot.date,
+          total_errors: snapshot.totalErrors,
+          average_score: snapshot.averageScore,
+          by_category: snapshot.byCategory,
+          active_patterns: snapshot.activePatterns,
+          resolved_patterns: snapshot.resolvedPatterns,
+        })))
+
+      if (error) {
+        console.error('Error inserting error snapshots:', error)
+      }
+    }
   }
 }

@@ -468,6 +468,81 @@ CREATE TRIGGER update_encrypted_api_keys_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
+-- ERROR PATTERNS
+-- Persisted error analytics for review prioritization and dashboard insights
+-- ============================================================================
+CREATE TABLE error_patterns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  pattern_key TEXT NOT NULL,
+  pattern TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN (
+    'grammar', 'pronunciation', 'vocabulary', 'fluency', 'syntax',
+    'preposition', 'verb-tense', 'article', 'word-order', 'other'
+  )),
+  occurrences INTEGER NOT NULL DEFAULT 1,
+  first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  examples JSONB NOT NULL DEFAULT '[]'::jsonb,
+  trend TEXT NOT NULL DEFAULT 'stable' CHECK (trend IN ('improving', 'stable', 'worsening')),
+  recent_scores NUMERIC(4, 2)[] NOT NULL DEFAULT '{}'::NUMERIC[],
+  UNIQUE(user_id, pattern_key)
+);
+
+ALTER TABLE error_patterns ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own error patterns"
+  ON error_patterns FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own error patterns"
+  ON error_patterns FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own error patterns"
+  ON error_patterns FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own error patterns"
+  ON error_patterns FOR DELETE
+  USING (auth.uid() = user_id);
+
+CREATE INDEX idx_error_patterns_user_key ON error_patterns(user_id, pattern_key);
+CREATE INDEX idx_error_patterns_user_category ON error_patterns(user_id, category);
+CREATE INDEX idx_error_patterns_user_last_seen ON error_patterns(user_id, last_seen DESC);
+
+-- ============================================================================
+-- ERROR SNAPSHOTS
+-- Periodic snapshots of the user's error state over time
+-- ============================================================================
+CREATE TABLE error_snapshots (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  total_errors INTEGER NOT NULL DEFAULT 0,
+  average_score NUMERIC(4, 2) NOT NULL DEFAULT 0,
+  by_category JSONB NOT NULL DEFAULT '{}'::jsonb,
+  active_patterns INTEGER NOT NULL DEFAULT 0,
+  resolved_patterns INTEGER NOT NULL DEFAULT 0
+);
+
+ALTER TABLE error_snapshots ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own error snapshots"
+  ON error_snapshots FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own error snapshots"
+  ON error_snapshots FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own error snapshots"
+  ON error_snapshots FOR DELETE
+  USING (auth.uid() = user_id);
+
+CREATE INDEX idx_error_snapshots_user_date ON error_snapshots(user_id, date DESC);
+
+-- ============================================================================
 -- FUNCTIONS
 -- Helper functions for common queries
 -- ============================================================================
@@ -507,7 +582,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 
 -- card-audio: User recordings for cards
--- tts-cache: Text-to-speech audio cache
 -- conversation-audio: Live session audio
 -- session-dialogues: Analyzed dialogue audio
 -- card-images: Generated images for image cards

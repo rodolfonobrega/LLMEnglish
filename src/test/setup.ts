@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { afterEach, beforeAll, vi } from 'vitest';
 
 beforeAll(() => {

@@ -5,15 +5,12 @@
  */
 
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
 export function LoginPage() {
   const { signInWithGoogle, signInWithGithub, loading } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
-
   const handleSignIn = async (provider: 'google' | 'github') => {
     setError(null)
     setIsSubmitting(provider)

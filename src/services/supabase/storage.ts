@@ -6,7 +6,7 @@
  */
 
 import { supabase } from './client'
-import type { Card as SupabaseCard, CardReview, CardEvaluation, Gamification, Badge, LiveSession as SupabaseLiveSession, ConversationTurn, ConversationAnalysis, SessionReport as SupabaseSessionReport, PathProgress as SupabasePathProgress, ModelConfig as SupabaseModelConfig, Profile } from '../../types/supabase'
+import type { Card as SupabaseCard, CardReview, CardEvaluation, Badge, ConversationTurn } from '../../types/supabase'
 import type { Card } from '../../types/card'
 import type { GamificationState, SessionReport, Badge as LocalBadge } from '../../types/gamification'
 import type { LiveSession, PathProgress } from '../../types/scenario'
@@ -64,6 +64,11 @@ function supabaseCardToLocal(card: SupabaseCard, reviews?: CardReview[], evaluat
   }
 }
 
+type SupabaseCardWithRelations = SupabaseCard & {
+  card_reviews?: CardReview[] | null
+  card_evaluations?: CardEvaluation[] | null
+}
+
 // ============================================================================
 // CARDS
 // ============================================================================
@@ -83,12 +88,10 @@ export async function getCards(): Promise<Card[]> {
 
   if (error) throw new Error(`Failed to get cards: ${error.message}`)
 
-  return cards.map(card => {
+  return (cards as SupabaseCardWithRelations[]).map(card => {
     const reviews = card.card_reviews || []
     const evaluation = card.card_evaluations?.[0]
-    // Remove nested properties before converting
-    const { card_reviews, card_evaluations, ...cardData } = card as any
-    return supabaseCardToLocal(cardData, reviews, evaluation)
+    return supabaseCardToLocal(card, reviews, evaluation)
   })
 }
 
@@ -221,11 +224,10 @@ export async function getCardsDueForReview(): Promise<Card[]> {
 
   if (error) throw new Error(`Failed to get cards due for review: ${error.message}`)
 
-  return cards.map(card => {
+  return (cards as SupabaseCardWithRelations[]).map(card => {
     const reviews = card.card_reviews || []
     const evaluation = card.card_evaluations?.[0]
-    const { card_reviews, card_evaluations, ...cardData } = card as any
-    return supabaseCardToLocal(cardData, reviews, evaluation)
+    return supabaseCardToLocal(card, reviews, evaluation)
   })
 }
 
@@ -453,6 +455,17 @@ export async function saveLiveSession(session: LiveSession): Promise<void> {
   }
 }
 
+export async function clearLiveSessions(): Promise<void> {
+  const userId = getUserId()
+
+  const { error } = await supabase
+    .from('live_sessions')
+    .delete()
+    .eq('user_id', userId)
+
+  if (error) throw new Error(`Failed to clear live sessions: ${error.message}`)
+}
+
 // ============================================================================
 // PATH PROGRESS
 // ============================================================================
@@ -551,13 +564,15 @@ export async function isStepComplete(trailId: string, stepId: string): Promise<b
 export async function getTrailCompletedCount(trailId: string): Promise<number> {
   const userId = getUserId()
 
-  const { data, error } = await supabase
+  const { count, error } = await supabase
     .from('path_progress')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('trail_id', trailId)
 
-  return data?.length || 0
+  if (error) throw new Error(`Failed to get trail completed count: ${error.message}`)
+
+  return count || 0
 }
 
 // ============================================================================
@@ -853,8 +868,6 @@ export async function saveUserContext(context: UserContext): Promise<void> {
  * Save an API key (encrypted via Edge Function)
  */
 export async function saveApiKey(provider: 'openai' | 'gemini' | 'groq', key: string): Promise<void> {
-  const userId = getUserId()
-
   // This will call the Edge Function which handles encryption
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
@@ -886,8 +899,6 @@ export async function saveApiKey(provider: 'openai' | 'gemini' | 'groq', key: st
  * Get an API key (decrypted via Edge Function)
  */
 export async function getApiKey(provider: 'openai' | 'gemini' | 'groq'): Promise<string> {
-  const userId = getUserId()
-
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
     throw new Error('Not authenticated')
@@ -924,8 +935,6 @@ export async function saveApiKeys(keys: {
   gemini?: string
   groq?: string
 }): Promise<void> {
-  const userId = getUserId()
-
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
     throw new Error('Not authenticated')
@@ -951,69 +960,3 @@ export async function saveApiKeys(keys: {
   }
 }
 
-// ============================================================================
-// AUDIO CACHE (Supabase Storage)
-// ============================================================================
-
-const TTS_CACHE_BUCKET = 'tts-cache'
-
-/**
- * Get cached TTS audio from Supabase Storage
- */
-export async function getCachedAudio(key: string): Promise<string | null> {
-  const userId = getUserId()
-  const path = `${userId}/${key}`
-
-  const { data, error } = await supabase
-    .storage
-    .from(TTS_CACHE_BUCKET)
-    .createSignedUrl(path, 60) // 60 seconds valid
-
-  if (error) {
-    return null
-  }
-
-  // For now, we'll download the audio and convert to base64
-  // In production, consider using the signed URL directly
-  const response = await fetch(data.signedUrl)
-  if (!response.ok) {
-    return null
-  }
-
-  const blob = await response.blob()
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const result = reader.result as string
-      resolve(result.split(',')[1])
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
-
-/**
- * Cache TTS audio in Supabase Storage
- */
-export async function setCachedAudio(key: string, base64Audio: string): Promise<void> {
-  const userId = getUserId()
-  const path = `${userId}/${key}`
-
-  // Convert base64 to blob
-  const byteCharacters = atob(base64Audio)
-  const byteNumbers = new Array(byteCharacters.length)
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i)
-  }
-  const byteArray = new Uint8Array(byteNumbers)
-  const blob = new Blob([byteArray])
-
-  const { error } = await supabase
-    .storage
-    .from(TTS_CACHE_BUCKET)
-    .upload(path, blob, { upsert: true })
-
-  if (error) {
-    console.warn('Failed to cache audio in Supabase:', error)
-  }
-}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getCards, deleteCard, updateCard, addCard } from '../../services/storage';
+import { getCards, deleteCard, updateCard, addCard } from '../../services/supabase/storage';
 import { createDefaultCard } from '../../services/spacedRepetition';
+import { syncGamificationState } from '../../services/gamification';
 import { computeReviewStats } from '../../types/review';
 import type { Card } from '../../types/card';
 import { useTTS } from '../../hooks/useTTS';
@@ -19,6 +20,7 @@ import { cn } from '../../utils/cn';
 
 export function LibraryPage() {
   const [cards, setCards] = useState<Card[]>([]);
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
@@ -29,14 +31,21 @@ export function LibraryPage() {
   const [newType, setNewType] = useState<'phrase' | 'text' | 'roleplay'>('phrase');
   const { speak, isLoading: ttsLoading } = useTTS();
 
-  useEffect(() => { loadCards(); }, []);
+  useEffect(() => {
+    void loadCards()
+  }, []);
 
-  const loadCards = () => setCards(getCards());
+  const loadCards = async () => {
+    setIsLoading(true)
+    setCards(await getCards())
+    setIsLoading(false)
+  }
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    deleteCard(deleteTarget.id);
-    loadCards();
+    await deleteCard(deleteTarget.id)
+    await syncGamificationState()
+    await loadCards()
     if (selectedCard?.id === deleteTarget.id) setSelectedCard(null);
     setDeleteTarget(null);
   };
@@ -46,24 +55,25 @@ export function LibraryPage() {
     setEditPrompt(card.prompt);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingCard) return;
-    updateCard({ ...editingCard, prompt: editPrompt });
+    await updateCard({ ...editingCard, prompt: editPrompt })
     setEditingCard(null);
-    loadCards();
+    await loadCards()
   };
 
-  const handleAddManual = () => {
+  const handleAddManual = async () => {
     if (!newPrompt.trim()) return;
-    addCard(createDefaultCard({ type: newType, prompt: newPrompt.trim() }));
+    await addCard(createDefaultCard({ type: newType, prompt: newPrompt.trim() }))
+    await syncGamificationState()
     setNewPrompt('');
     setShowAddForm(false);
-    loadCards();
+    await loadCards()
   };
 
-  const handleScheduleReview = (card: Card) => {
-    updateCard({ ...card, nextReviewAt: new Date().toISOString() });
-    loadCards();
+  const handleScheduleReview = async (card: Card) => {
+    await updateCard({ ...card, nextReviewAt: new Date().toISOString() })
+    await loadCards()
   };
 
   const filteredCards = cards.filter(c =>
@@ -72,7 +82,7 @@ export function LibraryPage() {
   );
 
   if (selectedCard) {
-    return <CardDetail card={selectedCard} onBack={() => { setSelectedCard(null); loadCards(); }} />;
+    return <CardDetail card={selectedCard} onBack={() => { setSelectedCard(null); void loadCards(); }} />;
   }
 
   return (
@@ -125,7 +135,7 @@ export function LibraryPage() {
           <Button
             variant="coral"
             size="default"
-            onClick={handleAddManual}
+            onClick={() => { void handleAddManual() }}
             disabled={!newPrompt.trim()}
             className="w-full rounded-xl"
           >
@@ -151,7 +161,7 @@ export function LibraryPage() {
         description="Esta ação não pode ser desfeita. O card e seu histórico de revisão serão removidos permanentemente."
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
-        onConfirm={handleDeleteConfirm}
+        onConfirm={() => { void handleDeleteConfirm() }}
       />
 
       <Dialog open={!!editingCard} onOpenChange={open => { if (!open) setEditingCard(null); }}>
@@ -161,12 +171,17 @@ export function LibraryPage() {
         </div>
         <div className="flex gap-3 justify-end mt-6">
           <Button variant="secondary" onClick={() => setEditingCard(null)}>Cancelar</Button>
-          <Button variant="primary" onClick={handleSaveEdit}>Salvar</Button>
+          <Button variant="primary" onClick={() => { void handleSaveEdit() }}>Salvar</Button>
         </div>
       </Dialog>
 
       {/* Card list / empty state */}
-      {filteredCards.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 size={18} className="animate-spin mr-2" />
+          Carregando cards...
+        </div>
+      ) : filteredCards.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
           <div className="size-20 bg-[var(--sky-soft)] rounded-full flex items-center justify-center">
             <BookOpen size={36} className="text-[var(--sky)]" />
@@ -231,7 +246,7 @@ export function LibraryPage() {
                     <Edit3 size={14} />
                   </Button>
                   {!card.nextReviewAt && (
-                    <Button variant="ghost" size="sm" onClick={() => handleScheduleReview(card)} className="text-[var(--sky)] text-xs cursor-pointer">
+                    <Button variant="ghost" size="sm" onClick={() => { void handleScheduleReview(card) }} className="text-[var(--sky)] text-xs cursor-pointer">
                       + Revisão
                     </Button>
                   )}

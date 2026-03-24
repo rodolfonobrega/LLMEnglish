@@ -5,6 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/supabase'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -17,18 +18,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /**
  * Singleton Supabase client instance
  */
-let clientInstance: ReturnType<typeof createClient<Database>> | null = null
+let clientInstance: SupabaseClient | null = null
 
 /**
  * Get or create the Supabase client instance
  */
-export function getSupabaseClient() {
+export function getSupabaseClient(): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Supabase configuration missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
   }
 
   if (!clientInstance) {
-    clientInstance = createClient<Database>(
+    clientInstance = createClient(
       supabaseUrl,
       supabaseAnonKey,
       {

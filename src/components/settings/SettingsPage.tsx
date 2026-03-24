@@ -4,18 +4,22 @@ import {
   getConversationTone, saveConversationTone,
   getUserContext, saveUserContext,
   saveApiKeys,
-  type UserContext,
 } from '../../services/supabase/storage';
 import { useAuth } from '../../contexts/AuthContext';
-import { signOut } from '../../services/supabase/auth';
-import type { ModelConfig, Provider, ConversationTone } from '../../types/settings';
+import {
+  hydrateRuntimeState,
+  setRuntimeConversationTone,
+  setRuntimeModelConfig,
+  setRuntimeUserContext,
+} from '../../services/runtimeState';
+import type { ModelConfig, Provider, ConversationTone, UserContext } from '../../types/settings';
 import {
   DEFAULT_MODEL_CONFIG,
   CHAT_MODELS, STT_MODELS, TTS_MODELS,
   OPENAI_TTS_VOICES, GEMINI_TTS_VOICES, GROQ_TTS_VOICES,
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
 } from '../../types/settings';
-import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, User as UserIcon, LogOut, Mail } from 'lucide-react';
+import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -74,9 +78,9 @@ export function SettingsPage() {
   };
 
   const handleUserCtxChange = (field: keyof UserContext, value: string) => {
-    setUserCtx(prev => {
+    setUserCtx((prev: UserContext) => {
       const next = { ...prev, [field]: value };
-      saveUserContext(next);
+      void saveUserContext(next);
       return next;
     });
   };
@@ -163,6 +167,10 @@ export function SettingsPage() {
       await saveModelConfig(config);
       await saveConversationTone(tone);
       await saveUserContext(userCtx);
+      setRuntimeModelConfig(config);
+      setRuntimeConversationTone(tone);
+      setRuntimeUserContext(userCtx);
+      await hydrateRuntimeState();
       await refreshProfile(); // Update profile in auth context
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

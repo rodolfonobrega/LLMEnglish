@@ -19,9 +19,9 @@ import {
 } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/storage';
+import { addCard } from '../../services/supabase/storage';
 import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
-import { addXP } from '../../services/gamification';
+import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';
 import { Button } from '../ui/Button';
@@ -224,12 +224,11 @@ export function ExerciseMode() {
       // Record error patterns for intelligent review
       const tempCardId = `temp_${Date.now()}`;
       const patterns = await extractErrorPatterns(evalResult, prompt, tempCardId);
-      recordErrorPatterns(patterns);
+      await recordErrorPatterns(patterns)
 
       let xp = XP_PER_EXERCISE;
       if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
-      addXP(xp);
-      window.dispatchEvent(new Event('gamification-update'));
+      await addXP(xp)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Evaluation failed');
     } finally {
@@ -238,7 +237,7 @@ export function ExerciseMode() {
   };
 
   // ── Save to library ──────────────────────────────────────────────
-  const handleSaveToLibrary = () => {
+  const handleSaveToLibrary = async () => {
     if (!evaluation) return;
 
     const card = isAudio
@@ -262,9 +261,9 @@ export function ExerciseMode() {
         userAudioBlob: userAudioBase64 || undefined,
       });
 
-    addCard(card);
+    await addCard(card)
+    await syncGamificationState()
     setSaved(true);
-    window.dispatchEvent(new Event('gamification-update'));
   };
 
   // ── Reset ────────────────────────────────────────────────────────
@@ -532,7 +531,7 @@ export function ExerciseMode() {
 
         <EvaluationResults
           result={evaluation}
-          onSaveToLibrary={handleSaveToLibrary}
+          onSaveToLibrary={() => { void handleSaveToLibrary() }}
           showSaveButton={!saved}
         />
 

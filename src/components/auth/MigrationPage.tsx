@@ -18,6 +18,8 @@ const LOCAL_STORAGE_KEYS = {
   modelConfig: 'el_model_config',
   userContext: 'el_user_context',
   conversationTone: 'el_conversation_tone',
+  errorPatterns: 'el_error_patterns',
+  errorSnapshots: 'el_session_snapshots',
 }
 
 interface MigrationData {
@@ -29,6 +31,8 @@ interface MigrationData {
   hasPathProgress: boolean
   hasModelConfig: boolean
   hasUserContext: boolean
+  errorPatternsCount: number
+  errorSnapshotsCount: number
 }
 
 interface MigrationProgress {
@@ -57,6 +61,8 @@ export function MigrationPage() {
       hasPathProgress: false,
       hasModelConfig: false,
       hasUserContext: false,
+      errorPatternsCount: 0,
+      errorSnapshotsCount: 0,
     }
 
     try {
@@ -84,6 +90,18 @@ export function MigrationPage() {
       data.hasModelConfig = !!localStorage.getItem(LOCAL_STORAGE_KEYS.modelConfig)
       data.hasUserContext = !!localStorage.getItem(LOCAL_STORAGE_KEYS.userContext)
 
+      const errorPatterns = localStorage.getItem(LOCAL_STORAGE_KEYS.errorPatterns)
+      if (errorPatterns) {
+        const parsed = JSON.parse(errorPatterns)
+        data.errorPatternsCount = Array.isArray(parsed) ? parsed.length : 0
+      }
+
+      const errorSnapshots = localStorage.getItem(LOCAL_STORAGE_KEYS.errorSnapshots)
+      if (errorSnapshots) {
+        const parsed = JSON.parse(errorSnapshots)
+        data.errorSnapshotsCount = Array.isArray(parsed) ? parsed.length : 0
+      }
+
       data.hasData =
         data.cardsCount > 0 ||
         data.hasGamification ||
@@ -91,7 +109,9 @@ export function MigrationPage() {
         data.sessionReportsCount > 0 ||
         data.hasPathProgress ||
         data.hasModelConfig ||
-        data.hasUserContext
+        data.hasUserContext ||
+        data.errorPatternsCount > 0 ||
+        data.errorSnapshotsCount > 0
     } catch (err) {
       console.error('Error checking LocalStorage:', err)
     }
@@ -251,6 +271,22 @@ export function MigrationPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   User profile settings
+                </li>
+              )}
+              {migrationData.errorPatternsCount > 0 && (
+                <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {migrationData.errorPatternsCount} error pattern{migrationData.errorPatternsCount !== 1 ? 's' : ''}
+                </li>
+              )}
+              {migrationData.errorSnapshotsCount > 0 && (
+                <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {migrationData.errorSnapshotsCount} progress snapshot{migrationData.errorSnapshotsCount !== 1 ? 's' : ''}
                 </li>
               )}
             </ul>

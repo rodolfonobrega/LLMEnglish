@@ -1,54 +1,74 @@
-import { Flame, Zap, Star } from 'lucide-react';
+import { Star, Zap, Flame } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
+// New variants
+type XPBadgeVariant = 'xp' | 'level' | 'streak';
+
 interface XPBadgeProps {
-  amount: number;
-  variant?: 'default' | 'bonus' | 'streak' | 'possible';
+  // New API
+  variant?: XPBadgeVariant;
+  value?: number | string;
+
+  // Backward compatible
+  amount?: number;
   size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
+
+  className?: string;
 }
 
-export function XPBadge({
-  amount,
-  variant = 'default',
-  size = 'md',
-  showIcon = true
-}: XPBadgeProps) {
-  const variants = {
-    default: 'bg-[var(--coral-soft)] text-[var(--coral)] border-[var(--coral)]/20',
-    bonus: 'bg-[var(--amber-soft)] text-[var(--amber)] border-[var(--amber)]/20',
-    streak: 'bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger)]/20',
-    possible: 'bg-[var(--sky-soft)] text-[var(--sky)] border-[var(--sky)]/20',
-  };
+const variantConfig = {
+  xp: {
+    icon: Star,
+    bgColor: 'bg-warning-soft',
+    textColor: 'text-warning',
+  },
+  level: {
+    icon: Zap,
+    bgColor: 'bg-primary-soft',
+    textColor: 'text-primary',
+  },
+  streak: {
+    icon: Flame,
+    bgColor: 'bg-danger-soft',
+    textColor: 'text-danger',
+  },
+} as const;
 
-  const sizes = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-sm',
+export function XPBadge({
+  variant = 'xp',
+  value,
+  amount,
+  size = 'md',
+  showIcon = true,
+  className,
+}: XPBadgeProps) {
+  // Backward compatibility: if amount is provided, treat as xp variant
+  const effectiveVariant = amount !== undefined ? 'xp' : variant;
+  const effectiveValue = amount !== undefined ? `+${amount} XP` : value;
+
+  const config = variantConfig[effectiveVariant];
+  const Icon = config.icon;
+
+  const sizeClasses = {
+    sm: 'px-2 py-1 text-xs',
+    md: 'px-3 py-1.5 text-sm',
     lg: 'px-4 py-2 text-base',
   };
 
-  const icons = {
-    default: Flame,
-    bonus: Zap,
-    streak: Flame,
-    possible: Star,
-  };
-
-  const Icon = icons[variant];
-
   return (
     <div className={cn(
-      'inline-flex items-center gap-1.5 rounded-full border font-bold',
-      variants[variant],
-      sizes[size]
+      "inline-flex items-center gap-1.5 rounded-lg",
+      config.bgColor,
+      config.textColor,
+      sizeClasses[size],
+      "font-semibold",
+      className
     )}>
-      {showIcon && <Icon className={cn(
-        'fill-current',
-        size === 'sm' ? 'w-3 h-3' : size === 'md' ? 'w-4 h-4' : 'w-5 h-5'
-      )} />}
-      <span>+{amount} XP</span>
-      {variant === 'possible' && <span className="font-normal opacity-70">possible</span>}
-      {variant === 'bonus' && <span className="font-normal opacity-70">Bonus!</span>}
+      {showIcon && <Icon className="w-4 h-4 fill-current" />}
+      <span>
+        {effectiveVariant === 'level' && 'Lv.'}{effectiveValue}
+      </span>
     </div>
   );
 }

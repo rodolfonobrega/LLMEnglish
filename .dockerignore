@@ -10,6 +10,3 @@ dist/
 .vscode/
 .idea/
 .cursor/
-dialog.html
-extract_user_dialogs.py
-user_dialogs.txt

@@ -1,193 +1,145 @@
-# SpeakLab — English Speaking Practice App
+# LLMEnglish
 
-A flashcard-style English speaking practice app powered by AI. Record yourself speaking, get instant evaluation with pronunciation feedback, and practice real-time conversations with an AI partner.
+AI-powered English speaking practice app built with React, Vite, and Supabase.
 
----
+## What is versioned
 
-## Quick Start
+- Application code in `src/`
+- Supabase schema in `supabase/migrations/`
+- Supabase local config in `supabase/config.toml`
+- Edge Function source in `supabase/functions/ai-proxy/`
+- Example environment files only, never real secrets
 
-### 1. Get your API keys
+The repo is the source of truth. Database changes belong in `supabase/migrations`, not in the Supabase SQL Editor.
 
-You need **at least one** of these (both recommended for full functionality):
+## Quick start
 
-| Provider | What it powers | Get a key |
-|---|---|---|
-| **OpenAI** | Text generation, speech-to-text, text-to-speech, image generation | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-| **Google Gemini** | Live Roleplay (real-time audio conversations), optionally text generation | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+### Frontend only against the hosted Supabase project
 
-### 2. Run the app
-
-**Option A — Docker (recommended):**
-
-```bash
-make docker-build    # build the image
-make docker-run      # run at http://localhost:8888
-```
-
-**Option B — Local development:**
+1. Install dependencies:
 
 ```bash
-make install         # install dependencies
-make dev             # start dev server at http://localhost:5173
+make install
 ```
 
-### 3. Configure the app
-
-1. Open the app in your browser
-2. Go to **Settings** (gear icon in the bottom navigation bar)
-3. Paste your **OpenAI API Key** and/or **Gemini API Key**
-4. Choose your preferred models (or keep the defaults)
-5. Click **Save Settings**
-
-You're ready to go!
-
----
-
-## Features
-
-### Discovery Mode
-Practice new content with four exercise types:
-
-- **Phrase Translation** — AI gives you a short phrase in Portuguese, you speak it in English
-- **Text Translation** — Longer passages (spoken language: ordering food, telling stories, presentations)
-- **Role-Play** — AI describes a situation, you speak how you'd handle it
-- **Image Description** — AI generates an image, you describe what you see
-
-Each exercise includes:
-- Target vocabulary input (comma-separated words you want to practice)
-- Context/topic field (e.g., "job interview", "pyspark")
-- Theme selector (food, travel, work, etc.)
-- Audio recording with playback before submitting
-- Discard and re-record option
-- AI evaluation: score, corrections, better alternatives, pronunciation feedback
-
-### Review Mode
-Spaced repetition (SM-2 algorithm) for saved cards:
-- Only shows the prompt — never the answer
-- Tracks review history, correct count, average score
-- Adjusts scheduling based on your performance
-
-### Live Roleplay
-Real-time audio conversation with an AI partner via Gemini Live API:
-- AI creates a scenario (description in Portuguese to avoid giving you English hints)
-- You're always the customer/tourist/client
-- Natural back-and-forth conversation
-- Post-conversation analysis with clean dialogue transcript
-- Shadowing Lab: generate full dialogue audio with two different voices
-
-### Library
-Manage all your saved cards:
-- View review stats per card
-- Listen to AI audio for any card
-- Edit, delete, or manually add cards
-- View detailed evaluation results
-- Schedule cards for review
-
-### Gamification
-- XP for every exercise
-- Daily streak tracking
-- Level progression
-- Achievement badges
-
----
-
-## Model Configuration
-
-All models are configurable from the **Settings** page. Here's what each slot does:
-
-| Slot | Default | Options | Needs |
-|---|---|---|---|
-| **Text Generation** | `gpt-4o-mini` (OpenAI) | GPT-4o, GPT-4.1, o4-mini, Gemini Flash/Pro | OpenAI or Gemini key |
-| **Speech-to-Text** | `whisper-1` | GPT-4o Transcribe variants | OpenAI key |
-| **Text-to-Speech** | `tts-1` / `nova` | TTS-1 HD, GPT-4o Mini TTS / 10 voice options | OpenAI key |
-| **Image Generation** | `dall-e-3` | DALL-E 2, GPT Image 1 | OpenAI key |
-| **Live Roleplay** | `gemini-2.0-flash-exp` / `Aoede` | Gemini Live models / 5 voice options | Gemini key |
-
-If you pick a Gemini model for text generation, it will use your Gemini key automatically.
-
----
-
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── discovery/       Phrase, Text, RolePlay, Image modes
-│   ├── review/          Spaced repetition review session
-│   ├── live-roleplay/   Real-time audio conversation
-│   ├── library/         Card management
-│   ├── settings/        API keys + model configuration
-│   ├── layout/          Header, Navigation, Layout
-│   └── shared/          AudioRecorder, ScoreDisplay, EvaluationResults, ThemeSelector
-├── hooks/               useAudioRecorder, useTTS, useLocalStorage
-├── services/
-│   ├── openai.ts        OpenAI + Gemini REST API calls
-│   ├── openaiRealtime.ts  OpenAI Realtime WebSocket (STT)
-│   ├── geminiLive.ts    Gemini Live WebSocket (audio conversation)
-│   ├── spacedRepetition.ts  SM-2 algorithm
-│   ├── storage.ts       LocalStorage CRUD
-│   └── gamification.ts  XP, streaks, badges
-├── types/               TypeScript interfaces
-└── utils/               Audio helpers, AI prompts
-```
-
----
-
-## Available Commands
+2. Copy the frontend env file and fill in the hosted project values:
 
 ```bash
-make help            # show all commands
-
-# Local
-make install         # npm ci
-make dev             # dev server with hot-reload
-make build           # production build
-make preview         # build + serve locally
-make clean           # remove dist/ and node_modules/
-
-# Docker
-make docker-build    # build image
-make docker-run      # run container (port 8888)
-make docker-stop     # stop container
-make docker-restart  # stop + run
-make docker-logs     # tail container logs
-
-# Testing
-npm run test                 # run all Vitest tests once
-npm run test:coverage        # run tests with coverage report
-npm run test:models:mock     # run model integration tests with mocks
-npm run test:models:smoke    # run real API smoke tests using .env keys
+cp .env.local.example .env.local
 ```
 
-Smoke test model overrides (optional):
+3. Start the app:
 
 ```bash
-SMOKE_OPENAI_CHAT_MODEL=gpt-4o-mini \
-SMOKE_GEMINI_IMAGE_MODEL=gemini-2.5-flash-image \
-npm run test:models:smoke
+make dev
 ```
 
-Notes:
-- Realtime providers (Gemini Live and OpenAI Realtime) are validated in mocked integration tests (`src/services/*.test.ts`).
-- REST smoke tests validate chat, STT, TTS, and image endpoints with real credentials.
+The app runs on `http://localhost:5173` by default.
 
----
+### Full local Supabase stack
 
-## Tech Stack
+1. Copy the local Auth env file and fill in your OAuth secrets:
 
-- **React 19** + **TypeScript** + **Vite 6**
-- **Tailwind CSS 4** for styling
-- **React Router 7** for navigation
-- **Lucide React** for icons
-- **OpenAI API** — GPT, Whisper, TTS, DALL-E
-- **Gemini Live API** — real-time audio via WebSocket
-- **LocalStorage** for all data persistence
-- **Docker** + **nginx** for production deployment
+```bash
+cp .env.example .env
+cp supabase/functions/.env.example supabase/functions/.env
+```
 
----
+2. Set a 32-byte hex `ENCRYPTION_KEY` in `supabase/functions/.env`:
 
-## Notes
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-- **API keys are stored in your browser's LocalStorage.** This is a client-side-only app with no backend server. Suitable for personal use.
-- **Microphone access is required** for audio recording. Your browser will ask for permission on first use.
-- **HTTPS is required** for microphone access in production. The Docker setup uses nginx on port 80 — put it behind a reverse proxy with TLS for production use.
+3. Start Supabase and reset the local database from migrations:
+
+```bash
+make supabase-start
+make supabase-db-reset
+```
+
+4. Start the frontend:
+
+```bash
+make dev
+```
+
+Useful local commands:
+
+```bash
+make supabase-status
+make supabase-functions-serve
+make supabase-stop
+```
+
+## Hosted project workflow
+
+The current hosted project ref is `gpmjxqprknkqawlzhoku`.
+
+Link the CLI once on a new machine:
+
+```bash
+make supabase-link
+```
+
+Push versioned database changes:
+
+```bash
+make supabase-db-push
+```
+
+Deploy the Edge Function:
+
+```bash
+make supabase-functions-deploy
+```
+
+## Environment files
+
+- `.env.local`: frontend-only Vite variables such as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+- `.env`: local Supabase CLI/Auth secrets referenced by `supabase/config.toml`
+- `supabase/functions/.env`: local Edge Function secrets such as `ENCRYPTION_KEY`
+
+Do not commit any of them.
+
+## Data model
+
+User data lives in Supabase:
+
+- profiles and auth-linked preferences
+- cards, reviews, evaluations, reports, trails, XP, badges
+- live session history
+- encrypted per-user provider keys
+- error analytics snapshots and patterns
+
+Client-only data stays local on purpose:
+
+- theme and UI preferences
+- browser cache such as generated TTS audio
+
+## Commands
+
+```bash
+make help
+make dev
+make build
+make lint
+make test
+make test-coverage
+make test-models-mock
+make test-models-smoke
+make supabase-start
+make supabase-db-reset
+make supabase-db-push
+make supabase-functions-serve
+make supabase-functions-deploy
+```
+
+## Verification
+
+Before pushing changes, run:
+
+```bash
+npm run build
+npm run lint
+```

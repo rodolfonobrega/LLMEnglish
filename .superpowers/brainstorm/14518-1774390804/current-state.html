@@ -1,0 +1,144 @@
+<h2>Análise do Estado Atual</h2>
+<p class="subtitle">Identificando problemas de consistência visual na aplicação</p>
+
+<div class="section">
+  <div class="label">PROBLEMAS IDENTIFICADOS</div>
+
+  <div class="mockup" style="margin-top: 16px;">
+    <div class="mockup-header">Mix de Estilos Atuais</div>
+    <div class="mockup-body" style="padding: 20px; display: grid; gap: 12px;">
+
+      <!-- Gradientes "AI" -->
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="label">CARDS:</div>
+        <div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 12px 20px; border-radius: 12px; color: white; font-size: 12px;">Gradientes roxos/azuis</div>
+        <div style="background: linear-gradient(135deg, #f97316, #ea580c); padding: 12px 20px; border-radius: 12px; color: white; font-size: 12px;">Gradientes laranja</div>
+        <div style="background: linear-gradient(135deg, #22c55e, #14b84a); padding: 12px 20px; border-radius: 12px; color: white; font-size: 12px;">Gradientes verdes</div>
+        <span style="color: #666; font-size: 11px;">← Muito "AI-generated"</span>
+      </div>
+
+      <!-- Elementos decorativos -->
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="label">DECORAÇÃO:</div>
+        <div style="position: relative; background: linear-gradient(135deg, #8b5cf6, #6366f1); padding: 16px 24px; border-radius: 16px; color: white;">
+          Círculos decorativos
+          <div style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+          <div style="position: absolute; bottom: -8px; left: -8px; width: 20px; height: 20px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+        </div>
+        <span style="color: #666; font-size: 11px;">← Padrão genérico</span>
+      </div>
+
+      <!-- Botões inconsistentes -->
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="label">BOTÕES:</div>
+        <button style="background: #09090b; color: white; padding: 8px 16px; border-radius: 6px; border: none; font-size: 12px;">Primary</button>
+        <button style="background: transparent; padding: 8px 16px; border-radius: 6px; border: 1px solid #e4e4e7; font-size: 12px;">Outline</button>
+        <button style="background: #f97316; color: white; padding: 8px 16px; border-radius: 12px; border: none; font-size: 12px;">Coral (custom)</button>
+        <button style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 8px 16px; border-radius: 12px; border: none; font-size: 12px;">Gradient</button>
+        <span style="color: #666; font-size: 11px;">← 4 estilos diferentes!</span>
+      </div>
+
+      <!-- Navegação -->
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="label">NAVEGAÇÃO:</div>
+        <div style="display: flex; gap: 4px; background: #f4f4f5; padding: 6px; border-radius: 12px;">
+          <span style="padding: 6px 12px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-radius: 8px; font-size: 11px;">Ativo: fundo claro</span>
+          <span style="padding: 6px 12px; color: #71717a; font-size: 11px;">Inativo: cinza</span>
+        </div>
+      </div>
+
+      <!-- Icons sizes -->
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="label">ICONS:</div>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <div style="width: 20px; height: 20px; background: #3b82f6; border-radius: 4px;"></div>
+          <div style="width: 24px; height: 24px; background: #8b5cf6; border-radius: 6px;"></div>
+          <div style="width: 40px; height: 40px; background: #22c55e; border-radius: 12px;"></div>
+          <div style="width: 48px; height: 48px; background: #f97316; border-radius: 16px;"></div>
+        </div>
+        <span style="color: #666; font-size: 11px;">← Tamanhos variados</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="label">OPÇÕES DE DIREÇÃO DE DESIGN</div>
+
+  <div class="cards">
+    <div class="card" data-choice="minimal" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>A. Minimal & Clean</h3>
+        <p>Remove gradientes, círculos decorativos e emojis. Cores sólidas, muito espaço em branco, tipografia forte. Inspirado em Linear, Raycast.</p>
+        <div style="margin-top: 12px; padding: 12px; background: #fafafa; border-radius: 8px; border: 1px solid #e4e4e7;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="width: 40px; height: 40px; background: #09090b; border-radius: 8px;"></div>
+            <div>
+              <div style="width: 120px; height: 8px; background: #09090b; border-radius: 4px; margin-bottom: 4px;"></div>
+              <div style="width: 80px; height: 6px; background: #d4d4d8; border-radius: 3px;"></div>
+            </div>
+          </div>
+          <div style="width: 100%; height: 36px; background: #09090b; border-radius: 6px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="playful" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>B. Playful Modern</h3>
+        <p>Mantém a energia mas refina. Gradientes mais sutis, menos cores, micro-interações refinadas. Inspirado em Duolingo, Notion.</p>
+        <div style="margin-top: 12px; padding: 12px; background: #fafafa; border-radius: 12px; border: 1px solid #e4e4e7;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #58cc02, #58a700); border-radius: 12px;"></div>
+            <div>
+              <div style="width: 120px; height: 8px; background: #3c3c3c; border-radius: 4px; margin-bottom: 4px;"></div>
+              <div style="width: 80px; height: 6px; background: #afafaf; border-radius: 3px;"></div>
+            </div>
+          </div>
+          <div style="width: 100%; height: 36px; background: linear-gradient(135deg, #58cc02, #58a700); border-radius: 12px; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">Continue</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="premium" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>C. Premium Dark</h3>
+        <p>Foco em dark mode elegante. Alto contraste, acentos sutis, glassmorphism refinado. Inspirado em Arc, Spotify.</p>
+        <div style="margin-top: 12px; padding: 12px; background: #18181b; border-radius: 12px; border: 1px solid #27272a;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 10px;"></div>
+            <div>
+              <div style="width: 120px; height: 8px; background: #fafafa; border-radius: 4px; margin-bottom: 4px;"></div>
+              <div style="width: 80px; height: 6px; background: #71717a; border-radius: 3px;"></div>
+            </div>
+          </div>
+          <div style="width: 100%; height: 36px; background: rgba(255,255,255,0.1); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="brutalist" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>D. Brutalist Fresh</h3>
+        <p>Bordas pretas fortes, sombras duras, cores vibrantes sólidas. Personalidade única, anti-ai. Inspirado em Vercel, Bleeding Edge.</p>
+        <div style="margin-top: 12px; padding: 12px; background: #fafafa; border: 2px solid #09090b;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="width: 40px; height: 40px; background: #ff6600; border: 2px solid #09090b;"></div>
+            <div>
+              <div style="width: 120px; height: 8px; background: #09090b; margin-bottom: 4px;"></div>
+              <div style="width: 80px; height: 6px; background: #09090b;"></div>
+            </div>
+          </div>
+          <div style="width: 100%; height: 36px; background: #ff6600; border: 2px solid #09090b; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white;">ACTION →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p style="text-align: center; color: #666; font-size: 14px;">
+    Qual direção visual mais combina com o que você imagina para o SpeakLab?
+  </p>
+</div>

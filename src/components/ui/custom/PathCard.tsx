@@ -1,14 +1,6 @@
 import { ChevronRight, Star } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
-// Type for gradient colors (backward compatibility)
-type GradientColor =
-  | 'from-sky-400 to-blue-500'
-  | 'from-violet-400 to-purple-500'
-  | 'from-emerald-400 to-teal-500'
-  | 'from-amber-400 to-orange-500'
-  | 'from-rose-400 to-pink-500';
-
 // New accent color type
 type AccentColor = 'primary' | 'success' | 'warning' | 'danger' | 'special';
 
@@ -16,7 +8,7 @@ interface PathCardProps {
   title: string;
   subtitle?: string;
   emoji?: string;
-  gradient?: GradientColor;  // Backward compatible
+  gradient?: string;  // Backward compatible - accepts any string
   accentColor?: AccentColor;  // New API
   xpRange?: string;
   progress?: number;
@@ -27,7 +19,7 @@ interface PathCardProps {
 }
 
 // Map old gradient names to new accent colors
-function getAccentFromGradient(grad?: GradientColor): AccentColor {
+function getAccentFromGradient(grad?: string): AccentColor {
   if (!grad) return 'primary';
   if (grad.includes('sky') || grad.includes('blue')) return 'primary';
   if (grad.includes('emerald') || grad.includes('teal') || grad.includes('green')) return 'success';

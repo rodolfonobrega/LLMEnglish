@@ -17,14 +17,14 @@ interface QuickAction {
 }
 
 const quickActions: QuickAction[] = [
-  { to: '/exercises', icon: Sparkles, label: 'Exercícios', description: 'Frases, textos e situações', color: 'bg-[var(--amber)]', hoverBorder: 'hover:border-[var(--amber)]/30' },
-  { to: '/paths', icon: Map, label: 'Trilhas', description: 'Cenários guiados passo a passo', color: 'bg-[var(--sky)]', hoverBorder: 'hover:border-[var(--sky)]/30' },
-  { to: '/live', icon: Mic, label: 'Simulação', description: 'Conversa em tempo real', color: 'bg-violet-500', hoverBorder: 'hover:border-violet-500/30' },
-  { to: '/review', icon: RotateCcw, label: 'Revisão', description: 'Repetição espaçada', color: 'bg-purple-500', hoverBorder: 'hover:border-purple-500/30' },
-  { to: '/scripts', icon: FileText, label: 'Scripts', description: 'Atue diálogos como um ator', color: 'bg-[var(--coral)]', hoverBorder: 'hover:border-[var(--coral)]/30' },
-  { to: '/library', icon: BookOpen, label: 'Flashcards', description: 'Sua coleção de cards', color: 'bg-[var(--leaf)]', hoverBorder: 'hover:border-[var(--leaf)]/30' },
-  { to: '/errors', icon: AlertTriangle, label: 'Análise de Erros', description: 'Acompanhe seus pontos fracos', color: 'bg-[var(--danger)]', hoverBorder: 'hover:border-[var(--danger)]/30' },
-  { to: '/history', icon: Clock, label: 'Histórico', description: 'Reveja conversas anteriores', color: 'bg-violet-500', hoverBorder: 'hover:border-violet-500/30' },
+  { to: '/exercises', icon: Sparkles, label: 'Exercícios', description: 'Frases, textos e situações', color: 'bg-warning-soft', hoverBorder: 'hover:border-warning/30' },
+  { to: '/paths', icon: Map, label: 'Trilhas', description: 'Cenários guiados passo a passo', color: 'bg-primary-soft', hoverBorder: 'hover:border-primary/30' },
+  { to: '/live', icon: Mic, label: 'Simulação', description: 'Conversa em tempo real', color: 'bg-special-soft', hoverBorder: 'hover:border-special/30' },
+  { to: '/review', icon: RotateCcw, label: 'Revisão', description: 'Repetição espaçada', color: 'bg-special-soft', hoverBorder: 'hover:border-special/30' },
+  { to: '/scripts', icon: FileText, label: 'Scripts', description: 'Atue diálogos como um ator', color: 'bg-danger-soft', hoverBorder: 'hover:border-danger/30' },
+  { to: '/library', icon: BookOpen, label: 'Flashcards', description: 'Sua coleção de cards', color: 'bg-success-soft', hoverBorder: 'hover:border-success/30' },
+  { to: '/errors', icon: AlertTriangle, label: 'Erros', description: 'Acompanhe seus pontos fracos', color: 'bg-danger-soft', hoverBorder: 'hover:border-danger/30' },
+  { to: '/history', icon: Clock, label: 'Histórico', description: 'Reveja conversas anteriores', color: 'bg-special-soft', hoverBorder: 'hover:border-special/30' },
 ];
 
 export function DiscoveryPage() {
@@ -46,8 +46,8 @@ export function DiscoveryPage() {
           <h1 className="text-2xl font-bold text-foreground">Bem-vindo!</h1>
           <p className="text-muted-foreground">Pronto pra um novo desafio?</p>
         </div>
-        <div className="w-12 h-12 bg-[var(--amber-soft)] rounded-full flex items-center justify-center">
-          <Hand className="w-6 h-6 text-[var(--amber)]" />
+        <div className="w-12 h-12 bg-warning-soft rounded-full flex items-center justify-center">
+          <Hand className="w-6 h-6 text-warning" />
         </div>
       </div>
 
@@ -63,32 +63,31 @@ export function DiscoveryPage() {
 
       {/* Live Roleplay Hero Card */}
       <section>
-        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="bg-special-soft border border-special/20 rounded-xl p-5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-special to-primary" />
 
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-3xl">🎭</span>
-              <div className="px-2 py-1 bg-white/20 rounded-lg backdrop-blur-sm">
-                <span className="text-xs font-bold">60-130 XP</span>
+              <span className="text-2xl">🎭</span>
+              <div className="px-2 py-1 bg-special/20 rounded-md">
+                <span className="text-xs font-semibold text-special">60-130 XP</span>
               </div>
             </div>
 
-            <h3 className="text-xl font-bold mb-1">Simulação ao Vivo</h3>
-            <p className="text-white/80 text-sm mb-4">Finja que é de verdade. Pratique com IA em tempo real.</p>
+            <h3 className="text-lg font-bold text-foreground mb-1">Simulação ao Vivo</h3>
+            <p className="text-muted-foreground text-sm mb-4">Finja que é de verdade. Pratique com IA em tempo real.</p>
 
             <div className="flex gap-2">
               <button
                 onClick={() => navigate('/live')}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-purple-600 rounded-xl font-semibold text-sm hover:bg-white/90 transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-special text-special-foreground rounded-lg font-semibold text-sm hover:bg-special/90 transition-colors cursor-pointer"
               >
                 <Target className="w-4 h-4" />
                 Cenário Aleatório
               </button>
               <button
                 onClick={() => navigate('/live')}
-                className="flex items-center gap-2 px-4 py-2 border border-white/30 text-white rounded-xl font-semibold text-sm hover:bg-white/10 transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 border border-border bg-card text-foreground rounded-lg font-semibold text-sm hover:bg-muted transition-colors cursor-pointer"
               >
                 <Compass className="w-4 h-4" />
                 Personalizado

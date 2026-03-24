@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCardsDueForReview, updateCard } from '../../services/storage';
+import { getCardsDueForReview, updateCard } from '../../services/supabase/storage';
 import { updateCardSchedule } from '../../services/spacedRepetition';
 import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
 import { extractErrorPatterns, recordErrorPatterns, recordSessionSnapshot } from '../../services/errorAnalysis';
@@ -22,6 +22,7 @@ type ReviewMode = 'standard' | 'intelligent';
 export function ReviewPage() {
   const navigate = useNavigate();
   const [dueCards, setDueCards] = useState<Card[]>([]);
+  const [isLoadingCards, setIsLoadingCards] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -34,10 +35,11 @@ export function ReviewPage() {
   const [tutorExplanation, setTutorExplanation] = useState<string | null>(null);
   const [isGeneratingTutor, setIsGeneratingTutor] = useState(false);
 
-  const loadDueCards = useCallback((mode: ReviewMode = reviewMode) => {
+  const loadDueCards = useCallback(async (mode: ReviewMode = reviewMode) => {
+    setIsLoadingCards(true)
     const cards = mode === 'intelligent'
-      ? getPrioritizedReviewCards(20)
-      : getCardsDueForReview();
+      ? await getPrioritizedReviewCards(20)
+      : await getCardsDueForReview()
 
     setDueCards(cards);
     setCurrentIndex(0);
@@ -46,10 +48,11 @@ export function ReviewPage() {
     setSessionComplete(false);
     setSessionScores([]);
     setReviewMode(mode);
+    setIsLoadingCards(false)
   }, [reviewMode]);
 
   useEffect(() => {
-    loadDueCards();
+    void loadDueCards()
   }, [loadDueCards]);
 
   const currentCard = dueCards[currentIndex];
@@ -76,15 +79,14 @@ export function ReviewPage() {
         userTranscription: transcription,
       });
       updatedCard.latestEvaluation = evalResult;
-      updateCard(updatedCard);
+      await updateCard(updatedCard)
 
       const patterns = await extractErrorPatterns(evalResult, currentCard.prompt, currentCard.id);
-      recordErrorPatterns(patterns);
+      await recordErrorPatterns(patterns)
 
       setSessionScores(prev => [...prev, evalResult.score]);
 
-      addXP(XP_PER_REVIEW);
-      window.dispatchEvent(new Event('gamification-update'));
+      await addXP(XP_PER_REVIEW)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha na avaliação');
     } finally {
@@ -115,7 +117,7 @@ export function ReviewPage() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < dueCards.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setEvaluation(null);
@@ -123,9 +125,18 @@ export function ReviewPage() {
       setError(null);
     } else {
       setSessionComplete(true);
-      recordSessionSnapshot();
+      await recordSessionSnapshot()
     }
   };
+
+  if (isLoadingCards) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground">
+        <Loader2 size={18} className="animate-spin mr-2" />
+        Carregando cards para revisao...
+      </div>
+    )
+  }
 
   if (dueCards.length === 0) {
     return (
@@ -146,7 +157,7 @@ export function ReviewPage() {
               Ir para Exercícios
             </Button>
           </a>
-          <Button variant="secondary" onClick={() => loadDueCards(reviewMode)} className="cursor-pointer">
+          <Button variant="secondary" onClick={() => { void loadDueCards(reviewMode) }} className="cursor-pointer">
             <RotateCcw size={16} />
             Atualizar
           </Button>
@@ -180,7 +191,7 @@ export function ReviewPage() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="coral" size="lg" onClick={() => loadDueCards(reviewMode)} className="rounded-2xl px-8 cursor-pointer">
+          <Button variant="coral" size="lg" onClick={() => { void loadDueCards(reviewMode) }} className="rounded-2xl px-8 cursor-pointer">
             <RotateCcw size={18} />
             Revisar Mais
           </Button>
@@ -220,7 +231,7 @@ export function ReviewPage() {
       <div className="flex gap-2">
         <button
           onClick={() => {
-            loadDueCards('standard');
+            void loadDueCards('standard');
           }}
           className={cn(
             'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
@@ -234,7 +245,7 @@ export function ReviewPage() {
         </button>
         <button
           onClick={() => {
-            loadDueCards('intelligent');
+            void loadDueCards('intelligent');
           }}
           className={cn(
             'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
@@ -317,7 +328,7 @@ export function ReviewPage() {
               <Button
                 variant="coral"
                 size="lg"
-                onClick={handleNext}
+                onClick={() => { void handleNext() }}
                 className="w-full rounded-2xl text-lg font-bold"
               >
                 <ChevronRight size={20} />

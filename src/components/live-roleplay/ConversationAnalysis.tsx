@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LiveScenario, ConversationTurn, LiveSession as LiveSessionData } from '../../types/scenario';
 import { chatCompletion, textToSpeech } from '../../services/openai';
-import { getModelConfig, saveLiveSession } from '../../services/storage';
+import { getModelConfig } from '../../services/storage';
+import { saveLiveSession } from '../../services/supabase/storage'
 import { getConversationAnalysisPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';
@@ -83,8 +84,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
       const data: AnalysisData = JSON.parse(cleanResponse);
       setAnalysis(data);
 
-      addXP(XP_PER_LIVE_SESSION);
-      window.dispatchEvent(new Event('gamification-update'));
+      await addXP(XP_PER_LIVE_SESSION)
 
       const sessionData: LiveSessionData = {
         id: scenario.id,
@@ -102,12 +102,12 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
         startedAt: new Date(turns[0]?.timestamp || Date.now()).toISOString(),
         endedAt: new Date().toISOString(),
       };
-      saveLiveSession(sessionData);
+      await saveLiveSession(sessionData)
 
       const durationSec = turns.length > 0
         ? Math.round((Date.now() - turns[0].timestamp) / 1000)
         : 0;
-      createSessionReport(
+      await createSessionReport(
         'live-roleplay',
         [],
         data.improvements.length,
@@ -116,7 +116,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
         data.improvements,
       );
 
-      recordSessionSnapshot();
+      await recordSessionSnapshot()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed');
     } finally {

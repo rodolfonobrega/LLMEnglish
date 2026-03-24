@@ -1,6 +1,12 @@
 import type { Badge, GamificationState, SessionReport } from '../types/gamification';
 import { BADGES, XP_PER_LEVEL } from '../types/gamification';
-import { getCards, getGamification, saveGamification, saveSessionReport } from './storage';
+import {
+  getCards,
+  getGamification,
+  saveGamification,
+  saveSessionReport,
+} from './supabase/storage'
+import { setRuntimeGamification } from './runtimeState'
 
 function isToday(dateStr: string | null): boolean {
   if (!dateStr) return false;
@@ -17,8 +23,23 @@ function isYesterday(dateStr: string | null): boolean {
   return d.toDateString() === yesterday.toDateString();
 }
 
-export function addXP(amount: number): GamificationState {
-  const state = getGamification();
+function emitGamificationUpdate(state: GamificationState): void {
+  setRuntimeGamification(state)
+  window.dispatchEvent(new Event('gamification-update'))
+}
+
+export async function syncGamificationState(): Promise<GamificationState> {
+  const state = await getGamification()
+  const cards = await getCards()
+  state.totalCards = cards.length
+  checkAndAwardBadges(state)
+  await saveGamification(state)
+  emitGamificationUpdate(state)
+  return state
+}
+
+export async function addXP(amount: number): Promise<GamificationState> {
+  const state = await getGamification()
   state.xp += amount;
   state.level = Math.floor(state.xp / XP_PER_LEVEL) + 1;
 
@@ -36,13 +57,14 @@ export function addXP(amount: number): GamificationState {
   }
 
   state.totalSessions += 1;
-  state.totalCards = getCards().length;
+  state.totalCards = (await getCards()).length;
 
   // Check badges
   checkAndAwardBadges(state);
 
-  saveGamification(state);
-  return state;
+  await saveGamification(state)
+  emitGamificationUpdate(state)
+  return state
 }
 
 function checkAndAwardBadges(state: GamificationState): void {
@@ -65,14 +87,14 @@ function checkAndAwardBadges(state: GamificationState): void {
   if (state.level >= 10) award('level_10');
 }
 
-export function createSessionReport(
+export async function createSessionReport(
   type: SessionReport['type'],
   scores: number[],
   errorsFound: number,
   xpEarned: number,
   timeSpentSeconds: number,
   improvements?: string[]
-): SessionReport {
+): Promise<SessionReport> {
   const averageScore =
     scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
   const report: SessionReport = {
@@ -87,6 +109,6 @@ export function createSessionReport(
     timeSpentSeconds,
     improvements: improvements ?? [],
   };
-  saveSessionReport(report);
+  await saveSessionReport(report)
   return report;
 }

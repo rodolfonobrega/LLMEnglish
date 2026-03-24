@@ -52,26 +52,37 @@ const CATEGORY_COLORS: Record<ErrorCategory, string> = {
 export function ErrorDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<ErrorStats | null>(null);
+  const [weakAreas, setWeakAreas] = useState<Awaited<ReturnType<typeof identifyWeakAreas>> | null>(null)
+  const [progressTimeline, setProgressTimeline] = useState<Awaited<ReturnType<typeof getProgressTimeline>> | null>(null)
+  const [progressSummary, setProgressSummary] = useState<Awaited<ReturnType<typeof getProgressSummary>> | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<ErrorCategory | null>(null);
   const [currencyFilter, setCurrencyFilter] = useState<ErrorCurrency | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
-    loadStats();
+    void loadStats()
   }, []);
 
-  const loadStats = () => {
-    const errorStats = getErrorStats();
-    setStats(errorStats);
-  };
+  const loadStats = async () => {
+    const [errorStats, weakAreasData, timelineData, summaryData] = await Promise.all([
+      getErrorStats(),
+      identifyWeakAreas(),
+      getProgressTimeline(),
+      getProgressSummary(),
+    ])
+    setStats(errorStats)
+    setWeakAreas(weakAreasData)
+    setProgressTimeline(timelineData)
+    setProgressSummary(summaryData)
+  }
 
-  const handleClear = () => {
-    clearErrorPatterns();
-    loadStats();
+  const handleClear = async () => {
+    await clearErrorPatterns()
+    await loadStats()
     setShowClearConfirm(false);
   };
 
-  if (!stats) {
+  if (!stats || !weakAreas || !progressTimeline || !progressSummary) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
@@ -81,10 +92,6 @@ export function ErrorDashboard() {
       </div>
     );
   }
-
-  const weakAreas = identifyWeakAreas();
-  const progressTimeline = getProgressTimeline();
-  const progressSummary = getProgressSummary();
   const filteredPatterns = (selectedCategory
     ? stats.mostFrequent.filter(p => p.category === selectedCategory)
     : stats.mostFrequent
@@ -349,7 +356,7 @@ export function ErrorDashboard() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={handleClear}
+                onClick={() => { void handleClear() }}
                 className="flex-1 cursor-pointer"
               >
                 Limpar

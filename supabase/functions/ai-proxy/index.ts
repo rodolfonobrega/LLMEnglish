@@ -500,7 +500,6 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
  */
 function pcm16ToWav(pcm16Base64: string, sampleRate: number): string {
   const pcmData = atob(pcm16Base64)
-  const numSamples = pcmData.length / 2
   const wavDataLength = 44 + pcmData.length
 
   const buffer = new ArrayBuffer(wavDataLength)

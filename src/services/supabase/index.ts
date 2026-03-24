@@ -40,6 +40,7 @@ export {
   // Live Sessions
   getLiveSessions,
   saveLiveSession,
+  clearLiveSessions,
 
   // Path Progress
   getPathProgress,
@@ -70,10 +71,6 @@ export {
   saveApiKey,
   getApiKey,
   saveApiKeys,
-
-  // Audio Cache
-  getCachedAudio,
-  setCachedAudio,
 } from './storage'
 
 // AI Proxy

@@ -4,7 +4,8 @@ import { getImageConfigAuto } from '../../config/images';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
-import { getUserContext, type UserContext } from '../../services/storage';
+import { getUserContext } from '../../services/supabase/storage';
+import type { UserContext } from '../../types/settings';
 import { Sparkles, Briefcase, Coffee, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
@@ -62,7 +63,9 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   const [userContext, setUserContext] = useState<UserContext | null>(null);
 
   useEffect(() => {
-    setUserContext(getUserContext());
+    void (async () => {
+      setUserContext(await getUserContext())
+    })()
   }, [mode]);
 
   const isCustom = theme === 'custom';

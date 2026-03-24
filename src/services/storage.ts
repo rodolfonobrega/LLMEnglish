@@ -2,7 +2,13 @@ import type { Card } from '../types/card';
 import type { GamificationState, SessionReport } from '../types/gamification';
 import type { LiveSession, PathProgress } from '../types/scenario';
 import type { ModelConfig, ConversationTone } from '../types/settings';
-import { DEFAULT_MODEL_CONFIG } from '../types/settings';
+import {
+  getRuntimeApiKey,
+  getRuntimeConversationTone,
+  getRuntimeGamification,
+  getRuntimeModelConfig,
+  getRuntimeUserContext,
+} from './runtimeState'
 
 const KEYS = {
   cards: 'el_cards',
@@ -56,20 +62,8 @@ export function getCardsDueForReview(): Card[] {
 
 // --- Gamification ---
 
-const DEFAULT_GAMIFICATION: GamificationState = {
-  xp: 0,
-  level: 1,
-  streak: 0,
-  longestStreak: 0,
-  lastPracticeDate: null,
-  totalSessions: 0,
-  totalCards: 0,
-  badges: [],
-};
-
 export function getGamification(): GamificationState {
-  const raw = localStorage.getItem(KEYS.gamification);
-  return raw ? JSON.parse(raw) : { ...DEFAULT_GAMIFICATION };
+  return getRuntimeGamification();
 }
 
 export function saveGamification(state: GamificationState): void {
@@ -167,7 +161,7 @@ export function getLatestSessionReports(limit: number): SessionReport[] {
 // Priority: localStorage (user-entered in Settings) > .env file (VITE_OPENAI_API_KEY / VITE_GEMINI_API_KEY)
 
 export function getOpenAIKey(): string {
-  return localStorage.getItem(KEYS.openaiKey) || import.meta.env.VITE_OPENAI_API_KEY || '';
+  return getRuntimeApiKey('openai');
 }
 
 export function setOpenAIKey(key: string): void {
@@ -175,7 +169,7 @@ export function setOpenAIKey(key: string): void {
 }
 
 export function getGeminiKey(): string {
-  return localStorage.getItem(KEYS.geminiKey) || import.meta.env.VITE_GEMINI_API_KEY || '';
+  return getRuntimeApiKey('gemini');
 }
 
 export function setGeminiKey(key: string): void {
@@ -183,7 +177,7 @@ export function setGeminiKey(key: string): void {
 }
 
 export function getGroqKey(): string {
-  return localStorage.getItem(KEYS.groqKey) || import.meta.env.VITE_GROQ_API_KEY || '';
+  return getRuntimeApiKey('groq');
 }
 
 export function setGroqKey(key: string): void {
@@ -193,13 +187,7 @@ export function setGroqKey(key: string): void {
 // --- Model Config ---
 
 export function getModelConfig(): ModelConfig {
-  const raw = localStorage.getItem(KEYS.modelConfig);
-  if (!raw) return { ...DEFAULT_MODEL_CONFIG };
-  try {
-    return { ...DEFAULT_MODEL_CONFIG, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULT_MODEL_CONFIG };
-  }
+  return getRuntimeModelConfig();
 }
 
 export function saveModelConfig(config: ModelConfig): void {
@@ -209,9 +197,7 @@ export function saveModelConfig(config: ModelConfig): void {
 // --- Conversation Tone ---
 
 export function getConversationTone(): ConversationTone {
-  const raw = localStorage.getItem(KEYS.conversationTone);
-  if (raw === 'casual' || raw === 'balanced' || raw === 'formal') return raw;
-  return 'balanced';
+  return getRuntimeConversationTone();
 }
 
 export function saveConversationTone(tone: ConversationTone): void {
@@ -249,21 +235,8 @@ export interface UserContext {
   currentLevel: string;
 }
 
-const DEFAULT_USER_CONTEXT: UserContext = {
-  profile: '',
-  interests: '',
-  goals: '',
-  currentLevel: 'Intermediate',
-};
-
 export function getUserContext(): UserContext {
-  const raw = localStorage.getItem('el_user_context');
-  if (!raw) return { ...DEFAULT_USER_CONTEXT };
-  try {
-    return { ...DEFAULT_USER_CONTEXT, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULT_USER_CONTEXT };
-  }
+  return getRuntimeUserContext();
 }
 
 export function saveUserContext(context: UserContext): void {

@@ -20,6 +20,8 @@ export interface AuthSession {
 
 export type AuthEvent = 'INITIAL_SESSION' | 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED'
 
+let currentUser: AuthUser | null = null
+
 /**
  * Sign in with Google OAuth
  */
@@ -84,6 +86,11 @@ export async function getSession(): Promise<AuthSession> {
   }
 
   if (session) {
+    currentUser = {
+      id: session.user.id,
+      email: session.user.email ?? null,
+    }
+
     // Store session token for key derivation (ignore errors)
     try {
       await storeSessionToken(session.access_token)
@@ -94,12 +101,13 @@ export async function getSession(): Promise<AuthSession> {
     return {
       user: {
         id: session.user.id,
-        email: session.user.email,
+        email: session.user.email ?? null,
       },
       accessToken: session.access_token,
     }
   }
 
+  currentUser = null
   return {
     user: null,
     accessToken: null,
@@ -110,16 +118,7 @@ export async function getSession(): Promise<AuthSession> {
  * Get the current user (without session validation)
  */
 export function getCurrentUser(): AuthUser | null {
-  const { data } = supabase.auth.getUser()
-
-  if (data.user) {
-    return {
-      id: data.user.id,
-      email: data.user.email,
-    }
-  }
-
-  return null
+  return currentUser
 }
 
 /**
@@ -132,6 +131,11 @@ export function onAuthStateChange(callback: (event: AuthEvent, session: AuthSess
     }
 
     if (session) {
+      currentUser = {
+        id: session.user.id,
+        email: session.user.email ?? null,
+      }
+
       void storeSessionToken(session.access_token).catch((e) => {
         console.warn('Failed to store session token:', e)
       })
@@ -139,11 +143,12 @@ export function onAuthStateChange(callback: (event: AuthEvent, session: AuthSess
       callback(event, {
         user: {
           id: session.user.id,
-          email: session.user.email,
+          email: session.user.email ?? null,
         },
         accessToken: session.access_token,
       })
     } else {
+      currentUser = null
       clearSessionToken()
       callback(event, {
         user: null,

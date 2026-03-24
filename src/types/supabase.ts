@@ -19,6 +19,13 @@ export type ScenarioIntensity = 'normal' | 'adventurous' | 'wild' | 'skill'
 export type SessionType = 'exercise' | 'review' | 'live-roleplay'
 export type ConversationRole = 'user' | 'ai'
 
+type TableDefinition<Row, Insert, Update> = {
+  Row: Row
+  Insert: Insert
+  Update: Update
+  Relationships: []
+}
+
 // ============================================================================
 // DATABASE TYPES
 // ============================================================================
@@ -26,71 +33,21 @@ export type ConversationRole = 'user' | 'ai'
 export interface Database {
   public: {
     Tables: {
-      profiles: {
-        Row: Profile
-        Insert: ProfileInsert
-        Update: ProfileUpdate
-      }
-      cards: {
-        Row: Card
-        Insert: CardInsert
-        Update: CardUpdate
-      }
-      card_reviews: {
-        Row: CardReview
-        Insert: CardReviewInsert
-        Update: CardReviewUpdate
-      }
-      card_evaluations: {
-        Row: CardEvaluation
-        Insert: CardEvaluationInsert
-        Update: CardEvaluationUpdate
-      }
-      gamification: {
-        Row: Gamification
-        Insert: GamificationInsert
-        Update: GamificationUpdate
-      }
-      badges: {
-        Row: Badge
-        Insert: BadgeInsert
-        Update: BadgeUpdate
-      }
-      live_sessions: {
-        Row: LiveSession
-        Insert: LiveSessionInsert
-        Update: LiveSessionUpdate
-      }
-      conversation_turns: {
-        Row: ConversationTurn
-        Insert: ConversationTurnInsert
-        Update: ConversationTurnUpdate
-      }
-      conversation_analyses: {
-        Row: ConversationAnalysis
-        Insert: ConversationAnalysisInsert
-        Update: ConversationAnalysisUpdate
-      }
-      session_reports: {
-        Row: SessionReport
-        Insert: SessionReportInsert
-        Update: SessionReportUpdate
-      }
-      path_progress: {
-        Row: PathProgress
-        Insert: PathProgressInsert
-        Update: PathProgressUpdate
-      }
-      model_config: {
-        Row: ModelConfig
-        Insert: ModelConfigInsert
-        Update: ModelConfigUpdate
-      }
-      encrypted_api_keys: {
-        Row: EncryptedApiKeys
-        Insert: EncryptedApiKeysInsert
-        Update: EncryptedApiKeysUpdate
-      }
+      profiles: TableDefinition<Profile, ProfileInsert, ProfileUpdate>
+      cards: TableDefinition<Card, CardInsert, CardUpdate>
+      card_reviews: TableDefinition<CardReview, CardReviewInsert, CardReviewUpdate>
+      card_evaluations: TableDefinition<CardEvaluation, CardEvaluationInsert, CardEvaluationUpdate>
+      gamification: TableDefinition<Gamification, GamificationInsert, GamificationUpdate>
+      badges: TableDefinition<Badge, BadgeInsert, BadgeUpdate>
+      live_sessions: TableDefinition<LiveSession, LiveSessionInsert, LiveSessionUpdate>
+      conversation_turns: TableDefinition<ConversationTurn, ConversationTurnInsert, ConversationTurnUpdate>
+      conversation_analyses: TableDefinition<ConversationAnalysis, ConversationAnalysisInsert, ConversationAnalysisUpdate>
+      session_reports: TableDefinition<SessionReport, SessionReportInsert, SessionReportUpdate>
+      path_progress: TableDefinition<PathProgress, PathProgressInsert, PathProgressUpdate>
+      model_config: TableDefinition<ModelConfig, ModelConfigInsert, ModelConfigUpdate>
+      encrypted_api_keys: TableDefinition<EncryptedApiKeys, EncryptedApiKeysInsert, EncryptedApiKeysUpdate>
+      error_patterns: TableDefinition<ErrorPatternRow, ErrorPatternInsert, ErrorPatternUpdate>
+      error_snapshots: TableDefinition<ErrorSnapshotRow, ErrorSnapshotInsert, ErrorSnapshotUpdate>
     }
     Views: {
       [_ in never]: never
@@ -106,6 +63,9 @@ export interface Database {
       }
     }
     Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
       [_ in never]: never
     }
   }
@@ -127,7 +87,7 @@ export interface Profile {
   updated_at: string
 }
 
-export type ProfileInsert = Omit<Profile, 'id' | 'created_at' | 'updated_at'>
+export type ProfileInsert = Omit<Profile, 'created_at' | 'updated_at'>
 export type ProfileUpdate = Partial<ProfileInsert>
 
 // ============================================================================
@@ -152,7 +112,7 @@ export interface Card {
   repetitions: number
 }
 
-export type CardInsert = Omit<Card, 'id' | 'created_at'>
+export type CardInsert = Omit<Card, 'id'>
 export type CardUpdate = Partial<CardInsert>
 
 // ============================================================================
@@ -227,7 +187,7 @@ export interface Badge {
   earned_at: string
 }
 
-export type BadgeInsert = Omit<Badge, 'id' | 'earned_at'>
+export type BadgeInsert = Omit<Badge, 'id'>
 export type BadgeUpdate = Partial<BadgeInsert>
 
 // ============================================================================
@@ -259,7 +219,7 @@ export interface LiveSession {
   ended_at: string | null
 }
 
-export type LiveSessionInsert = Omit<LiveSession, 'id'>
+export type LiveSessionInsert = LiveSession
 export type LiveSessionUpdate = Partial<LiveSessionInsert>
 
 // ============================================================================
@@ -315,7 +275,7 @@ export interface SessionReport {
   improvements: string[] | null
 }
 
-export type SessionReportInsert = Omit<SessionReport, 'id' | 'date'>
+export type SessionReportInsert = Omit<SessionReport, 'id'>
 export type SessionReportUpdate = Partial<SessionReportInsert>
 
 // ============================================================================
@@ -383,6 +343,41 @@ export interface EncryptedApiKeys {
 
 export type EncryptedApiKeysInsert = Omit<EncryptedApiKeys, 'id' | 'created_at' | 'updated_at'>
 export type EncryptedApiKeysUpdate = Partial<EncryptedApiKeysInsert>
+
+// ============================================================================
+// ERROR ANALYTICS
+// ============================================================================
+
+export interface ErrorPatternRow {
+  id: string
+  user_id: string
+  pattern_key: string
+  pattern: string
+  category: string
+  occurrences: number
+  first_seen: string
+  last_seen: string
+  examples: Json
+  trend: 'improving' | 'stable' | 'worsening'
+  recent_scores: number[]
+}
+
+export type ErrorPatternInsert = Omit<ErrorPatternRow, 'id'>
+export type ErrorPatternUpdate = Partial<ErrorPatternInsert>
+
+export interface ErrorSnapshotRow {
+  id: string
+  user_id: string
+  date: string
+  total_errors: number
+  average_score: number
+  by_category: Json
+  active_patterns: number
+  resolved_patterns: number
+}
+
+export type ErrorSnapshotInsert = Omit<ErrorSnapshotRow, 'id'>
+export type ErrorSnapshotUpdate = Partial<ErrorSnapshotInsert>
 
 // ============================================================================
 // HELPER TYPES

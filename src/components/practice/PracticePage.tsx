@@ -3,10 +3,9 @@ import { jsPDF } from 'jspdf';
 import { Loader2, FileText, Download, Clapperboard } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { chatCompletion } from '../../services/openai';
-import { getUserContext, type UserContext } from '../../services/storage';
+import { getConversationTone, getUserContext } from '../../services/supabase/storage';
 import { getCustomDialoguePrompt } from '../../utils/prompts';
-import { getConversationTone } from '../../services/storage';
-import type { ConversationTone } from '../../types/settings';
+import type { ConversationTone, UserContext } from '../../types/settings';
 
 export function PracticePage() {
     const [context, setContext] = useState<UserContext>({
@@ -20,11 +19,17 @@ export function PracticePage() {
     const [generatedDialogue, setGeneratedDialogue] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [tone, setTone] = useState<ConversationTone>('Casual');
+    const [tone, setTone] = useState<ConversationTone>('casual');
 
     useEffect(() => {
-        setContext(getUserContext());
-        setTone(getConversationTone());
+        void (async () => {
+            const [userContext, conversationTone] = await Promise.all([
+                getUserContext(),
+                getConversationTone(),
+            ]);
+            setContext(userContext);
+            setTone(conversationTone);
+        })();
     }, []);
 
     const handleGenerate = async () => {

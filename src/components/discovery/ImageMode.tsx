@@ -7,8 +7,8 @@ import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images
 import { getImageQuestionPrompt, getEvaluationPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/storage';
-import { addXP } from '../../services/gamification';
+import { addCard } from '../../services/supabase/storage';
+import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';
 import { Button } from '../ui/Button';
@@ -65,8 +65,7 @@ export function ImageMode() {
 
       let xp = XP_PER_EXERCISE;
       if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
-      addXP(xp);
-      window.dispatchEvent(new Event('gamification-update'));
+      await addXP(xp)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Evaluation failed');
     } finally {
@@ -74,7 +73,7 @@ export function ImageMode() {
     }
   };
 
-  const handleSaveToLibrary = () => {
+  const handleSaveToLibrary = async () => {
     if (!evaluation) return;
     const card = createDefaultCard({
       type: 'image',
@@ -83,9 +82,9 @@ export function ImageMode() {
       latestEvaluation: evaluation,
       userAudioBlob: userAudioBase64 || undefined,
     });
-    addCard(card);
+    await addCard(card)
+    await syncGamificationState()
     setSaved(true);
-    window.dispatchEvent(new Event('gamification-update'));
   };
 
   const reset = () => {
@@ -177,7 +176,7 @@ export function ImageMode() {
             <p className="text-xs text-muted-foreground uppercase mb-1 font-bold tracking-wide">Tarefa</p>
             <p className="text-foreground text-pretty">{question}</p>
           </div>
-          <EvaluationResults result={evaluation} onSaveToLibrary={handleSaveToLibrary} showSaveButton={!saved} />
+          <EvaluationResults result={evaluation} onSaveToLibrary={() => { void handleSaveToLibrary() }} showSaveButton={!saved} />
           {saved && (
             <div className="bg-[var(--leaf-soft)] rounded-2xl p-4 text-center">
               <p className="text-[var(--leaf)] font-bold">Salvo na Biblioteca!</p>

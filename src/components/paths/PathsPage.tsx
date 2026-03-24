@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, Check, Play, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { chatCompletion, generateImage } from '../../services/openai';
 import { getImageConfigAuto } from '../../config/images';
@@ -6,8 +6,8 @@ import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt } from '../../
 import { cleanJson } from '../../utils/cleanJson';
 import { getTrailsForTheme, THEMES_WITH_TRAILS } from '../../utils/roleplayTrails';
 import type { ThemeMeta } from '../../utils/roleplayTrails';
-import type { LiveScenario, ConversationTurn, RoleplayTrail, RoleplayTrailStep } from '../../types/scenario';
-import { getPathProgress, markStepComplete, getTrailCompletedCount, isStepComplete } from '../../services/storage';
+import type { LiveScenario, ConversationTurn, PathProgress, RoleplayTrail, RoleplayTrailStep } from '../../types/scenario';
+import { getPathProgress, markStepComplete } from '../../services/supabase/storage';
 import { LiveSession } from '../live-roleplay/LiveSession';
 import { ConversationAnalysis } from '../live-roleplay/ConversationAnalysis';
 import { PathCard } from '../ui/custom/PathCard';
@@ -27,6 +27,7 @@ function getSceneImagePrompt(brandName: string, location: string, aiRole: string
 }
 
 export function PathsPage() {
+  const [progress, setProgress] = useState<PathProgress>({ completedSteps: {} })
   const [selectedTheme, setSelectedTheme] = useState<ThemeMeta | null>(null);
   const [expandedTrail, setExpandedTrail] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('browse');
@@ -34,9 +35,21 @@ export function PathsPage() {
   const [scenario, setScenario] = useState<LiveScenario | null>(null);
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [, setProgressVersion] = useState(0);
+  const refreshProgress = useCallback(async () => {
+    setProgress(await getPathProgress())
+  }, [])
 
-  const refreshProgress = useCallback(() => setProgressVersion(v => v + 1), []);
+  useEffect(() => {
+    void refreshProgress()
+  }, [refreshProgress])
+
+  const getTrailCompletedCount = useCallback((trailId: string) => {
+    return progress.completedSteps[trailId]?.length ?? 0
+  }, [progress])
+
+  const isStepComplete = useCallback((trailId: string, stepId: string) => {
+    return progress.completedSteps[trailId]?.includes(stepId) ?? false
+  }, [progress])
 
   const getThemeProgress = useCallback((themeId: string) => {
     const trails = getTrailsForTheme(themeId);
@@ -47,7 +60,7 @@ export function PathsPage() {
       done += getTrailCompletedCount(trail.id);
     }
     return { done, total };
-  }, []);
+  }, [getTrailCompletedCount]);
 
   const handleStartStep = async (theme: ThemeMeta, trail: RoleplayTrail, step: RoleplayTrailStep) => {
     setActiveStep({ theme, trail, step });
@@ -119,12 +132,12 @@ export function PathsPage() {
     setActiveStep(null);
   };
 
-  const handleAnalysisDone = () => {
+  const handleAnalysisDone = async () => {
     if (activeStep) {
-      markStepComplete(activeStep.trail.id, activeStep.step.id);
-      refreshProgress();
+      await markStepComplete(activeStep.trail.id, activeStep.step.id)
+      await refreshProgress()
     }
-    handleExit();
+    handleExit()
   };
 
   // --- Generating state ---
@@ -165,7 +178,7 @@ export function PathsPage() {
   if (phase === 'analysis' && scenario) {
     return (
       <div className="space-y-6">
-        <ConversationAnalysis scenario={scenario} turns={turns} onReset={handleAnalysisDone} />
+        <ConversationAnalysis scenario={scenario} turns={turns} onReset={() => { void handleAnalysisDone() }} />
       </div>
     );
   }
@@ -209,8 +222,6 @@ export function PathsPage() {
 
   // --- Browse: Theme Detail ---
   const trails = getTrailsForTheme(selectedTheme.id);
-  const progress = getPathProgress();
-
   return (
     <div className="space-y-6 pb-20">
       {/* Header */}

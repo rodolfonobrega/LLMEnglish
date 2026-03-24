@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the migration of SpeakLab from LocalStorage to Supabase for cloud sync, secure API key storage, and OAuth authentication.
+This document summarizes the migration of SpeakLab from LocalStorage to Supabase for cloud sync, secure API key storage, OAuth authentication, and persisted error analytics, while keeping ephemeral TTS audio in browser cache.
 
 ## Files Created
 
@@ -15,6 +15,7 @@ This document summarizes the migration of SpeakLab from LocalStorage to Supabase
 - `src/services/supabase/storage.ts` - CRUD operations for all data
 - `src/services/supabase/aiProxy.ts` - Edge Function client for AI API calls
 - `src/services/supabase/index.ts` - Centralized exports
+- `src/services/runtimeState.ts` - In-memory runtime state hydrated from Supabase for sync consumers
 
 ### Context
 - `src/contexts/AuthContext.tsx` - Authentication context provider
@@ -26,6 +27,7 @@ This document summarizes the migration of SpeakLab from LocalStorage to Supabase
 ### Utilities
 - `src/utils/encryption.ts` - AES-256-GCM encryption for API keys
 - `src/utils/migrateToSupabase.ts` - Data migration logic
+- `src/services/errorAnalysis.ts` - Error analytics persisted in Supabase
 
 ### Database
 - `supabase/schema.sql` - Complete database schema with RLS policies
@@ -35,6 +37,7 @@ This document summarizes the migration of SpeakLab from LocalStorage to Supabase
 ### Configuration
 - `.env.local.example` - Environment variable template
 - Updated `vite.config.ts` with Supabase env var documentation
+- Updated `tsconfig.app.json` and `src/test/setup.ts` for the Supabase/Vitest runtime
 
 ## Files Modified
 
@@ -44,8 +47,12 @@ This document summarizes the migration of SpeakLab from LocalStorage to Supabase
 ### Settings
 - `src/components/settings/SettingsPage.tsx` - Updated to use Supabase storage, added user profile display and logout button
 
+### Runtime / Auth
+- `src/contexts/AuthContext.tsx` - Hydrates runtime state after auth bootstrap
+- `src/services/gamification.ts` - Persists XP/session data in Supabase and refreshes runtime gamification state
+
 ### Dependencies
-- `package.json` - Added `@supabase/supabase-js` and `@supabase/ssr`
+- `package.json` - Added `@supabase/supabase-js`
 
 ## Database Schema
 
@@ -66,6 +73,8 @@ The following tables are created:
 | `path_progress` | Trail completion progress |
 | `model_config` | User's AI model configuration |
 | `encrypted_api_keys` | Securely stored API keys |
+| `error_patterns` | Persisted error pattern analytics |
+| `error_snapshots` | Progress snapshots for the error dashboard |
 
 ## Security Features
 
@@ -77,7 +86,6 @@ The following tables are created:
 ## Storage Buckets
 
 - `card-audio` - User recordings
-- `tts-cache` - TTS audio cache
 - `conversation-audio` - Live session audio
 - `session-dialogues` - Analyzed dialogues
 - `card-images` - Generated images
@@ -88,14 +96,11 @@ The following tables are created:
 2. **Deploy Edge Function**: Deploy `ai-proxy` function
 3. **Test OAuth**: Configure Google and GitHub OAuth providers
 4. **Test migration**: Run the app and migrate LocalStorage data
-5. **Update remaining components**: Update other pages to use Supabase if needed
+5. **Verify runtime hydration**: Ensure settings, keys, gamification, and sync consumers are hydrated after login
 
 ## Backward Compatibility
 
-The LocalStorage functions remain in `src/services/storage.ts` for:
-- Development without Supabase
-- Fallback during migration
-- Offline capability (if needed in the future)
+The legacy `src/services/storage.ts` file now survives mainly as a sync compatibility layer for runtime-backed reads used by some services/hooks (`getModelConfig`, API key getters, gamification snapshot) plus browser-local TTS cache. Active user data flows should use `src/services/supabase/*`.
 
 ## Migration Path for Users
 
@@ -108,4 +113,4 @@ The LocalStorage functions remain in `src/services/storage.ts` for:
 
 ## Testing
 
-All TypeScript compilation passes with no errors.
+TypeScript compilation and ESLint pass. The current production build still emits a Vite chunk-size warning for the main bundle, but the build succeeds.

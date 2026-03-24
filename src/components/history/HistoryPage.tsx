@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { getLiveSessions } from '../../services/storage';
+import { useEffect, useState } from 'react';
+import { clearLiveSessions, getLiveSessions } from '../../services/supabase/storage';
 import type { LiveSession } from '../../types/scenario';
 import { Clock, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -111,12 +111,24 @@ function SessionDetail({ session }: { session: LiveSession }) {
 }
 
 export function HistoryPage() {
-  const [sessions] = useState<LiveSession[]>(() =>
-    getLiveSessions().sort((a, b) =>
-      new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
-    )
-  );
+  const [sessions, setSessions] = useState<LiveSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void loadSessions()
+  }, [])
+
+  const loadSessions = async () => {
+    setIsLoading(true)
+    const loadedSessions = await getLiveSessions()
+    setSessions(
+      loadedSessions.sort((a, b) =>
+        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+      )
+    )
+    setIsLoading(false)
+  }
 
   const toggleExpand = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
@@ -134,7 +146,13 @@ export function HistoryPage() {
         </div>
       </div>
 
-      {sessions.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-12 text-center text-muted-foreground">
+            Carregando conversas...
+          </CardContent>
+        </Card>
+      ) : sessions.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <Clock size={48} className="mx-auto text-muted-foreground/30 mb-4" />
@@ -203,8 +221,11 @@ export function HistoryPage() {
             size="sm"
             onClick={() => {
               if (confirm('Apagar todo o histórico de conversas?')) {
-                localStorage.removeItem('el_live_sessions');
-                window.location.reload();
+                void (async () => {
+                  await clearLiveSessions()
+                  setExpandedId(null)
+                  await loadSessions()
+                })()
               }
             }}
             className="text-destructive hover:text-destructive/80 text-xs"

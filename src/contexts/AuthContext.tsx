@@ -7,6 +7,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AuthUser } from '../services/supabase/auth'
+import { hydrateRuntimeState, resetRuntimeState } from '../services/runtimeState'
 import {
   getSession,
   signInWithGoogle,
@@ -32,6 +33,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
@@ -68,7 +70,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function loadProfile(userId: string, email?: string) {
       try {
-        const userProfile = await getOrCreateProfile(userId, email)
+        const [userProfile] = await Promise.all([
+          getOrCreateProfile(userId, email),
+          hydrateRuntimeState(),
+        ])
         if (mounted) {
           setProfile(userProfile)
         }
@@ -109,6 +114,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setProfile(null)
+        resetRuntimeState()
         finishLoading()
         return
       }
@@ -123,6 +129,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } else {
         setUser(null)
         setProfile(null)
+        resetRuntimeState()
       }
 
       finishLoading()

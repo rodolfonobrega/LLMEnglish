@@ -15,13 +15,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-ink-secondary">
+          <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
             {label}
           </label>
         )}
         <div className="relative">
           {icon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
               {icon}
             </div>
           )}
@@ -29,18 +29,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'w-full px-4 py-2.5 bg-card-warm border border-edge rounded-xl text-ink placeholder-ink-muted',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-sky focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
-              'transition-colors',
+              'flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground',
+              'focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20',
+              'disabled:cursor-not-allowed disabled:opacity-50',
               icon && 'pl-10',
-              error && 'border-danger',
+              error && 'border-danger focus-visible:border-danger focus-visible:ring-danger/20',
               className,
             )}
             {...props}
           />
         </div>
         {hint && !error && (
-          <p className="text-xs text-ink-faint">{hint}</p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
         )}
         {error && (
           <p className="text-xs text-danger">{error}</p>

@@ -1,52 +1,101 @@
-import { ChevronRight } from 'lucide-react';
+import { cn } from '../../../utils/cn';
+
+// Type for gradient colors (backward compatibility)
+type GradientColor =
+  | 'from-sky-400 to-blue-500'
+  | 'from-violet-400 to-purple-500'
+  | 'from-emerald-400 to-teal-500'
+  | 'from-amber-400 to-orange-500'
+  | 'from-rose-400 to-pink-500';
+
+// New accent color type
+type AccentColor = 'primary' | 'success' | 'warning' | 'danger' | 'special';
 
 interface ExerciseCardProps {
   title: string;
   description: string;
   emoji: string;
-  gradient: string;
+  gradient?: GradientColor;  // Backward compatible
+  accentColor?: AccentColor;  // New API
   progress?: number;
   onClick?: () => void;
 }
 
-export function ExerciseCard({ title, description, emoji, gradient, progress, onClick }: ExerciseCardProps) {
+// Map old gradient names to new accent colors
+function getAccentFromGradient(grad?: GradientColor): AccentColor {
+  if (!grad) return 'primary';
+  if (grad.includes('sky') || grad.includes('blue')) return 'primary';
+  if (grad.includes('emerald') || grad.includes('teal') || grad.includes('green')) return 'success';
+  if (grad.includes('amber') || grad.includes('orange')) return 'warning';
+  if (grad.includes('rose') || grad.includes('pink') || grad.includes('red')) return 'danger';
+  if (grad.includes('violet') || grad.includes('purple')) return 'special';
+  return 'primary';
+}
+
+export function ExerciseCard({ title, description, emoji, gradient, accentColor, progress, onClick }: ExerciseCardProps) {
+  // Use accentColor if provided, otherwise derive from gradient for backward compatibility
+  const effectiveColor = accentColor ?? getAccentFromGradient(gradient);
+
+  const colorMap = {
+    primary: 'bg-primary-soft text-primary',
+    success: 'bg-success-soft text-success',
+    warning: 'bg-warning-soft text-warning',
+    danger: 'bg-danger-soft text-danger',
+    special: 'bg-special-soft text-special',
+  };
+
+  const accentGradient = {
+    primary: 'bg-gradient-to-r from-primary to-special',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    danger: 'bg-danger',
+    special: 'bg-special',
+  };
+
   return (
     <div
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+      className={`
+        group relative overflow-hidden rounded-xl border border-border bg-card
+        transition-all duration-200 card-hover card-hover-border
+        ${onClick ? 'cursor-pointer' : ''}
+      `}
     >
-      {/* Background Gradient */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+      {/* Top Accent Line */}
+      <div className={cn(
+        "absolute top-0 left-0 right-0 h-0.5",
+        accentGradient[effectiveColor]
+      )} />
 
-      {/* Decorative Elements */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-
-      <div className="relative p-5">
+      <div className="p-5">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-            <span className="text-2xl">{emoji}</span>
+        <div className="flex items-start gap-4 mb-4">
+          <div className={cn(
+            "size-12 rounded-lg flex items-center justify-center text-2xl",
+            colorMap[effectiveColor]
+          )}>
+            {emoji}
           </div>
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/20 text-white backdrop-blur-sm">
-            <ChevronRight className="w-4 h-4" />
+
+          <div className="flex-1 min-w-0">
+            <h3 className="text-foreground font-semibold text-base mb-1">{title}</h3>
+            <p className="text-muted-foreground text-sm line-clamp-2">{description}</p>
           </div>
         </div>
 
-        {/* Content */}
-        <h3 className="text-white font-bold text-lg mb-1">{title}</h3>
-        <p className="text-white/80 text-sm">{description}</p>
-
         {/* Progress */}
         {progress !== undefined && (
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-white rounded-full transition-all duration-500"
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  progress === 100 ? 'bg-success' : 'bg-primary'
+                )}
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-white text-xs font-medium">{progress}%</span>
+            <span className="text-muted-foreground text-xs font-medium min-w-[32px]">{progress}%</span>
           </div>
         )}
       </div>

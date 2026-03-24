@@ -1,7 +1,7 @@
 /**
  * Supabase Database Types
  *
- * Generated types matching the database schema in supabase/schema.sql
+ * Generated types matching the versioned database schema in supabase/migrations
  */
 
 export type Json =

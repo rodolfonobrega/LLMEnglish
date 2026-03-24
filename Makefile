@@ -1,4 +1,4 @@
-.PHONY: install dev build preview clean test test-coverage test-models-mock test-models-smoke docker-build docker-run docker-stop
+.PHONY: install dev build preview clean test test-coverage test-models-mock test-models-smoke supabase-start supabase-stop supabase-status supabase-link supabase-db-reset supabase-db-push supabase-functions-serve supabase-functions-deploy docker-build docker-run docker-stop
 
 # ──────────────────────────────────────────────
 # Local development
@@ -30,6 +30,30 @@ test-models-mock: ## Run model integration tests (mocked)
 
 test-models-smoke: ## Run model smoke tests with real APIs (.env keys)
 	npm run test:models:smoke
+
+supabase-start: ## Start local Supabase stack
+	npm run supabase:start
+
+supabase-stop: ## Stop local Supabase stack
+	npm run supabase:stop
+
+supabase-status: ## Show local Supabase status and local credentials
+	npm run supabase:status
+
+supabase-link: ## Link CLI to the hosted Supabase project
+	npm run supabase:link
+
+supabase-db-reset: ## Reset local database from versioned migrations
+	npm run supabase:db:reset
+
+supabase-db-push: ## Push local migrations to the linked Supabase project
+	npm run supabase:db:push
+
+supabase-functions-serve: ## Serve Edge Functions locally
+	npm run supabase:functions:serve
+
+supabase-functions-deploy: ## Deploy the ai-proxy Edge Function
+	npm run supabase:functions:deploy
 
 # ──────────────────────────────────────────────
 # Docker (cross-platform: Windows & Linux/Mac)

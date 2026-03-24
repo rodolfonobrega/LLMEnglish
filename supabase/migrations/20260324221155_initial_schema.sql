@@ -1,5 +1,5 @@
--- SpeakLab Database Schema for Supabase
--- Run this in the Supabase SQL Editor
+-- LLMEnglish initial Supabase schema
+-- Source of truth: versioned migrations in supabase/migrations
 
 -- Enable pgcrypto for encryption
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- PROFILES
 -- Extends auth.users with user profile data
 -- ============================================================================
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
   profile TEXT DEFAULT '',
@@ -24,14 +24,17 @@ CREATE TABLE profiles (
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile"
   ON profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
@@ -45,6 +48,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW
@@ -54,7 +58,7 @@ CREATE TRIGGER update_profiles_updated_at
 -- CARDS
 -- Flashcards with SM-2 spaced repetition data
 -- ============================================================================
-CREATE TABLE cards (
+CREATE TABLE IF NOT EXISTS cards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('phrase', 'text', 'roleplay', 'image')),
@@ -76,32 +80,36 @@ CREATE TABLE cards (
 ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own cards" ON cards;
 CREATE POLICY "Users can view own cards"
   ON cards FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own cards" ON cards;
 CREATE POLICY "Users can insert own cards"
   ON cards FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own cards" ON cards;
 CREATE POLICY "Users can update own cards"
   ON cards FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own cards" ON cards;
 CREATE POLICY "Users can delete own cards"
   ON cards FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Indexes for performance
-CREATE INDEX idx_cards_user_id ON cards(user_id);
-CREATE INDEX idx_cards_next_review ON cards(user_id, next_review_at) WHERE next_review_at IS NOT NULL;
-CREATE INDEX idx_cards_type ON cards(user_id, type);
+CREATE INDEX IF NOT EXISTS idx_cards_user_id ON cards(user_id);
+CREATE INDEX IF NOT EXISTS idx_cards_next_review ON cards(user_id, next_review_at) WHERE next_review_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(user_id, type);
 
 -- ============================================================================
 -- CARD REVIEWS
 -- Historical review data for cards
 -- ============================================================================
-CREATE TABLE card_reviews (
+CREATE TABLE IF NOT EXISTS card_reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -115,22 +123,24 @@ CREATE TABLE card_reviews (
 ALTER TABLE card_reviews ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own card reviews" ON card_reviews;
 CREATE POLICY "Users can view own card reviews"
   ON card_reviews FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own card reviews" ON card_reviews;
 CREATE POLICY "Users can insert own card reviews"
   ON card_reviews FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Index
-CREATE INDEX idx_card_reviews_card_id ON card_reviews(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_reviews_card_id ON card_reviews(card_id);
 
 -- ============================================================================
 -- CARD EVALUATIONS
 -- Latest evaluation for each card
 -- ============================================================================
-CREATE TABLE card_evaluations (
+CREATE TABLE IF NOT EXISTS card_evaluations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -148,26 +158,29 @@ CREATE TABLE card_evaluations (
 ALTER TABLE card_evaluations ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own card evaluations" ON card_evaluations;
 CREATE POLICY "Users can view own card evaluations"
   ON card_evaluations FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own card evaluations" ON card_evaluations;
 CREATE POLICY "Users can insert own card evaluations"
   ON card_evaluations FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own card evaluations" ON card_evaluations;
 CREATE POLICY "Users can update own card evaluations"
   ON card_evaluations FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Index
-CREATE INDEX idx_card_evaluations_card_id ON card_evaluations(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_evaluations_card_id ON card_evaluations(card_id);
 
 -- ============================================================================
 -- GAMIFICATION
 -- XP, level, streaks, and overall stats
 -- ============================================================================
-CREATE TABLE gamification (
+CREATE TABLE IF NOT EXISTS gamification (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
   xp INTEGER DEFAULT 0,
@@ -185,19 +198,23 @@ CREATE TABLE gamification (
 ALTER TABLE gamification ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own gamification" ON gamification;
 CREATE POLICY "Users can view own gamification"
   ON gamification FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own gamification" ON gamification;
 CREATE POLICY "Users can insert own gamification"
   ON gamification FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own gamification" ON gamification;
 CREATE POLICY "Users can update own gamification"
   ON gamification FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Auto-update updated_at
+DROP TRIGGER IF EXISTS update_gamification_updated_at ON gamification;
 CREATE TRIGGER update_gamification_updated_at
   BEFORE UPDATE ON gamification
   FOR EACH ROW
@@ -207,7 +224,7 @@ CREATE TRIGGER update_gamification_updated_at
 -- BADGES
 -- User achievement badges
 -- ============================================================================
-CREATE TABLE badges (
+CREATE TABLE IF NOT EXISTS badges (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   badge_id TEXT NOT NULL,
@@ -222,22 +239,24 @@ CREATE TABLE badges (
 ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own badges" ON badges;
 CREATE POLICY "Users can view own badges"
   ON badges FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own badges" ON badges;
 CREATE POLICY "Users can insert own badges"
   ON badges FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Index
-CREATE INDEX idx_badges_user_id ON badges(user_id);
+CREATE INDEX IF NOT EXISTS idx_badges_user_id ON badges(user_id);
 
 -- ============================================================================
 -- LIVE SESSIONS
 -- Real-time audio roleplay sessions
 -- ============================================================================
-CREATE TABLE live_sessions (
+CREATE TABLE IF NOT EXISTS live_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   scenario JSONB NOT NULL,
@@ -250,26 +269,29 @@ CREATE TABLE live_sessions (
 ALTER TABLE live_sessions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own live sessions" ON live_sessions;
 CREATE POLICY "Users can view own live sessions"
   ON live_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own live sessions" ON live_sessions;
 CREATE POLICY "Users can insert own live sessions"
   ON live_sessions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own live sessions" ON live_sessions;
 CREATE POLICY "Users can update own live sessions"
   ON live_sessions FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Index
-CREATE INDEX idx_live_sessions_user_id ON live_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_live_sessions_user_id ON live_sessions(user_id);
 
 -- ============================================================================
 -- CONVERSATION TURNS
 -- Individual turns in live sessions
 -- ============================================================================
-CREATE TABLE conversation_turns (
+CREATE TABLE IF NOT EXISTS conversation_turns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   live_session_id UUID NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -283,22 +305,24 @@ CREATE TABLE conversation_turns (
 ALTER TABLE conversation_turns ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own conversation turns" ON conversation_turns;
 CREATE POLICY "Users can view own conversation turns"
   ON conversation_turns FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own conversation turns" ON conversation_turns;
 CREATE POLICY "Users can insert own conversation turns"
   ON conversation_turns FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Index
-CREATE INDEX idx_conversation_turns_session_id ON conversation_turns(live_session_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_turns_session_id ON conversation_turns(live_session_id);
 
 -- ============================================================================
 -- CONVERSATION ANALYSES
 -- Post-session analysis of conversations
 -- ============================================================================
-CREATE TABLE conversation_analyses (
+CREATE TABLE IF NOT EXISTS conversation_analyses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   live_session_id UUID NOT NULL UNIQUE REFERENCES live_sessions(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -313,10 +337,12 @@ CREATE TABLE conversation_analyses (
 ALTER TABLE conversation_analyses ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own conversation analyses" ON conversation_analyses;
 CREATE POLICY "Users can view own conversation analyses"
   ON conversation_analyses FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own conversation analyses" ON conversation_analyses;
 CREATE POLICY "Users can insert own conversation analyses"
   ON conversation_analyses FOR INSERT
   WITH CHECK (auth.uid() = user_id);
@@ -325,7 +351,7 @@ CREATE POLICY "Users can insert own conversation analyses"
 -- SESSION REPORTS
 -- Daily/session reports for progress tracking
 -- ============================================================================
-CREATE TABLE session_reports (
+CREATE TABLE IF NOT EXISTS session_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -343,22 +369,24 @@ CREATE TABLE session_reports (
 ALTER TABLE session_reports ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own session reports" ON session_reports;
 CREATE POLICY "Users can view own session reports"
   ON session_reports FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own session reports" ON session_reports;
 CREATE POLICY "Users can insert own session reports"
   ON session_reports FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Index
-CREATE INDEX idx_session_reports_user_id_date ON session_reports(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_session_reports_user_id_date ON session_reports(user_id, date);
 
 -- ============================================================================
 -- PATH PROGRESS
 -- Progress in roleplay trails
 -- ============================================================================
-CREATE TABLE path_progress (
+CREATE TABLE IF NOT EXISTS path_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   trail_id TEXT NOT NULL,
@@ -371,22 +399,24 @@ CREATE TABLE path_progress (
 ALTER TABLE path_progress ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own path progress" ON path_progress;
 CREATE POLICY "Users can view own path progress"
   ON path_progress FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own path progress" ON path_progress;
 CREATE POLICY "Users can insert own path progress"
   ON path_progress FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Index
-CREATE INDEX idx_path_progress_user_id ON path_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_path_progress_user_id ON path_progress(user_id);
 
 -- ============================================================================
 -- MODEL CONFIG
 -- User's AI model configuration
 -- ============================================================================
-CREATE TABLE model_config (
+CREATE TABLE IF NOT EXISTS model_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
   chat_model TEXT DEFAULT 'gemini-2.5-flash',
@@ -414,14 +444,17 @@ CREATE TABLE model_config (
 ALTER TABLE model_config ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view own model config" ON model_config;
 CREATE POLICY "Users can view own model config"
   ON model_config FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own model config" ON model_config;
 CREATE POLICY "Users can insert own model config"
   ON model_config FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own model config" ON model_config;
 CREATE POLICY "Users can update own model config"
   ON model_config FOR UPDATE
   USING (auth.uid() = user_id);
@@ -431,7 +464,7 @@ CREATE POLICY "Users can update own model config"
 -- User's API keys, encrypted before storage
 -- SELECT is blocked - only accessible via Edge Function
 -- ============================================================================
-CREATE TABLE encrypted_api_keys (
+CREATE TABLE IF NOT EXISTS encrypted_api_keys (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
   openai_key TEXT,
@@ -449,19 +482,23 @@ ALTER TABLE encrypted_api_keys ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 -- IMPORTANT: Direct SELECT is blocked for security
+DROP POLICY IF EXISTS "Users cannot directly view encrypted keys" ON encrypted_api_keys;
 CREATE POLICY "Users cannot directly view encrypted keys"
   ON encrypted_api_keys FOR SELECT
   USING (false);
 
+DROP POLICY IF EXISTS "Users can insert own encrypted keys" ON encrypted_api_keys;
 CREATE POLICY "Users can insert own encrypted keys"
   ON encrypted_api_keys FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own encrypted keys" ON encrypted_api_keys;
 CREATE POLICY "Users can update own encrypted keys"
   ON encrypted_api_keys FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Auto-update updated_at
+DROP TRIGGER IF EXISTS update_encrypted_api_keys_updated_at ON encrypted_api_keys;
 CREATE TRIGGER update_encrypted_api_keys_updated_at
   BEFORE UPDATE ON encrypted_api_keys
   FOR EACH ROW
@@ -471,7 +508,7 @@ CREATE TRIGGER update_encrypted_api_keys_updated_at
 -- ERROR PATTERNS
 -- Persisted error analytics for review prioritization and dashboard insights
 -- ============================================================================
-CREATE TABLE error_patterns (
+CREATE TABLE IF NOT EXISTS error_patterns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   pattern_key TEXT NOT NULL,
@@ -491,31 +528,35 @@ CREATE TABLE error_patterns (
 
 ALTER TABLE error_patterns ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own error patterns" ON error_patterns;
 CREATE POLICY "Users can view own error patterns"
   ON error_patterns FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own error patterns" ON error_patterns;
 CREATE POLICY "Users can insert own error patterns"
   ON error_patterns FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own error patterns" ON error_patterns;
 CREATE POLICY "Users can update own error patterns"
   ON error_patterns FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own error patterns" ON error_patterns;
 CREATE POLICY "Users can delete own error patterns"
   ON error_patterns FOR DELETE
   USING (auth.uid() = user_id);
 
-CREATE INDEX idx_error_patterns_user_key ON error_patterns(user_id, pattern_key);
-CREATE INDEX idx_error_patterns_user_category ON error_patterns(user_id, category);
-CREATE INDEX idx_error_patterns_user_last_seen ON error_patterns(user_id, last_seen DESC);
+CREATE INDEX IF NOT EXISTS idx_error_patterns_user_key ON error_patterns(user_id, pattern_key);
+CREATE INDEX IF NOT EXISTS idx_error_patterns_user_category ON error_patterns(user_id, category);
+CREATE INDEX IF NOT EXISTS idx_error_patterns_user_last_seen ON error_patterns(user_id, last_seen DESC);
 
 -- ============================================================================
 -- ERROR SNAPSHOTS
 -- Periodic snapshots of the user's error state over time
 -- ============================================================================
-CREATE TABLE error_snapshots (
+CREATE TABLE IF NOT EXISTS error_snapshots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -528,19 +569,22 @@ CREATE TABLE error_snapshots (
 
 ALTER TABLE error_snapshots ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own error snapshots" ON error_snapshots;
 CREATE POLICY "Users can view own error snapshots"
   ON error_snapshots FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own error snapshots" ON error_snapshots;
 CREATE POLICY "Users can insert own error snapshots"
   ON error_snapshots FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own error snapshots" ON error_snapshots;
 CREATE POLICY "Users can delete own error snapshots"
   ON error_snapshots FOR DELETE
   USING (auth.uid() = user_id);
 
-CREATE INDEX idx_error_snapshots_user_date ON error_snapshots(user_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_error_snapshots_user_date ON error_snapshots(user_id, date DESC);
 
 -- ============================================================================
 -- FUNCTIONS
@@ -558,7 +602,7 @@ BEGIN
     AND c.next_review_at IS NOT NULL
     AND c.next_review_at <= NOW();
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Get or create gamification record for a user
 CREATE OR REPLACE FUNCTION get_or_create_gamification(user_param UUID)
@@ -574,19 +618,4 @@ BEGIN
   END IF;
   RETURN result;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ============================================================================
--- STORAGE BUCKETS
--- Create these via Supabase Dashboard or CLI
--- ============================================================================
-
--- card-audio: User recordings for cards
--- conversation-audio: Live session audio
--- session-dialogues: Analyzed dialogue audio
--- card-images: Generated images for image cards
-
--- Example bucket policies (run these in Storage section):
--- All buckets should have RLS enabled with policies that:
--- 1. Allow authenticated users to upload
--- 2. Allow users to view only their own files (using folder structure: /user_id/...)
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

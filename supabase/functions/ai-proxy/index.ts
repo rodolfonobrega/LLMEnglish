@@ -3,7 +3,7 @@
 // This Edge Function acts as a secure proxy for AI API calls.
 // It decrypts the user's API keys and makes the actual API calls.
 //
-// Environment variables (set via Supabase Dashboard):
+// Environment variables (set via `supabase secrets set` or a local env file):
 // - ENCRYPTION_KEY: A 32-byte hex string for AES-256-GCM encryption
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'

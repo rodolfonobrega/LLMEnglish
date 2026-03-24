@@ -151,7 +151,25 @@ make docker-run      # run container (port 8888)
 make docker-stop     # stop container
 make docker-restart  # stop + run
 make docker-logs     # tail container logs
+
+# Testing
+npm run test                 # run all Vitest tests once
+npm run test:coverage        # run tests with coverage report
+npm run test:models:mock     # run model integration tests with mocks
+npm run test:models:smoke    # run real API smoke tests using .env keys
 ```
+
+Smoke test model overrides (optional):
+
+```bash
+SMOKE_OPENAI_CHAT_MODEL=gpt-4o-mini \
+SMOKE_GEMINI_IMAGE_MODEL=gemini-2.5-flash-image \
+npm run test:models:smoke
+```
+
+Notes:
+- Realtime providers (Gemini Live and OpenAI Realtime) are validated in mocked integration tests (`src/services/*.test.ts`).
+- REST smoke tests validate chat, STT, TTS, and image endpoints with real credentials.
 
 ---
 

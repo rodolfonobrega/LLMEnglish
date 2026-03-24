@@ -301,7 +301,8 @@ function getCategoryFocus(category: ErrorCategory): string {
 /**
  * Find cards that match specific weak areas
  */
-export function getCardsForWeakArea(_weakArea: ErrorCategory): Card[] {
+export function getCardsForWeakArea(weakArea: ErrorCategory): Card[] {
+  void weakArea;
   const allCards = getCards();
   // Simple approach: return cards with low scores
   // In production, you'd use semantic matching
@@ -470,8 +471,8 @@ export function getProgressSummary(): ProgressSummary {
     return age > 7 * msPerDay && age <= 14 * msPerDay;
   });
 
-  let improvingCategories: ErrorCategory[] = [];
-  let worseningCategories: ErrorCategory[] = [];
+  const improvingCategories: ErrorCategory[] = [];
+  const worseningCategories: ErrorCategory[] = [];
 
   if (last7Days.length > 0 && prev7Days.length > 0) {
     const categories: ErrorCategory[] = [

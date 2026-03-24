@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import { cva } from "class-variance-authority"
 
 import { cn } from "../../utils/cn"
 
@@ -29,18 +29,43 @@ const buttonVariants = cva(
   }
 )
 
-export interface ButtonProps
-  extends React.ComponentProps<"button">,
-  VariantProps<typeof buttonVariants> {
+type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive" | "link"
+type ButtonSize = "sm" | "default" | "lg" | "icon"
+
+export interface ButtonProps extends Omit<React.ComponentProps<"button">, "size"> {
   asChild?: boolean
+  variant?: ButtonVariant | "coral" | "outline" | "default"
+  size?: ButtonSize | "icon-sm"
+}
+
+// Backward compatibility: map old variants to new ones
+const legacyVariantMap: Record<string, ButtonVariant> = {
+  coral: "destructive",
+  outline: "secondary",
+  default: "primary",
+}
+
+const legacySizeMap: Record<string, ButtonSize> = {
+  "icon-sm": "icon",
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+
+    // Map legacy variants
+    const mappedVariant: ButtonVariant | undefined = variant && legacyVariantMap[variant as string]
+      ? legacyVariantMap[variant as string]
+      : variant as ButtonVariant | undefined
+
+    // Map legacy sizes
+    const mappedSize: ButtonSize | undefined = size && legacySizeMap[size as string]
+      ? legacySizeMap[size as string]
+      : size as ButtonSize | undefined
+
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant: mappedVariant, size: mappedSize, className }))}
         ref={ref}
         {...props}
       />

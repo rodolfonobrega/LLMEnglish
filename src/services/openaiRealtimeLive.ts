@@ -23,6 +23,7 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
   }
 
   async connect(systemInstruction: string, _voiceOverride?: string): Promise<void> {
+    void _voiceOverride;
     const key = getOpenAIKey();
     if (!key) {
       this.callbacks.onError('OpenAI API key not configured. Go to Settings to add it.');

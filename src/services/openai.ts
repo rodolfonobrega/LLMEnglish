@@ -544,7 +544,7 @@ async function openaiImageGeneration(
   model: string,
   options?: ImageGenerationOptions
 ): Promise<string> {
-  const body: Record<string, any> = {
+  const body: Record<string, unknown> = {
     model,
     prompt,
     n: 1,
@@ -597,7 +597,7 @@ async function geminiImageGeneration(
 
   if (isImagenModel) {
     // Use the 'predict' endpoint for Imagen dedicated models
-    const generationConfig: Record<string, any> = {
+    const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
     };
 
@@ -646,7 +646,7 @@ async function geminiImageGeneration(
     throw new Error('Gemini did not return an image.');
   } else {
     // Use 'generateContent' endpoint for Gemini multimodal models
-    const generationConfig: Record<string, any> = {
+    const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
     };
 

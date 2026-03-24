@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getCardsDueForReview, updateCard } from '../../services/storage';
 import { updateCardSchedule } from '../../services/spacedRepetition';
 import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
@@ -34,11 +34,7 @@ export function ReviewPage() {
   const [tutorExplanation, setTutorExplanation] = useState<string | null>(null);
   const [isGeneratingTutor, setIsGeneratingTutor] = useState(false);
 
-  useEffect(() => {
-    loadDueCards();
-  }, []);
-
-  const loadDueCards = (mode: ReviewMode = reviewMode) => {
+  const loadDueCards = useCallback((mode: ReviewMode = reviewMode) => {
     const cards = mode === 'intelligent'
       ? getPrioritizedReviewCards(20)
       : getCardsDueForReview();
@@ -50,7 +46,11 @@ export function ReviewPage() {
     setSessionComplete(false);
     setSessionScores([]);
     setReviewMode(mode);
-  };
+  }, [reviewMode]);
+
+  useEffect(() => {
+    loadDueCards();
+  }, [loadDueCards]);
 
   const currentCard = dueCards[currentIndex];
 

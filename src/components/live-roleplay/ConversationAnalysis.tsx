@@ -70,18 +70,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
   const isPlayingFullRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    analyzeConversation();
-  }, []);
-
-  // Auto-generate audio once analysis is ready
-  useEffect(() => {
-    if (analysis && !dialogueAudioReady && !isGeneratingAudio) {
-      generateDialogueAudio(analysis);
-    }
-  }, [analysis]);
-
-  const analyzeConversation = async () => {
+  const analyzeConversation = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -133,9 +122,9 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [scenario, turns]);
 
-  const generateDialogueAudio = async (data: AnalysisData) => {
+  const generateDialogueAudio = useCallback(async (data: AnalysisData) => {
     setIsGeneratingAudio(true);
     setAudioTotal(data.cleanDialogue.length);
     setAudioProgress(0);
@@ -162,7 +151,18 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
     } finally {
       setIsGeneratingAudio(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    analyzeConversation();
+  }, [analyzeConversation]);
+
+  // Auto-generate audio once analysis is ready
+  useEffect(() => {
+    if (analysis && !dialogueAudioReady && !isGeneratingAudio) {
+      generateDialogueAudio(analysis);
+    }
+  }, [analysis, dialogueAudioReady, isGeneratingAudio, generateDialogueAudio]);
 
   const playAudioAndWait = useCallback((url: string): Promise<void> => {
     return new Promise<void>((resolve) => {

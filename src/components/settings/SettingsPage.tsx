@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
-  getOpenAIKey, setOpenAIKey,
-  getGeminiKey, setGeminiKey,
-  getGroqKey, setGroqKey,
   getModelConfig, saveModelConfig,
   getConversationTone, saveConversationTone,
   getUserContext, saveUserContext,
+  saveApiKeys,
   type UserContext,
-} from '../../services/storage';
+} from '../../services/supabase/storage';
+import { useAuth } from '../../contexts/AuthContext';
+import { signOut } from '../../services/supabase/auth';
 import type { ModelConfig, Provider, ConversationTone } from '../../types/settings';
 import {
   DEFAULT_MODEL_CONFIG,
@@ -15,7 +15,7 @@ import {
   OPENAI_TTS_VOICES, GEMINI_TTS_VOICES, GROQ_TTS_VOICES,
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
 } from '../../types/settings';
-import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, User as UserIcon } from 'lucide-react';
+import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, User as UserIcon, LogOut, Mail } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -42,6 +42,7 @@ function defaultTtsVoice(provider: Provider): string {
 const NONE_OPTION = { value: '', label: 'Nenhum (sem fallback)' };
 
 export function SettingsPage() {
+  const { user, profile, signOut: authSignOut, refreshProfile } = useAuth();
   const [openaiKey, setOpenaiKeyState] = useState('');
   const [geminiKey, setGeminiKeyState] = useState('');
   const [groqKey, setGroqKeyState] = useState('');
@@ -56,12 +57,16 @@ export function SettingsPage() {
   });
 
   useEffect(() => {
-    setOpenaiKeyState(getOpenAIKey());
-    setGeminiKeyState(getGeminiKey());
-    setGroqKeyState(getGroqKey());
-    setConfig(getModelConfig());
-    setTone(getConversationTone());
-    setUserCtx(getUserContext());
+    // Load data from Supabase
+    Promise.all([
+      getModelConfig(),
+      getConversationTone(),
+      getUserContext(),
+    ]).then(([modelConfig, conversationTone, userContext]) => {
+      setConfig(modelConfig);
+      setTone(conversationTone);
+      setUserCtx(userContext);
+    });
   }, []);
 
   const updateConfig = (partial: Partial<ModelConfig>) => {
@@ -145,15 +150,32 @@ export function SettingsPage() {
     ? ttsVoicesForProvider(config.ttsFallbackProvider)
     : [];
 
-  const handleSave = () => {
-    setOpenAIKey(openaiKey);
-    setGeminiKey(geminiKey);
-    setGroqKey(groqKey);
-    saveModelConfig(config);
-    saveConversationTone(tone);
-    saveUserContext(userCtx);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    try {
+      // Save API keys to Supabase (encrypted via Edge Function)
+      if (openaiKey || geminiKey || groqKey) {
+        await saveApiKeys({
+          openai: openaiKey || undefined,
+          gemini: geminiKey || undefined,
+          groq: groqKey || undefined,
+        });
+      }
+      await saveModelConfig(config);
+      await saveConversationTone(tone);
+      await saveUserContext(userCtx);
+      await refreshProfile(); // Update profile in auth context
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      // Show error to user
+      alert('Erro ao salvar configurações. Tente novamente.');
+    }
+  };
+
+  const handleLogout = async () => {
+    await authSignOut();
+    window.location.href = '/login';
   };
 
   const handleReset = () => setConfig({ ...DEFAULT_MODEL_CONFIG });
@@ -207,21 +229,41 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-extrabold text-foreground text-balance">Configurações</h2>
-        <p className="text-muted-foreground text-pretty">Configure suas API keys, perfil e modelos de IA.</p>
+      {/* Header with User Profile */}
+      <div className="flex items-center justify-between">
+        <div className="text-center space-y-2 flex-1">
+          <h2 className="text-3xl font-extrabold text-foreground text-balance">Configurações</h2>
+          <p className="text-muted-foreground text-pretty">Configure suas API keys, perfil e modelos de IA.</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-colors"
+        >
+          <LogOut size={16} />
+          <span className="hidden sm:inline">Sair</span>
+        </button>
       </div>
 
-      {/* Security Warning */}
-      <div className="flex items-start gap-3 bg-[var(--amber-soft)] rounded-2xl p-4">
-        <div className="size-8 rounded-full bg-[var(--amber)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Shield size={16} className="text-[var(--amber)]" />
+      {/* User Info Card */}
+      <div className="bg-card rounded-2xl p-4 border border-border flex items-center gap-4">
+        <div className="size-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+          {profile?.email?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-foreground truncate">{profile?.email || user?.email}</p>
+          <p className="text-sm text-muted-foreground">SpeakLab sincronizado na nuvem</p>
+        </div>
+      </div>
+
+      {/* Security Notice */}
+      <div className="flex items-start gap-3 bg-[var(--sky-soft)] rounded-2xl p-4">
+        <div className="size-8 rounded-full bg-[var(--sky)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Shield size={16} className="text-[var(--sky)]" />
         </div>
         <div>
-          <h4 className="text-[var(--amber)] font-bold text-sm">Aviso de Segurança</h4>
+          <h4 className="text-[var(--sky)] font-bold text-sm">Dados Sincronizados</h4>
           <p className="text-muted-foreground text-sm mt-1 text-pretty">
-            As API keys ficam armazenadas no localStorage do seu navegador. Adequado apenas para uso pessoal.
+            Suas API keys são armazenadas de forma criptografada no Supabase. Seus dados sincronizam entre dispositivos.
           </p>
         </div>
       </div>

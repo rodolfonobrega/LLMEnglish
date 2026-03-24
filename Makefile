@@ -1,4 +1,4 @@
-.PHONY: install dev build preview clean docker-build docker-run docker-stop
+.PHONY: install dev build preview clean test test-coverage test-models-mock test-models-smoke docker-build docker-run docker-stop
 
 # ──────────────────────────────────────────────
 # Local development
@@ -18,6 +18,18 @@ preview: build ## Build and preview production locally
 
 clean: ## Remove build artifacts and dependencies
 	rm -rf dist node_modules
+
+test: ## Run all tests
+	npm run test
+
+test-coverage: ## Run tests with coverage report
+	npm run test:coverage
+
+test-models-mock: ## Run model integration tests (mocked)
+	npm run test:models:mock
+
+test-models-smoke: ## Run model smoke tests with real APIs (.env keys)
+	npm run test:models:smoke
 
 # ──────────────────────────────────────────────
 # Docker (cross-platform: Windows & Linux/Mac)

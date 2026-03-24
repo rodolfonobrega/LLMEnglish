@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { getLiveSessions } from '../../services/storage';
 import type { LiveSession } from '../../types/scenario';
-import { Clock, ChevronLeft, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Clock, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/card';
 import { cn } from '../../utils/cn';

@@ -1,0 +1,397 @@
+/**
+ * Supabase Database Types
+ *
+ * Generated types matching the database schema in supabase/schema.sql
+ */
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Provider = 'openai' | 'gemini' | 'groq'
+export type ConversationTone = 'casual' | 'balanced' | 'formal'
+export type CardType = 'phrase' | 'text' | 'roleplay' | 'image'
+export type ScenarioIntensity = 'normal' | 'adventurous' | 'wild' | 'skill'
+export type SessionType = 'exercise' | 'review' | 'live-roleplay'
+export type ConversationRole = 'user' | 'ai'
+
+// ============================================================================
+// DATABASE TYPES
+// ============================================================================
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: Profile
+        Insert: ProfileInsert
+        Update: ProfileUpdate
+      }
+      cards: {
+        Row: Card
+        Insert: CardInsert
+        Update: CardUpdate
+      }
+      card_reviews: {
+        Row: CardReview
+        Insert: CardReviewInsert
+        Update: CardReviewUpdate
+      }
+      card_evaluations: {
+        Row: CardEvaluation
+        Insert: CardEvaluationInsert
+        Update: CardEvaluationUpdate
+      }
+      gamification: {
+        Row: Gamification
+        Insert: GamificationInsert
+        Update: GamificationUpdate
+      }
+      badges: {
+        Row: Badge
+        Insert: BadgeInsert
+        Update: BadgeUpdate
+      }
+      live_sessions: {
+        Row: LiveSession
+        Insert: LiveSessionInsert
+        Update: LiveSessionUpdate
+      }
+      conversation_turns: {
+        Row: ConversationTurn
+        Insert: ConversationTurnInsert
+        Update: ConversationTurnUpdate
+      }
+      conversation_analyses: {
+        Row: ConversationAnalysis
+        Insert: ConversationAnalysisInsert
+        Update: ConversationAnalysisUpdate
+      }
+      session_reports: {
+        Row: SessionReport
+        Insert: SessionReportInsert
+        Update: SessionReportUpdate
+      }
+      path_progress: {
+        Row: PathProgress
+        Insert: PathProgressInsert
+        Update: PathProgressUpdate
+      }
+      model_config: {
+        Row: ModelConfig
+        Insert: ModelConfigInsert
+        Update: ModelConfigUpdate
+      }
+      encrypted_api_keys: {
+        Row: EncryptedApiKeys
+        Insert: EncryptedApiKeysInsert
+        Update: EncryptedApiKeysUpdate
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      get_cards_due_for_review: {
+        Args: { user_param: string }
+        Returns: Card[]
+      }
+      get_or_create_gamification: {
+        Args: { user_param: string }
+        Returns: Gamification
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+  }
+}
+
+// ============================================================================
+// PROFILE
+// ============================================================================
+
+export interface Profile {
+  id: string
+  email: string | null
+  profile: string
+  interests: string
+  goals: string
+  current_level: string
+  conversation_tone: ConversationTone
+  created_at: string
+  updated_at: string
+}
+
+export type ProfileInsert = Omit<Profile, 'id' | 'created_at' | 'updated_at'>
+export type ProfileUpdate = Partial<ProfileInsert>
+
+// ============================================================================
+// CARD
+// ============================================================================
+
+export interface Card {
+  id: string
+  user_id: string
+  type: CardType
+  prompt: string
+  expected_context: string | null
+  image_url: string | null
+  target_vocabulary: string[] | null
+  context: string | null
+  theme: string | null
+  created_at: string
+  last_reviewed_at: string | null
+  next_review_at: string | null
+  ease_factor: number
+  interval: number
+  repetitions: number
+}
+
+export type CardInsert = Omit<Card, 'id' | 'created_at'>
+export type CardUpdate = Partial<CardInsert>
+
+// ============================================================================
+// CARD REVIEW
+// ============================================================================
+
+export interface CardReview {
+  id: string
+  card_id: string
+  user_id: string
+  date: string
+  score: number
+  user_transcription: string
+  created_at: string
+}
+
+export type CardReviewInsert = Omit<CardReview, 'id' | 'created_at'>
+export type CardReviewUpdate = Partial<CardReviewInsert>
+
+// ============================================================================
+// CARD EVALUATION
+// ============================================================================
+
+export interface CardEvaluation {
+  id: string
+  card_id: string
+  user_id: string
+  score: number
+  user_transcription: string
+  corrected_version: string
+  better_alternatives: string[] | null
+  corrections: string[] | null
+  overall_feedback: string
+  created_at: string
+}
+
+export type CardEvaluationInsert = Omit<CardEvaluation, 'id' | 'created_at'>
+export type CardEvaluationUpdate = Partial<CardEvaluationInsert>
+
+// ============================================================================
+// GAMIFICATION
+// ============================================================================
+
+export interface Gamification {
+  id: string
+  user_id: string
+  xp: number
+  level: number
+  streak: number
+  longest_streak: number
+  last_practice_date: string | null
+  total_sessions: number
+  total_cards: number
+  created_at: string
+  updated_at: string
+}
+
+export type GamificationInsert = Omit<Gamification, 'id' | 'created_at' | 'updated_at'>
+export type GamificationUpdate = Partial<GamificationInsert>
+
+// ============================================================================
+// BADGE
+// ============================================================================
+
+export interface Badge {
+  id: string
+  user_id: string
+  badge_id: string
+  name: string
+  description: string | null
+  icon: string | null
+  earned_at: string
+}
+
+export type BadgeInsert = Omit<Badge, 'id' | 'earned_at'>
+export type BadgeUpdate = Partial<BadgeInsert>
+
+// ============================================================================
+// LIVE SESSION
+// ============================================================================
+
+export interface LiveScenario {
+  id: string
+  theme: string
+  intensity: ScenarioIntensity
+  descriptionPt: string
+  systemPrompt: string
+  brandName?: string
+  location?: string
+  userRole: string
+  aiRole: string
+  characterPersonality?: string
+  characterSpeechStyle?: string
+  suggestedVoice?: string
+  sceneImageUrl?: string
+}
+
+export interface LiveSession {
+  id: string
+  user_id: string
+  scenario: LiveScenario
+  turn_count: number
+  started_at: string
+  ended_at: string | null
+}
+
+export type LiveSessionInsert = Omit<LiveSession, 'id'>
+export type LiveSessionUpdate = Partial<LiveSessionInsert>
+
+// ============================================================================
+// CONVERSATION TURN
+// ============================================================================
+
+export interface ConversationTurn {
+  id: string
+  live_session_id: string
+  user_id: string
+  role: ConversationRole
+  text: string
+  audio_path: string | null
+  timestamp: number
+}
+
+export type ConversationTurnInsert = Omit<ConversationTurn, 'id'>
+export type ConversationTurnUpdate = Partial<ConversationTurnInsert>
+
+// ============================================================================
+// CONVERSATION ANALYSIS
+// ============================================================================
+
+export interface ConversationAnalysis {
+  id: string
+  live_session_id: string
+  user_id: string
+  improvements: string[] | null
+  clean_dialogue: ConversationTurn[] | null
+  overall_feedback: string | null
+  dialogue_audio_path: string | null
+  created_at: string
+}
+
+export type ConversationAnalysisInsert = Omit<ConversationAnalysis, 'id' | 'created_at'>
+export type ConversationAnalysisUpdate = Partial<ConversationAnalysisInsert>
+
+// ============================================================================
+// SESSION REPORT
+// ============================================================================
+
+export interface SessionReport {
+  id: string
+  user_id: string
+  date: string
+  type: SessionType
+  exercises_completed: number
+  scores: number[] | null
+  average_score: number | null
+  errors_found: number
+  xp_earned: number
+  time_spent_seconds: number
+  improvements: string[] | null
+}
+
+export type SessionReportInsert = Omit<SessionReport, 'id' | 'date'>
+export type SessionReportUpdate = Partial<SessionReportInsert>
+
+// ============================================================================
+// PATH PROGRESS
+// ============================================================================
+
+export interface PathProgress {
+  id: string
+  user_id: string
+  trail_id: string
+  step_id: string
+  completed_at: string
+}
+
+export type PathProgressInsert = Omit<PathProgress, 'id' | 'completed_at'>
+export type PathProgressUpdate = Partial<PathProgressInsert>
+
+// ============================================================================
+// MODEL CONFIG
+// ============================================================================
+
+export interface ModelConfig {
+  id: string
+  user_id: string
+  chat_model: string
+  chat_provider: Provider
+  stt_model: string
+  stt_provider: Provider
+  tts_model: string
+  tts_voice: string
+  tts_provider: Provider
+  image_model: string
+  image_provider: 'openai' | 'gemini'
+  live_model: string
+  live_voice: string
+  live_provider: 'openai' | 'gemini'
+  chat_fallback_model: string | null
+  chat_fallback_provider: Provider | null
+  stt_fallback_model: string | null
+  stt_fallback_provider: Provider | null
+  tts_fallback_model: string | null
+  tts_fallback_provider: Provider | null
+  tts_fallback_voice: string | null
+}
+
+export type ModelConfigInsert = Omit<ModelConfig, 'id'>
+export type ModelConfigUpdate = Partial<ModelConfigInsert>
+
+// ============================================================================
+// ENCRYPTED API KEYS
+// ============================================================================
+
+export interface EncryptedApiKeys {
+  id: string
+  user_id: string
+  openai_key: string | null
+  gemini_key: string | null
+  groq_key: string | null
+  openai_key_updated_at: string | null
+  gemini_key_updated_at: string | null
+  groq_key_updated_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type EncryptedApiKeysInsert = Omit<EncryptedApiKeys, 'id' | 'created_at' | 'updated_at'>
+export type EncryptedApiKeysUpdate = Partial<EncryptedApiKeysInsert>
+
+// ============================================================================
+// HELPER TYPES
+// ============================================================================
+
+export type Tables = Database['public']['Tables']
+export type TablesInsert = {
+  [K in keyof Tables]: Tables[K]['Insert']
+}
+export type TablesUpdate = {
+  [K in keyof Tables]: Tables[K]['Update']
+}

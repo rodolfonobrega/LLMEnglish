@@ -157,10 +157,10 @@ export const IMAGE_MODELS = [
 export const LIVE_MODELS = [
   // Gemini Live
   { value: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Native Audio', provider: 'gemini' as const },
-  { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash Exp', provider: 'gemini' as const },
   // OpenAI Realtime
-  { value: 'gpt-4o-realtime-preview', label: 'GPT-4o Realtime', provider: 'openai' as const },
-  { value: 'gpt-4o-mini-realtime-preview', label: 'GPT-4o Mini Realtime', provider: 'openai' as const },
+  { value: 'gpt-realtime', label: 'GPT Realtime', provider: 'openai' as const },
+  { value: 'gpt-realtime-1.5', label: 'GPT Realtime 1.5', provider: 'openai' as const },
+  { value: 'gpt-realtime-mini', label: 'GPT Realtime Mini', provider: 'openai' as const },
 ];
 
 export const OPENAI_LIVE_VOICES = [

@@ -188,6 +188,16 @@ export function PathsPage() {
     return (
       <div className="space-y-6 pb-20">
         <div>
+          <a href="/practice">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground -ml-2 mb-2"
+            >
+              <ChevronLeft size={18} />
+              Hub de Prática
+            </Button>
+          </a>
           <h1 className="text-2xl font-bold text-foreground">Trilhas</h1>
           <p className="text-muted-foreground">Siga trilhas guiadas por situações da vida real.</p>
         </div>

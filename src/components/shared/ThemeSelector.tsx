@@ -28,8 +28,8 @@ export function ThemeSelector({ selected, onSelect }: ThemeSelectorProps) {
           className={cn(
             'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
             selected === theme.id
-              ? 'bg-[var(--sky)] text-white'
-              : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground',
           )}
         >
           <span className="text-base">{theme.icon}</span>

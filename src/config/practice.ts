@@ -9,3 +9,5 @@ export const practiceSecondaryTools = [
   { id: 'history', to: '/history', title: 'Historico' },
   { id: 'errors', to: '/errors', title: 'Erros' },
 ] as const;
+
+export const exerciseSetupSteps = ['format', 'type', 'theme', 'generate'] as const;

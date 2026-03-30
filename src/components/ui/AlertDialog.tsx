@@ -30,7 +30,7 @@ export function AlertDialog({
         <BaseAlertDialog.Popup
           className={cn(
             'fixed top-1/2 left-1/2 z-(--z-modal) -translate-x-1/2 -translate-y-1/2',
-            'w-full max-w-sm rounded-2xl bg-card p-6 border border-edge',
+            'w-full max-w-sm rounded-2xl bg-card p-6 border border-border',
             'shadow-[var(--shadow-lg)]',
             'focus-visible:outline-none',
             'data-[starting-style]:opacity-0 data-[starting-style]:scale-95',
@@ -38,18 +38,18 @@ export function AlertDialog({
             'transition-[opacity,transform] duration-150',
           )}
         >
-          <BaseAlertDialog.Title className="text-lg font-bold text-ink text-balance">
+          <BaseAlertDialog.Title className="text-lg font-bold text-foreground text-balance">
             {title}
           </BaseAlertDialog.Title>
-          <BaseAlertDialog.Description className="text-sm text-ink-muted text-pretty mt-2">
+          <BaseAlertDialog.Description className="text-sm text-muted-foreground text-pretty mt-2">
             {description}
           </BaseAlertDialog.Description>
           <div className="flex justify-end gap-3 mt-6">
             <BaseAlertDialog.Close
               className={cn(
                 'inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors',
-                'bg-card-warm text-ink-secondary hover:bg-card-hover',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
+                'bg-muted text-muted-foreground hover:bg-accent',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               )}
             >
               {cancelLabel}

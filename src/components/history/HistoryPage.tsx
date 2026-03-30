@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { clearLiveSessions, getLiveSessions } from '../../services/supabase/storage';
 import type { LiveSession } from '../../types/scenario';
-import { Clock, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Clock, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, ChevronLeft } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/card';
 import { cn } from '../../utils/cn';
@@ -136,6 +136,16 @@ export function HistoryPage() {
 
   return (
     <div className="space-y-6 pb-20">
+      <a href="/practice">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground -ml-2 mb-1"
+        >
+          <ChevronLeft size={18} />
+          Hub de Prática
+        </Button>
+      </a>
       <div className="flex items-center gap-3">
         <div className="p-3 bg-violet-50 dark:bg-violet-900/30 rounded-2xl">
           <Clock size={24} className="text-violet-600 dark:text-violet-400" />

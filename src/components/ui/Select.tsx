@@ -22,7 +22,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-ink-secondary">
+          <label htmlFor={selectId} className="block text-sm font-medium text-muted-foreground">
             {label}
           </label>
         )}
@@ -33,8 +33,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             value={value}
             onChange={e => onChange(e.target.value)}
             className={cn(
-              'w-full appearance-none px-4 py-2.5 pr-10 bg-card-warm border border-edge rounded-xl text-ink',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-sky focus-visible:ring-offset-2 focus-visible:ring-offset-parchment',
+              'w-full appearance-none px-4 py-2.5 pr-10 bg-muted border border-border rounded-xl text-foreground',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               'transition-colors cursor-pointer',
               className,
             )}
@@ -48,11 +48,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <ChevronDown
             size={16}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
           />
         </div>
         {hint && (
-          <p className="text-xs text-ink-faint">{hint}</p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
         )}
       </div>
     );

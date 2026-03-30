@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { practicePrimaryModes, practiceSecondaryTools, exerciseSetupSteps } from './practice';
+import { practicePrimaryModes, practiceSecondaryTools, exerciseSetupSteps, liveSetupModes } from './practice';
 
 describe('practice hub metadata', () => {
   it('keeps only exercises and live simulation as primary modes', () => {
@@ -19,5 +19,11 @@ describe('practice hub metadata', () => {
 describe('exerciseSetupSteps', () => {
   it('keeps the agreed setup order', () => {
     expect(exerciseSetupSteps).toEqual(['format', 'type', 'theme', 'generate']);
+  });
+});
+
+describe('liveSetupModes', () => {
+  it('supports everyday and skill practice', () => {
+    expect(liveSetupModes.map(mode => mode.id)).toEqual(['everyday', 'skill']);
   });
 });

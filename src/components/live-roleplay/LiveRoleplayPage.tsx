@@ -33,16 +33,16 @@ export function LiveRoleplayPage() {
 
   return (
     <div className="space-y-6">
-      {/* Back button - only on setup phase (conversation/analysis have their own exit) */}
+      {/* Back to practice hub - only on setup phase (conversation/analysis have their own exit) */}
       {phase === 'setup' && (
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/practice')}
           className="text-muted-foreground hover:text-foreground -ml-2"
         >
           <ChevronLeft size={18} />
-          Back
+          Practice
         </Button>
       )}
 

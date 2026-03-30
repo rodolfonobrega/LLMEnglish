@@ -18,7 +18,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
         <BaseDialog.Popup
           className={cn(
             'fixed top-1/2 left-1/2 z-(--z-modal) -translate-x-1/2 -translate-y-1/2',
-            'w-full max-w-lg rounded-2xl bg-card p-6 border border-edge',
+            'w-full max-w-lg rounded-2xl bg-card p-6 border border-border',
             'shadow-[var(--shadow-lg)]',
             'focus-visible:outline-none',
             'data-[starting-style]:opacity-0 data-[starting-style]:scale-95',
@@ -41,7 +41,7 @@ Dialog.Title = function DialogTitle({
   className?: string;
 }) {
   return (
-    <BaseDialog.Title className={cn('text-lg font-bold text-ink text-balance', className)}>
+    <BaseDialog.Title className={cn('text-lg font-bold text-foreground text-balance', className)}>
       {children}
     </BaseDialog.Title>
   );
@@ -55,7 +55,7 @@ Dialog.Description = function DialogDescription({
   className?: string;
 }) {
   return (
-    <BaseDialog.Description className={cn('text-sm text-ink-muted text-pretty mt-1', className)}>
+    <BaseDialog.Description className={cn('text-sm text-muted-foreground text-pretty mt-1', className)}>
       {children}
     </BaseDialog.Description>
   );

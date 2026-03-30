@@ -33,50 +33,9 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Legacy Mappings -> Kimi System */
-    --parchment: var(--background);
-    /* --card is already defined */
-    --card-warm: #F4F4F5;
-    /* Zinc-100 */
-    --card-hover: #E4E4E7;
-    /* Zinc-200 */
-
-    --ink: #09090b;
-    /* Zinc-950 (Foreground) */
-    --ink-secondary: #71717a;
-    /* Zinc-500 */
-    --ink-muted: #a1a1aa;
-    /* Zinc-400 */
-    --ink-faint: #e4e4e7;
-    /* Zinc-200 */
-
-    --edge: rgba(0, 0, 0, 0.1);
-    --edge-strong: rgba(0, 0, 0, 0.2);
-
-    /* Brand Colors (Refined for Modern Look) */
-    --sky: #3b82f6;
-    /* Blue-500 */
-    --sky-hover: #2563eb;
-    /* Blue-600 */
-    --sky-soft: rgba(59, 130, 246, 0.1);
-
-    --coral: #f97316;
-    /* Orange-500 */
-    --coral-hover: #ea580c;
-    /* Orange-600 */
-    --coral-soft: rgba(249, 115, 22, 0.1);
-
-    --amber: #f59e0b;
-    /* Amber-500 */
-    --amber-soft: rgba(245, 158, 11, 0.1);
-
-    --leaf: #22c55e;
-    /* Green-500 */
-    --leaf-soft: rgba(34, 197, 94, 0.1);
-
-    --danger: #ef4444;
-    /* Red-500 */
-    --danger-soft: rgba(239, 68, 68, 0.1);
+    /* Brand danger token */
+    --danger: 0 84.2% 60.2%;
+    --danger-soft: 0 84.2% 60.2% / 0.1;
 
     /* Z-index scale */
     --z-header: 40;
@@ -114,32 +73,9 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Legacy Mappings Dark */
-    --parchment: #09090b;
-    /* Background */
-    --card-warm: #18181b;
-    /* Zinc-900 */
-    --card-hover: #27272a;
-    /* Zinc-800 */
-
-    --ink: #fafafa;
-    /* Zinc-50 */
-    --ink-secondary: #a1a1aa;
-    /* Zinc-400 */
-    --ink-muted: #52525b;
-    /* Zinc-600 */
-    --ink-faint: #27272a;
-    /* Zinc-800 */
-
-    --edge: rgba(255, 255, 255, 0.1);
-    --edge-strong: rgba(255, 255, 255, 0.2);
-
-    /* Brand Colors Dark Mode */
-    --sky-soft: rgba(59, 130, 246, 0.2);
-    --coral-soft: rgba(249, 115, 22, 0.2);
-    --amber-soft: rgba(245, 158, 11, 0.2);
-    --leaf-soft: rgba(34, 197, 94, 0.2);
-    --danger-soft: rgba(239, 68, 68, 0.2);
+    /* Brand danger token (dark) */
+    --danger: 0 62.8% 30.6%;
+    --danger-soft: 0 62.8% 30.6% / 0.2;
   }
 }
 
@@ -158,6 +94,9 @@
 
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-danger: hsl(var(--danger));
+  --color-danger-soft: hsl(var(--danger-soft));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
@@ -269,8 +208,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
+  0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+  50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.6); }
 }
 
 @keyframes wave {
@@ -308,7 +247,7 @@
 /* ─── Utility Classes ─── */
 
 .gradient-text {
-  background: linear-gradient(135deg, var(--sky) 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, #8b5cf6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -358,7 +297,7 @@
 .ripple {
   position: absolute;
   border-radius: 50%;
-  border: 2px solid rgba(59, 130, 246, 0.5);
+  border: 2px solid hsl(var(--primary) / 0.5);
   animation: ripple-animation 2s ease-out infinite;
 }
 

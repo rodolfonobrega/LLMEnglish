@@ -1,19 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { Compass, RotateCcw, Mic, Map, Sparkles, FileText, Settings, Flame, Zap } from 'lucide-react';
+import { Flame, Zap } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { getGamification } from '../../services/storage';
 import { useState, useEffect } from 'react';
 import type { GamificationState } from '../../types/gamification';
-
-const navItems = [
-    { to: '/', icon: Compass, label: 'Início' },
-    { to: '/exercises', icon: Sparkles, label: 'Exercícios' },
-    { to: '/paths', icon: Map, label: 'Trilhas' },
-    { to: '/live', icon: Mic, label: 'Simulação' },
-    { to: '/review', icon: RotateCcw, label: 'Revisão' },
-    { to: '/scripts', icon: FileText, label: 'Scripts' },
-    { to: '/settings', icon: Settings, label: 'Configurações' },
-];
+import { primaryNavItems } from '../../config/navigation';
 
 export function Sidebar() {
     const [stats, setStats] = useState<GamificationState | null>(null);
@@ -43,7 +34,7 @@ export function Sidebar() {
 
             <nav className="flex-1 px-4">
                 <ul className="space-y-1">
-                    {navItems.map((item) => {
+                    {primaryNavItems.map((item) => {
                         const Icon = item.icon;
                         return (
                             <li key={item.to}>

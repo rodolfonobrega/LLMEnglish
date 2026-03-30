@@ -10,6 +10,7 @@ import { PathsPage } from './components/paths/PathsPage';
 import { ExercisesPage } from './components/exercises/ExercisesPage';
 import { LibraryPage } from './components/library/LibraryPage';
 import { PracticePage } from './components/practice/PracticePage';
+import { PracticeHubPage } from './components/practice/PracticeHubPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { ErrorDashboard } from './components/errors/ErrorDashboard';
 import { HistoryPage } from './components/history/HistoryPage';
@@ -54,7 +55,7 @@ function App() {
             <Route path="exercises" element={<ExercisesPage />} />
             <Route path="library" element={<LibraryPage />} />
             <Route path="scripts" element={<PracticePage />} />
-            <Route path="practice" element={<PracticePage />} />
+            <Route path="practice" element={<PracticeHubPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="errors" element={<ErrorDashboard />} />
             <Route path="history" element={<HistoryPage />} />

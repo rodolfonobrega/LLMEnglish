@@ -45,6 +45,22 @@
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: 217 91% 60%;
 
+    /* Brand Colors */
+    --brand-primary: 217 91% 60%;       /* blue-500 */
+    --brand-primary-hover: 217 91% 50%; /* blue-600 */
+    --brand-primary-soft: 217 91% 60% / 0.1;
+    --brand-special: 262 83% 58%;       /* violet-500 */
+
+    /* Semantic Aliases (used across many components) */
+    --sky: 217 91% 60%;
+    --sky-soft: 217 91% 60% / 0.1;
+    --coral: 0 84% 60%;
+    --coral-soft: 0 84% 60% / 0.1;
+    --leaf: 142 71% 45%;
+    --leaf-soft: 142 71% 45% / 0.1;
+    --amber: 38 92% 50%;
+    --amber-soft: 38 92% 50% / 0.1;
+
     /* Brand danger token */
     --danger: 0 84.2% 60.2%;
     --danger-soft: 0 84.2% 60.2% / 0.1;
@@ -96,6 +112,22 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
+    /* Brand Colors (dark) */
+    --brand-primary: 217 91% 60%;
+    --brand-primary-hover: 217 91% 70%;
+    --brand-primary-soft: 217 91% 60% / 0.15;
+    --brand-special: 262 83% 68%;
+
+    /* Semantic Aliases (dark) */
+    --sky: 217 91% 60%;
+    --sky-soft: 217 91% 60% / 0.15;
+    --coral: 0 84% 60%;
+    --coral-soft: 0 84% 60% / 0.15;
+    --leaf: 142 71% 55%;
+    --leaf-soft: 142 71% 55% / 0.15;
+    --amber: 38 92% 60%;
+    --amber-soft: 38 92% 60% / 0.15;
+
     /* Brand danger token (dark) */
     --danger: 0 62.8% 30.6%;
     --danger-soft: 0 62.8% 30.6% / 0.2;
@@ -121,6 +153,15 @@
 
   --color-danger: hsl(var(--danger));
   --color-danger-soft: hsl(var(--danger-soft));
+
+  --color-sky: hsl(var(--sky));
+  --color-sky-soft: hsl(var(--sky-soft));
+  --color-coral: hsl(var(--coral));
+  --color-coral-soft: hsl(var(--coral-soft));
+  --color-leaf: hsl(var(--leaf));
+  --color-leaf-soft: hsl(var(--leaf-soft));
+  --color-amber: hsl(var(--amber));
+  --color-amber-soft: hsl(var(--amber-soft));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));

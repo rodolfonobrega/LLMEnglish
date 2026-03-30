@@ -86,8 +86,8 @@ export function ErrorDashboard() {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
-          <RefreshCw className="animate-spin text-ink-muted mx-auto mb-3" size={32} />
-          <p className="text-ink-muted">Carregando análise de erros...</p>
+          <RefreshCw className="animate-spin text-muted-foreground mx-auto mb-3" size={32} />
+          <p className="text-muted-foreground">Carregando análise de erros...</p>
         </div>
       </div>
     );
@@ -102,11 +102,11 @@ export function ErrorDashboard() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/practice')}
         className="text-muted-foreground hover:text-foreground -ml-2"
       >
         <ChevronLeft size={18} />
-        Voltar
+        Voltar ao Hub de Prática
       </Button>
 
       <div className="flex items-center justify-between">

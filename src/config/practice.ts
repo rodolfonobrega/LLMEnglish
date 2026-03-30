@@ -11,3 +11,8 @@ export const practiceSecondaryTools = [
 ] as const;
 
 export const exerciseSetupSteps = ['format', 'type', 'theme', 'generate'] as const;
+
+export const liveSetupModes = [
+  { id: 'everyday', title: 'Day-to-day scenarios' },
+  { id: 'skill', title: 'Interview and professional' },
+] as const;

@@ -10,6 +10,7 @@ import { Sparkles, Briefcase, Coffee, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { Link } from 'react-router-dom';
+import { liveSetupModes } from '../../config/practice';
 
 interface ScenarioSetupProps {
   onScenarioReady: (scenario: LiveScenario) => void;
@@ -52,6 +53,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 type SimulationMode = 'everyday' | 'skill';
+
+const MODE_ICONS: Record<SimulationMode, React.ReactNode> = {
+  everyday: <Coffee size={16} />,
+  skill: <Briefcase size={16} />,
+};
+
+const MODE_LABELS: Record<SimulationMode, string> = {
+  everyday: 'Cenários do Dia a Dia',
+  skill: 'Entrevista & Profissional',
+};
 
 export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   const [mode, setMode] = useState<SimulationMode>('everyday');
@@ -191,76 +202,66 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   }
 
   return (
-    <div className="bg-card rounded-2xl p-5 border border-border space-y-6">
-      {/* Header & Mode Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Simulação ao Vivo</h2>
-          <p className="text-muted-foreground text-sm">Entre numa conversa real.</p>
+    <div className="space-y-6">
+      {/* ── Stage 1: Mode ─────────────────────────────────────────── */}
+      <section className="bg-card rounded-2xl p-5 border border-border space-y-4">
+        <SectionLabel>Modo</SectionLabel>
+        <div className="flex bg-muted p-1 rounded-xl w-full">
+          {liveSetupModes.map(m => {
+            const mId = m.id as SimulationMode;
+            return (
+              <button
+                key={m.id}
+                onClick={() => setMode(mId)}
+                className={cn(
+                  'flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2',
+                  mode === mId ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {MODE_ICONS[mId]}
+                {MODE_LABELS[mId]}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex bg-muted p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setMode('everyday')}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2',
-              mode === 'everyday' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Coffee size={16} /> Cenários do Dia a Dia
-          </button>
-          <button
-            onClick={() => setMode('skill')}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2',
-              mode === 'skill' ? 'bg-background text-[var(--sky)] shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Briefcase size={16} /> Entrevista & Profissional
-          </button>
-        </div>
-      </div>
-
-      {mode === 'skill' && (
-        <div className="bg-[var(--sky-soft)] border border-[var(--sky)]/20 rounded-xl p-4 flex gap-3 text-sm text-[var(--sky-dark)]">
-          <UserIcon size={20} className="shrink-0 text-[var(--sky)]" />
-          <p>
-            <strong>Simulador Profissional</strong> vai usar seu Perfil salvo (Nível: {userContext?.currentLevel || 'Intermediate'}) para gerar uma entrevista ou simulação profissional realista. Atualize seu perfil em <Link to="/settings" className="underline font-bold">Configurações</Link>.
-          </p>
-        </div>
-      )}
-
-      {/* THEME SELECTOR (chips, like Discovery) */}
-      {mode === 'everyday' && (
-        <div className="space-y-6">
-          <div>
-            <SectionLabel>Cena / Tema</SectionLabel>
-
-            <div className="flex gap-2 flex-wrap">
-              {THEMES.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => handleThemeChange(t.id)}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
-                    theme === t.id
-                      ? 'bg-[var(--sky)] text-white'
-                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
-                  )}
-                >
-                  <span className="text-base">{t.icon}</span>
-                  <span>{t.label}</span>
-                </button>
-              ))}
-            </div>
+        {mode === 'skill' && (
+          <div className="bg-[var(--sky-soft)] border border-[var(--sky)]/20 rounded-xl p-4 flex gap-3 text-sm text-[var(--sky-dark)]">
+            <UserIcon size={20} className="shrink-0 text-[var(--sky)]" />
+            <p>
+              <strong>Simulador Profissional</strong> vai usar seu Perfil salvo (Nível: {userContext?.currentLevel || 'Intermediate'}) para gerar uma entrevista ou simulação profissional realista. Atualize seu perfil em <Link to="/settings" className="underline font-bold">Configurações</Link>.
+            </p>
           </div>
+        )}
+      </section>
 
-        </div>
+      {/* ── Stage 2: Theme (everyday only) ────────────────────────── */}
+      {mode === 'everyday' && (
+        <section className="bg-card rounded-2xl p-5 border border-border space-y-4">
+          <SectionLabel>Cena / Tema</SectionLabel>
+          <div className="flex gap-2 flex-wrap">
+            {THEMES.map(t => (
+              <button
+                key={t.id}
+                onClick={() => handleThemeChange(t.id)}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
+                  theme === t.id
+                    ? 'bg-[var(--sky)] text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+                )}
+              >
+                <span className="text-base">{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
-      {/* CUSTOM DESCRIPTION - only when "Custom Topic" is selected or Skill Mode is active */}
+      {/* ── Stage 3: Custom description / intensity ───────────────── */}
       {(isCustom || mode === 'skill') && (
-        <div>
+        <section className="bg-card rounded-2xl p-5 border border-border space-y-4">
           <SectionLabel>{mode === 'skill' ? 'Descreva a Entrevista / Cenário Profissional' : 'Descreva Seu Cenário'}</SectionLabel>
           <textarea
             value={customDescription}
@@ -275,17 +276,17 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
               'transition-colors text-sm leading-relaxed',
             )}
           />
-          <p className="text-xs text-muted-foreground mt-1.5">
+          <p className="text-xs text-muted-foreground">
             {mode === 'skill'
               ? "A IA vai atuar como entrevistador ou especialista e vai te pressionar baseado no seu perfil."
               : "Seja tão específico ou vago quanto quiser. A IA vai montar uma cena completa em cima da sua ideia."}
           </p>
-        </div>
+        </section>
       )}
 
-      {/* INTENSITY SELECTOR - Only for everyday mode */}
+      {/* Intensity selector - only for everyday mode */}
       {mode === 'everyday' && (
-        <div>
+        <section className="bg-card rounded-2xl p-5 border border-border space-y-4">
           <SectionLabel>Intensidade</SectionLabel>
           <div className="flex gap-2">
             {INTENSITIES.map(i => (
@@ -304,10 +305,10 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* GENERATE BUTTON */}
+      {/* ── Stage 4: CTA ──────────────────────────────────────────── */}
       <Button
         size="lg"
         onClick={handleGenerate}

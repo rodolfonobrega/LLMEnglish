@@ -1,19 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { Compass, RotateCcw, Mic, Map, Sparkles, FileText, Settings, Flame, Zap } from 'lucide-react';
+import { Flame, Zap } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { getGamification } from '../../services/storage';
 import { useState, useEffect } from 'react';
 import type { GamificationState } from '../../types/gamification';
-
-const navItems = [
-    { to: '/', icon: Compass, label: 'Início' },
-    { to: '/exercises', icon: Sparkles, label: 'Exercícios' },
-    { to: '/paths', icon: Map, label: 'Trilhas' },
-    { to: '/live', icon: Mic, label: 'Simulação' },
-    { to: '/review', icon: RotateCcw, label: 'Revisão' },
-    { to: '/scripts', icon: FileText, label: 'Scripts' },
-    { to: '/settings', icon: Settings, label: 'Configurações' },
-];
+import { primaryNavItems } from '../../config/navigation';
 
 export function Sidebar() {
     const [stats, setStats] = useState<GamificationState | null>(null);
@@ -41,37 +32,38 @@ export function Sidebar() {
     </div>
   </div>
 
-            <nav className="flex-1 px-3">
-  <ul className="space-y-1">
-    {navItems.map((item) => {
-      const Icon = item.icon;
-      return (
-        <li key={item.to}>
-          <NavLink
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer",
-                isActive
-                  ? "bg-primary-soft text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )
-            }
-            children={({ isActive }) => (
-              <>
-                <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
-                <span>{item.label}</span>
-                {isActive && (
-                  <div className="ml-auto w-1.5 h-1.5 bg-primary rounded-full" />
-                )}
-              </>
-            )}
-          />
-        </li>
-      );
-    })}
-  </ul>
-</nav>
+            <nav className="flex-1 px-4">
+                <ul className="space-y-1">
+                    {primaryNavItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <li key={item.to}>
+                                <NavLink
+                                    to={item.to}
+                                    className={({ isActive }) =>
+                                        cn(
+                                            "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors duration-200 cursor-pointer",
+                                            isActive
+                                                ? "bg-[var(--sky-soft)] text-[var(--sky)] font-semibold"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                        )
+                                    }
+                                    children={({ isActive }) => (
+                                        <>
+                                            <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                                            <span>{item.label}</span>
+                                            {isActive && (
+                                                <div className="ml-auto w-1.5 h-1.5 bg-[var(--sky)] rounded-full" />
+                                            )}
+                                        </>
+                                    )}
+                                />
+                            </li>
+                        );
+                    })}
+                </ul>
+            </nav>
+
 
             {stats && stats.streak > 0 && (
   <div className="p-3 border-t border-border">

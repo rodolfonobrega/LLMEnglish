@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, MessageCircle, FileText, Theater } from 'lucide-react';
+import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ThemeSelector } from '../shared/ThemeSelector';
@@ -129,6 +129,9 @@ export function ExerciseMode() {
   const [theme, setTheme] = useState<string | null>('random');
   const [targetVocab, setTargetVocab] = useState('');
   const [context, setContext] = useState('');
+
+  // Guided flow step: format | type | theme | generate
+  const [setupStep, setSetupStep] = useState<'format' | 'type' | 'theme' | 'generate'>('format');
 
   // Session state
   const [prompt, setPrompt] = useState('');
@@ -274,47 +277,96 @@ export function ExerciseMode() {
     setError(null);
     setSaved(false);
     setUserAudioBase64(null);
+    setSetupStep('format');
   };
 
-  // ── Render: Setup form ───────────────────────────────────────────
+  // ── Step index for guided flow ─────────────────────────────────
+  // format=0, type=1, theme=2, generate=3
+  // When outputFormat is image, skip the type step (index 1)
+  const getActiveStepIndex = (): number => {
+    // Determine which step the user should be on
+    if (setupStep === 'type') return isAudio ? 1 : 2; // skip type for image
+    if (setupStep === 'theme') return isAudio ? 2 : 1;
+    if (setupStep === 'generate') return isAudio ? 3 : 2;
+    return 0; // format
+  };
+
+  // ── Render: Setup form (guided stepped flow) ──────────────────
   if (!hasActiveSession && !isGenerating) {
+    const stepIndex = getActiveStepIndex();
+    const stepLabels = isAudio
+      ? ['Formato', 'Tipo', 'Tema', 'Gerar']
+      : ['Formato', 'Tema', 'Gerar'];
+
     return (
-      <div className="bg-card rounded-2xl p-5 border border-border space-y-6">
-        {/* OUTPUT FORMAT */}
-        <div>
-          <SectionLabel>Formato</SectionLabel>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setOutputFormat('audio')}
+      <div className="bg-card rounded-2xl p-5 border border-border space-y-5">
+        {/* Step indicator */}
+        <div className="flex items-center gap-1.5">
+          {stepLabels.map((label, i) => (
+            <div
+              key={label}
               className={cn(
-                'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer',
-                isAudio
-                  ? 'bg-[var(--sky)] text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
+                'flex-1 h-1.5 rounded-full transition-colors duration-300',
+                i <= stepIndex
+                  ? 'bg-primary'
+                  : 'bg-muted',
               )}
-            >
-              <Mic size={24} />
-              <span className="font-semibold text-sm">Áudio + Texto</span>
-            </button>
-            <button
-              onClick={() => setOutputFormat('image')}
-              className={cn(
-                'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer',
-                !isAudio
-                  ? 'bg-[var(--coral)] text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
-              )}
-            >
-              <ImageIcon size={24} />
-              <span className="font-semibold text-sm">Desafio Visual</span>
-            </button>
-          </div>
+            />
+          ))}
         </div>
 
-        {/* PRACTICE TYPE — only for audio mode */}
-        {isAudio && (
-          <div>
-            <SectionLabel>Tipo de Prática</SectionLabel>
+        {/* ── Step: Format ───────────────────────────────────────── */}
+        {setupStep === 'format' && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Escolha o formato</h3>
+              <p className="text-sm text-muted-foreground mt-1">Como voce quer praticar?</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setOutputFormat('audio')}
+                className={cn(
+                  'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer border-2',
+                  isAudio
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-secondary text-secondary-foreground border-transparent hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                <Mic size={24} />
+                <span className="font-semibold text-sm">Audio + Texto</span>
+              </button>
+              <button
+                onClick={() => setOutputFormat('image')}
+                className={cn(
+                  'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer border-2',
+                  !isAudio
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-secondary text-secondary-foreground border-transparent hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                <ImageIcon size={24} />
+                <span className="font-semibold text-sm">Desafio Visual</span>
+              </button>
+            </div>
+            <Button
+              variant="coral"
+              size="lg"
+              onClick={() => setSetupStep('type')}
+              className="w-full rounded-2xl cursor-pointer"
+            >
+              Continuar
+              <ChevronRight size={18} />
+            </Button>
+          </div>
+        )}
+
+        {/* ── Step: Type (audio mode only) ───────────────────────── */}
+        {setupStep === 'type' && isAudio && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Tipo de pratica</h3>
+              <p className="text-sm text-muted-foreground mt-1">O que voce quer treinar?</p>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {exerciseTypes.map(type => {
                 const TypeIcon = exerciseConfig[type].icon;
@@ -323,10 +375,10 @@ export function ExerciseMode() {
                     key={type}
                     onClick={() => setExerciseType(type)}
                     className={cn(
-                      'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl text-sm font-semibold transition-colors duration-200 cursor-pointer',
+                      'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl text-sm font-semibold transition-colors duration-200 cursor-pointer border-2',
                       exerciseType === type
-                        ? 'bg-[var(--sky)] text-white'
-                        : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-accent',
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-secondary text-secondary-foreground border-transparent hover:text-accent-foreground hover:bg-accent',
                     )}
                   >
                     <TypeIcon size={20} />
@@ -335,59 +387,144 @@ export function ExerciseMode() {
                 );
               })}
             </div>
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => setSetupStep('format')}
+                className="flex-1 rounded-2xl cursor-pointer"
+              >
+                <ChevronLeft size={18} />
+                Voltar
+              </Button>
+              <Button
+                variant="coral"
+                size="lg"
+                onClick={() => setSetupStep('theme')}
+                className="flex-1 rounded-2xl cursor-pointer"
+              >
+                Continuar
+                <ChevronRight size={18} />
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* CONTEXT / THEME */}
-        <div>
-          <SectionLabel>Contexto / Tema</SectionLabel>
-          <ThemeSelector
-            selected={theme || ''}
-            onSelect={(t) => setTheme(t)}
-          />
-        </div>
-
-        {/* TARGET VOCABULARY — only for phrase/text in audio mode */}
-        {isAudio && config.hasVocab && (
-          <div>
-            <SectionLabel>Vocabulário Alvo</SectionLabel>
-            <Input
-              value={targetVocab}
-              onChange={e => setTargetVocab(e.target.value)}
-              placeholder="ex: gonna, would, might"
-              hint="Separe com vírgulas"
+        {/* ── Step: Theme ────────────────────────────────────────── */}
+        {setupStep === 'theme' && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Contexto e tema</h3>
+              <p className="text-sm text-muted-foreground mt-1">Sobre o que voce quer falar?</p>
+            </div>
+            <ThemeSelector
+              selected={theme || ''}
+              onSelect={(t) => setTheme(t)}
             />
+
+            {/* Target vocabulary — only for phrase/text in audio mode */}
+            {isAudio && config.hasVocab && (
+              <div className="pt-2">
+                <SectionLabel>Vocabulario Alvo</SectionLabel>
+                <Input
+                  value={targetVocab}
+                  onChange={e => setTargetVocab(e.target.value)}
+                  placeholder="ex: gonna, would, might"
+                  hint="Separe com virgulas"
+                />
+              </div>
+            )}
+
+            {/* Specific topic — only when custom theme selected */}
+            {theme === 'custom' && (
+              <div className="pt-2">
+                <SectionLabel>Topico / Contexto Especifico</SectionLabel>
+                <Input
+                  value={context}
+                  onChange={e => setContext(e.target.value)}
+                  placeholder={
+                    !isAudio
+                      ? 'ex: um mercado movimentado, cafeteria aconchegante'
+                      : exerciseType === 'roleplay'
+                        ? 'ex: devolver um produto, consulta medica'
+                        : 'ex: pedir um cafe, entrevista de emprego'
+                  }
+                />
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => setSetupStep(isAudio ? 'type' : 'format')}
+                className="flex-1 rounded-2xl cursor-pointer"
+              >
+                <ChevronLeft size={18} />
+                Voltar
+              </Button>
+              <Button
+                variant="coral"
+                size="lg"
+                onClick={() => setSetupStep('generate')}
+                className="flex-1 rounded-2xl cursor-pointer"
+              >
+                Continuar
+                <ChevronRight size={18} />
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* SPECIFIC TOPIC / CONTEXT - Only shown when "Custom Topic" is selected */}
-        {theme === 'custom' && (
-          <div>
-            <SectionLabel>Tópico / Contexto Específico</SectionLabel>
-            <Input
-              value={context}
-              onChange={e => setContext(e.target.value)}
-              placeholder={
-                !isAudio
-                  ? 'ex: um mercado movimentado, cafeteria aconchegante'
-                  : exerciseType === 'roleplay'
-                    ? 'ex: devolver um produto, consulta médica'
-                    : 'ex: pedir um café, entrevista de emprego'
-              }
-            />
+        {/* ── Step: Generate (review + fire) ─────────────────────── */}
+        {setupStep === 'generate' && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Tudo pronto!</h3>
+              <p className="text-sm text-muted-foreground mt-1">Revise e gere seu exercicio.</p>
+            </div>
+
+            {/* Summary pills */}
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
+                {isAudio ? <Mic size={14} /> : <ImageIcon size={14} />}
+                {isAudio ? 'Audio + Texto' : 'Desafio Visual'}
+              </span>
+              {isAudio && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
+                  {(() => { const Icon = config.icon; return <Icon size={14} />; })()}
+                  {config.label}
+                </span>
+              )}
+              {theme && theme !== 'random' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
+                  Tema: {theme}
+                </span>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => setSetupStep('theme')}
+                className="flex-1 rounded-2xl cursor-pointer"
+              >
+                <ChevronLeft size={18} />
+                Voltar
+              </Button>
+              <Button
+                variant="coral"
+                size="lg"
+                onClick={generate}
+                className="flex-1 text-lg font-bold py-4 rounded-2xl cursor-pointer"
+              >
+                <Sparkles size={20} />
+                {isAudio ? 'Gerar Exercicio' : 'Gerar Desafio Visual'}
+              </Button>
+            </div>
           </div>
         )}
-
-        {/* GENERATE BUTTON */}
-        <Button
-          variant="coral"
-          size="lg"
-          onClick={generate}
-          className="w-full text-lg font-bold py-4 rounded-2xl cursor-pointer"
-        >
-          <Sparkles size={20} />
-          {isAudio ? 'Gerar Exercício de Fala' : 'Gerar Desafio Visual'}
-        </Button>
 
         {error && (
           <div className="bg-[var(--danger-soft)] border border-[var(--danger)]/30 rounded-2xl p-4 text-[var(--danger)] text-sm">

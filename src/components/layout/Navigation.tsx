@@ -17,9 +17,9 @@ export function Navigation() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  'flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors duration-200 cursor-pointer min-w-[3rem]',
+                  'flex flex-col items-center gap-0.5 px-1.5 py-1.5 rounded-xl transition-colors duration-200 cursor-pointer min-w-[2.5rem]',
                   isActive
-                    ? 'text-[var(--sky)] bg-[var(--sky-soft)]'
+                    ? 'text-[hsl(var(--sky))] bg-[hsl(var(--sky-soft))]'
                     : 'text-muted-foreground hover:text-foreground',
                 )
               }

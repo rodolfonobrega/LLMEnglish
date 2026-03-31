@@ -61,6 +61,22 @@
     --amber: 38 92% 50%;
     --amber-soft: 38 92% 50% / 0.1;
 
+    /* Mode Colors */
+    --mode-phrases: 258 90% 66%;
+    --mode-phrases-soft: 258 90% 66% / 0.1;
+    --mode-texts: 217 91% 60%;
+    --mode-texts-soft: 217 91% 60% / 0.1;
+    --mode-situations: 174 84% 39%;
+    --mode-situations-soft: 174 84% 39% / 0.1;
+    --mode-scripts: 25 95% 53%;
+    --mode-scripts-soft: 25 95% 53% / 0.1;
+    --mode-simulation: 142 71% 45%;
+    --mode-simulation-soft: 142 71% 45% / 0.1;
+    --mode-interview: 38 92% 50%;
+    --mode-interview-soft: 38 92% 50% / 0.1;
+    --mode-visual: 271 91% 65%;
+    --mode-visual-soft: 271 91% 65% / 0.1;
+
     /* Brand danger token */
     --danger: 0 84.2% 60.2%;
     --danger-soft: 0 84.2% 60.2% / 0.1;
@@ -128,6 +144,22 @@
     --amber: 38 92% 60%;
     --amber-soft: 38 92% 60% / 0.15;
 
+    /* Mode Colors (dark) */
+    --mode-phrases: 258 90% 72%;
+    --mode-phrases-soft: 258 90% 72% / 0.15;
+    --mode-texts: 217 91% 65%;
+    --mode-texts-soft: 217 91% 65% / 0.15;
+    --mode-situations: 174 84% 50%;
+    --mode-situations-soft: 174 84% 50% / 0.15;
+    --mode-scripts: 25 95% 60%;
+    --mode-scripts-soft: 25 95% 60% / 0.15;
+    --mode-simulation: 142 71% 55%;
+    --mode-simulation-soft: 142 71% 55% / 0.15;
+    --mode-interview: 38 92% 60%;
+    --mode-interview-soft: 38 92% 60% / 0.15;
+    --mode-visual: 271 91% 72%;
+    --mode-visual-soft: 271 91% 72% / 0.15;
+
     /* Brand danger token (dark) */
     --danger: 0 62.8% 30.6%;
     --danger-soft: 0 62.8% 30.6% / 0.2;
@@ -162,6 +194,22 @@
   --color-leaf-soft: hsl(var(--leaf-soft));
   --color-amber: hsl(var(--amber));
   --color-amber-soft: hsl(var(--amber-soft));
+
+  /* Mode Colors */
+  --color-mode-phrases: hsl(var(--mode-phrases));
+  --color-mode-phrases-soft: hsl(var(--mode-phrases-soft));
+  --color-mode-texts: hsl(var(--mode-texts));
+  --color-mode-texts-soft: hsl(var(--mode-texts-soft));
+  --color-mode-situations: hsl(var(--mode-situations));
+  --color-mode-situations-soft: hsl(var(--mode-situations-soft));
+  --color-mode-scripts: hsl(var(--mode-scripts));
+  --color-mode-scripts-soft: hsl(var(--mode-scripts-soft));
+  --color-mode-simulation: hsl(var(--mode-simulation));
+  --color-mode-simulation-soft: hsl(var(--mode-simulation-soft));
+  --color-mode-interview: hsl(var(--mode-interview));
+  --color-mode-interview-soft: hsl(var(--mode-interview-soft));
+  --color-mode-visual: hsl(var(--mode-visual));
+  --color-mode-visual-soft: hsl(var(--mode-visual-soft));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));

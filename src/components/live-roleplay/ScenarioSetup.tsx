@@ -10,7 +10,7 @@ import { Sparkles, Briefcase, Coffee, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { Link } from 'react-router-dom';
-import { liveSetupModes } from '../../config/practice';
+import { liveSetupScenarios } from '../../config/practice';
 
 interface ScenarioSetupProps {
   onScenarioReady: (scenario: LiveScenario) => void;
@@ -181,8 +181,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-8">
         <div className="relative">
-          <div className="size-24 bg-[var(--sky-soft)] rounded-full flex items-center justify-center">
-            <Sparkles size={40} className="text-[var(--sky)] animate-pulse" />
+          <div className="size-24 bg-[hsl(var(--sky-soft))] rounded-full flex items-center justify-center">
+            <Sparkles size={40} className="text-[hsl(var(--sky))] animate-pulse" />
           </div>
         </div>
         <div className="text-center space-y-2">
@@ -207,7 +207,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
       <section className="bg-card rounded-2xl p-5 border border-border space-y-4">
         <SectionLabel>Modo</SectionLabel>
         <div className="flex bg-muted p-1 rounded-xl w-full">
-          {liveSetupModes.map(m => {
+          {liveSetupScenarios.map(m => {
             const mId = m.id as SimulationMode;
             return (
               <button
@@ -226,8 +226,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         </div>
 
         {mode === 'skill' && (
-          <div className="bg-[var(--sky-soft)] border border-[var(--sky)]/20 rounded-xl p-4 flex gap-3 text-sm text-[var(--sky-dark)]">
-            <UserIcon size={20} className="shrink-0 text-[var(--sky)]" />
+          <div className="bg-[hsl(var(--sky-soft))] border border-[hsl(var(--sky))]/20 rounded-xl p-4 flex gap-3 text-sm text-[var(--sky-dark)]">
+            <UserIcon size={20} className="shrink-0 text-[hsl(var(--sky))]" />
             <p>
               <strong>Simulador Profissional</strong> vai usar seu Perfil salvo (Nível: {userContext?.currentLevel || 'Intermediate'}) para gerar uma entrevista ou simulação profissional realista. Atualize seu perfil em <Link to="/settings" className="underline font-bold">Configurações</Link>.
             </p>
@@ -247,7 +247,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
                 className={cn(
                   'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
                   theme === t.id
-                    ? 'bg-[var(--sky)] text-white'
+                    ? 'bg-[hsl(var(--sky))] text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
@@ -272,7 +272,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
             rows={4}
             className={cn(
               'w-full px-4 py-3 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground/60 resize-none',
-              'focus:outline-none focus:ring-2 focus:ring-[var(--sky)]/50 focus:border-[var(--sky)]',
+              'focus:outline-none focus:ring-2 focus:ring-[hsl(var(--sky))]/50 focus:border-[hsl(var(--sky))]',
               'transition-colors text-sm leading-relaxed',
             )}
           />
@@ -296,7 +296,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
                 className={cn(
                   'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer text-center',
                   intensity === i.id
-                    ? 'bg-[var(--sky)] text-white'
+                    ? 'bg-[hsl(var(--sky))] text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >

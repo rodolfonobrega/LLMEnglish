@@ -27,3 +27,11 @@ npm-debug.log*
 # Misc
 *.tgz
 coverage/
+
+# Context-mode temp files
+context-mode-test-*.db
+ctx-mode-test-*/
+.ctx-mode-*/
+
+# Superpowers temp files
+.superpowers/

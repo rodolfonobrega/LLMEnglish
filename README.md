@@ -14,6 +14,17 @@ The repo is the source of truth. Database changes belong in `supabase/migrations
 
 ## Quick start
 
+### Dev mode (no Supabase needed)
+
+To preview UI changes without a backend:
+
+```bash
+make install
+npx vite --port 5173 --host
+```
+
+In dev mode (`npx vite`), the app skips authentication and shows the UI directly. No `.env.local` or Supabase connection required. This is meant for visual development and UI iteration only — features that depend on the backend (auth, database, AI) won't work.
+
 ### Frontend only against the hosted Supabase project
 
 1. Install dependencies:

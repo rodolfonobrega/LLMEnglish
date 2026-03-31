@@ -18,6 +18,15 @@ import { HistoryPage } from './components/history/HistoryPage';
 function ProtectedApp() {
   const { user, loading } = useAuth();
 
+  // Dev mode: skip auth, show UI directly
+  if (import.meta.env.DEV) {
+    return (
+      <>
+        <DiscoveryPage />
+      </>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">

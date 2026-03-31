@@ -44,7 +44,7 @@ export function Sidebar() {
                                         cn(
                                             "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors duration-200 cursor-pointer",
                                             isActive
-                                                ? "bg-[var(--sky-soft)] text-[var(--sky)] font-semibold"
+                                                ? "bg-[hsl(var(--sky-soft))] text-[hsl(var(--sky))] font-semibold"
                                                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                         )
                                     }
@@ -53,7 +53,7 @@ export function Sidebar() {
                                             <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
                                             <span>{item.label}</span>
                                             {isActive && (
-                                                <div className="ml-auto w-1.5 h-1.5 bg-[var(--sky)] rounded-full" />
+                                                <div className="ml-auto w-1.5 h-1.5 bg-[hsl(var(--sky))] rounded-full" />
                                             )}
                                         </>
                                     )}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { PracticeMode } from '../../config/modes';
@@ -10,6 +11,7 @@ interface ModeCardProps {
 
 export function ModeCard({ mode, onClick, className }: ModeCardProps) {
   const Icon = mode.icon;
+  const [imgError, setImgError] = useState(false);
 
   return (
     <button
@@ -26,15 +28,25 @@ export function ModeCard({ mode, onClick, className }: ModeCardProps) {
       }}
     >
       <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+        className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
         style={{
           backgroundColor: `hsl(var(--mode-${mode.colorVar}-soft))`,
         }}
       >
-        <Icon
-          className="w-5 h-5"
-          style={{ color: `hsl(var(--mode-${mode.colorVar}))` }}
-        />
+        {mode.image && !imgError ? (
+          <img
+            src={mode.image}
+            alt={mode.label}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Icon
+            className="w-5 h-5"
+            style={{ color: `hsl(var(--mode-${mode.colorVar}))` }}
+          />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">

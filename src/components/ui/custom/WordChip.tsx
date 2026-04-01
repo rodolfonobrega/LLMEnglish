@@ -15,8 +15,8 @@ export function WordChip({ word, isHighlighted = false, onClick, className }: Wo
       className={cn(
         'inline-flex px-4 py-2 rounded-full font-medium border-2 text-sm transition-all duration-200',
         isHighlighted
-          ? 'bg-[var(--sky-soft)] border-[var(--sky)] text-[var(--sky)]'
-          : 'bg-card border-border text-muted-foreground hover:border-[var(--sky)]/40',
+          ? 'bg-primary-soft border-primary text-primary'
+          : 'bg-card border-secondary text-muted-foreground hover:border-primary/40',
         onClick && 'cursor-pointer hover:scale-105 active:scale-95',
         !onClick && 'cursor-default',
         className,

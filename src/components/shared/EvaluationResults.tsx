@@ -35,21 +35,21 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
       <div className="bg-card rounded-2xl p-5 border border-border">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="size-6 rounded-full bg-[var(--leaf-soft)] flex items-center justify-center">
-              <CheckCircle2 size={12} className="text-[var(--leaf)]" />
+            <div className="size-6 rounded-full bg-leaf-soft flex items-center justify-center">
+              <CheckCircle2 size={12} className="text-leaf" />
             </div>
-            <h4 className="text-xs font-bold text-[var(--leaf)] uppercase tracking-wide">Versão Corrigida</h4>
+            <h4 className="text-xs font-bold text-leaf uppercase tracking-wide">Versão Corrigida</h4>
           </div>
           <button
             onClick={() => speak(result.correctedVersion)}
             disabled={ttsLoading}
             aria-label="Ouvir versão corrigida"
-            className="size-8 rounded-full bg-[var(--sky-soft)] flex items-center justify-center text-[var(--sky)] hover:bg-[var(--sky)]/20 transition-colors cursor-pointer disabled:opacity-50"
+            className="size-8 rounded-full bg-primary-soft flex items-center justify-center text-primary hover:bg-primary/20 transition-colors cursor-pointer disabled:opacity-50"
           >
             {ttsLoading ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />}
           </button>
         </div>
-        <p className="text-[var(--leaf)] font-medium leading-relaxed">{result.correctedVersion}</p>
+        <p className="text-leaf font-medium leading-relaxed">{result.correctedVersion}</p>
       </div>
 
       {/* Better Alternatives */}
@@ -68,7 +68,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
                 <button
                   onClick={() => speak(alt)}
                   aria-label={`Listen to alternative ${i + 1}`}
-                  className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center text-[var(--sky)] hover:bg-[var(--sky)]/20 transition-colors ml-2 flex-shrink-0 cursor-pointer"
+                  className="size-7 rounded-full bg-primary-soft flex items-center justify-center text-primary hover:bg-primary/20 transition-colors ml-2 flex-shrink-0 cursor-pointer"
                 >
                   <Volume2 size={12} />
                 </button>
@@ -107,10 +107,10 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
       {/* Overall Feedback */}
       <div className="bg-card rounded-2xl p-5 border border-border">
         <div className="flex items-center gap-2 mb-3">
-          <div className="size-6 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
-            <Star size={12} className="text-[var(--sky)]" />
+          <div className="size-6 rounded-full bg-primary-soft flex items-center justify-center">
+            <Star size={12} className="text-primary" />
           </div>
-          <h4 className="text-xs font-bold text-[var(--sky)] uppercase tracking-wide">Feedback Geral</h4>
+          <h4 className="text-xs font-bold text-primary uppercase tracking-wide">Feedback Geral</h4>
         </div>
         <p className="text-muted-foreground leading-relaxed">{result.overallFeedback}</p>
       </div>

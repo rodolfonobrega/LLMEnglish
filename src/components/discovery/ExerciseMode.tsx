@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
@@ -146,6 +146,13 @@ export function ExerciseMode() {
   const isAudio = outputFormat === 'audio';
   const config = exerciseConfig[exerciseType];
   const hasActiveSession = !!prompt || !!imageUrl;
+
+  // Auto-advance past type step when switching to image format
+  useEffect(() => {
+    if (outputFormat === 'image' && setupStep === 'type') {
+      setSetupStep('theme');
+    }
+  }, [outputFormat, setupStep]);
 
   // ── Generate ─────────────────────────────────────────────────────
   const generate = async () => {
@@ -328,8 +335,8 @@ export function ExerciseMode() {
                 className={cn(
                   'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer border-2',
                   isAudio
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-secondary text-secondary-foreground border-transparent hover:bg-accent hover:text-accent-foreground',
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-card text-foreground border-secondary hover:border-primary/50 hover:shadow-md',
                 )}
               >
                 <Mic size={24} />
@@ -340,8 +347,8 @@ export function ExerciseMode() {
                 className={cn(
                   'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer border-2',
                   !isAudio
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-secondary text-secondary-foreground border-transparent hover:bg-accent hover:text-accent-foreground',
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-card text-foreground border-secondary hover:border-primary/50 hover:shadow-md',
                 )}
               >
                 <ImageIcon size={24} />
@@ -351,7 +358,7 @@ export function ExerciseMode() {
             <Button
               variant="coral"
               size="lg"
-              onClick={() => setSetupStep('type')}
+              onClick={() => setSetupStep(isAudio ? 'type' : 'theme')}
               className="w-full rounded-2xl cursor-pointer"
             >
               Continuar
@@ -377,8 +384,8 @@ export function ExerciseMode() {
                     className={cn(
                       'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl text-sm font-semibold transition-colors duration-200 cursor-pointer border-2',
                       exerciseType === type
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-secondary text-secondary-foreground border-transparent hover:text-accent-foreground hover:bg-accent',
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-card text-foreground border-secondary hover:border-primary/50 hover:shadow-md',
                     )}
                   >
                     <TypeIcon size={20} />
@@ -544,7 +551,7 @@ export function ExerciseMode() {
           <div className="flex items-center gap-2 mb-4">
             <Sparkles
               size={16}
-              className="text-[var(--coral)] animate-pulse"
+              className="text-primary animate-pulse"
             />
             <p className="text-sm text-muted-foreground font-semibold">
               {isAudio
@@ -624,7 +631,7 @@ export function ExerciseMode() {
         <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />
 
         {isEvaluating && (
-          <div className="flex items-center justify-center gap-2 text-[var(--sky)]">
+          <div className="flex items-center justify-center gap-2 text-primary">
             <Loader2 size={20} className="animate-spin" />
             <span className="font-medium">Avaliando sua fala...</span>
           </div>
@@ -673,8 +680,8 @@ export function ExerciseMode() {
         />
 
         {saved && (
-          <div className="bg-[var(--leaf-soft)] rounded-2xl p-4 text-center">
-            <p className="text-[var(--leaf)] font-bold">Salvo na Biblioteca!</p>
+          <div className="bg-leaf-soft rounded-2xl p-4 text-center">
+            <p className="text-leaf font-bold">Salvo na Biblioteca!</p>
           </div>
         )}
 

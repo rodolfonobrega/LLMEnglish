@@ -22,7 +22,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-muted-foreground">
+          <label htmlFor={selectId} className="block text-sm font-medium text-foreground">
             {label}
           </label>
         )}
@@ -33,8 +33,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             value={value}
             onChange={e => onChange(e.target.value)}
             className={cn(
-              'w-full appearance-none px-4 py-2.5 pr-10 bg-muted border border-border rounded-xl text-foreground',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'w-full appearance-none px-4 py-2.5 pr-10 bg-card border border-secondary rounded-xl text-foreground',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary',
               'transition-colors cursor-pointer',
               className,
             )}

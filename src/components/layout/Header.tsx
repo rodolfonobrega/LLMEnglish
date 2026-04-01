@@ -27,7 +27,7 @@ export function Header() {
   const ThemeIcon = themeIcons[theme];
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
+    <header className="bg-card/80 backdrop-blur-md border-b border-secondary sticky top-0 z-50">
       <div className="flex items-center justify-between px-6 py-3">
         {/* Logo - Mobile Only */}
         <div className="lg:hidden flex items-center gap-3">
@@ -78,7 +78,7 @@ export function Header() {
           <button
             onClick={cycle}
             aria-label={`Theme: ${theme}. Click to change.`}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
           >
             <ThemeIcon size={20} />
           </button>

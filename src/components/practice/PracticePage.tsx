@@ -146,8 +146,8 @@ export function PracticePage() {
         <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto pb-20">
             {/* Header */}
             <div className="flex items-center gap-3">
-                <div className="p-3 bg-[var(--coral-soft)] rounded-2xl">
-                    <Clapperboard size={24} className="text-[var(--coral)]" />
+                <div className="p-3 bg-primary-soft rounded-2xl">
+                    <Clapperboard size={24} className="text-primary" />
                 </div>
                 <div>
                     <h2 className="text-2xl font-extrabold text-foreground">Scripts</h2>
@@ -158,7 +158,7 @@ export function PracticePage() {
             {/* Generate Script */}
             <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                    <FileText size={18} className="text-[var(--coral)]" />
+                    <FileText size={18} className="text-primary" />
                     <h3 className="font-bold text-lg text-foreground">Descreva a Cena</h3>
                 </div>
 

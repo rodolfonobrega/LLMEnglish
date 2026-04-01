@@ -102,8 +102,8 @@ export function ImageMode() {
       {!imageUrl && !isGenerating && (
         <div className="text-center space-y-4">
           <div className="bg-muted rounded-2xl p-8">
-            <div className="size-16 bg-[var(--sky-soft)] rounded-full flex items-center justify-center mx-auto mb-4">
-              <ImageIcon size={32} className="text-[var(--sky)]" />
+            <div className="size-16 bg-primary-soft rounded-full flex items-center justify-center mx-auto mb-4">
+              <ImageIcon size={32} className="text-primary" />
             </div>
             <p className="text-foreground font-bold text-lg mb-1">Desafio Visual</p>
             <p className="text-muted-foreground text-sm text-pretty max-w-sm mx-auto">
@@ -145,8 +145,8 @@ export function ImageMode() {
 
           <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
-                <ImageIcon size={14} className="text-[var(--sky)]" />
+              <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
+                <ImageIcon size={14} className="text-primary" />
               </div>
               <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">Sua Tarefa</p>
             </div>
@@ -156,7 +156,7 @@ export function ImageMode() {
           <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />
 
           {isEvaluating && (
-            <div className="flex items-center justify-center gap-2 text-[var(--sky)]">
+            <div className="flex items-center justify-center gap-2 text-primary">
               <Loader2 size={20} className="animate-spin" />
               <span className="font-medium">Avaliando sua descrição...</span>
             </div>
@@ -178,8 +178,8 @@ export function ImageMode() {
           </div>
           <EvaluationResults result={evaluation} onSaveToLibrary={() => { void handleSaveToLibrary() }} showSaveButton={!saved} />
           {saved && (
-            <div className="bg-[var(--leaf-soft)] rounded-2xl p-4 text-center">
-              <p className="text-[var(--leaf)] font-bold">Salvo na Biblioteca!</p>
+            <div className="bg-leaf-soft rounded-2xl p-4 text-center">
+              <p className="text-leaf font-bold">Salvo na Biblioteca!</p>
             </div>
           )}
           <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl">

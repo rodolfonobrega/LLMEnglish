@@ -4,82 +4,82 @@
 @layer base {
   :root {
     /* Base Colors - Light Mode Default */
-    --background: 0 0% 98%;        /* #fafafa */
-    --foreground: 0 0% 4%;         /* #09090b */
+    --background: 210 33% 97%;     /* #F7F9FB ice white */
+    --foreground: 207 37% 17%;     /* #1A2B3C dark navy */
 
     /* Card & Surface */
     --card: 0 0% 100%;             /* #ffffff */
-    --card-foreground: 0 0% 4%;    /* #09090b */
+    --card-foreground: 207 37% 17%; /* #1A2B3C */
     --popover: 0 0% 100%;          /* #ffffff */
-    --popover-foreground: 0 0% 4%; /* #09090b */
+    --popover-foreground: 207 37% 17%; /* #1A2B3C */
 
     /* Secondary Surface */
-    --secondary: 0 0% 96%;         /* #f4f4f5 */
-    --secondary-foreground: 0 0% 4%; /* #09090b */
-    --muted: 0 0% 96%;             /* #f4f4f5 */
-    --muted-foreground: 0 0% 45%;  /* #71717a */
+    --secondary: 150 18% 93%;      /* #E8F0ED mint wash */
+    --secondary-foreground: 207 37% 17%; /* #1A2B3C */
+    --muted: 150 18% 93%;          /* #E8F0ED */
+    --muted-foreground: 210 14% 49%; /* #6B7B8D slate */
 
     /* Accent */
-    --accent: 0 0% 96%;            /* #f4f4f5 */
-    --accent-foreground: 0 0% 4%;  /* #09090b */
+    --accent: 168 34% 45%;         /* #4A9B8E teal light */
+    --accent-foreground: 0 0% 100%; /* white */
 
     /* Destructive */
-    --destructive: 0 84% 60%;      /* #ef4444 */
+    --destructive: 0 60% 58%;      /* #D94F4F muted red */
     --destructive-foreground: 0 0% 98%; /* #fafafa */
 
     /* Borders & Inputs */
-    --border: 0 0% 90%;            /* #e4e4e7 */
-    --input: 0 0% 90%;             /* #e4e4e7 */
-    --ring: 217 91% 60%;           /* #3b82f6 */
+    --border: 150 18% 88%;
+    --input: 150 18% 88%;
+    --ring: 168 46% 33%;           /* teal */
 
     /* Radius */
     --radius: 0.75rem;             /* 12px */
 
     /* Sidebar */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 4%;
-    --sidebar-primary: 0 0% 4%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 4%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-background: 210 33% 97%;
+    --sidebar-foreground: 207 37% 17%;
+    --sidebar-primary: 168 46% 33%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 18% 93%;
+    --sidebar-accent-foreground: 207 37% 17%;
+    --sidebar-border: 150 18% 88%;
+    --sidebar-ring: 168 46% 33%;
 
     /* Brand Colors */
-    --brand-primary: 217 91% 60%;       /* blue-500 */
-    --brand-primary-hover: 217 91% 50%; /* blue-600 */
-    --brand-primary-soft: 217 91% 60% / 0.1;
+    --brand-primary: 168 46% 33%;       /* #2E7D6F teal */
+    --brand-primary-hover: 168 46% 28%; /* teal darker */
+    --brand-primary-soft: 168 46% 33% / 0.1;
     --brand-special: 262 83% 58%;       /* violet-500 */
 
     /* Semantic Aliases (used across many components) */
-    --sky: 217 91% 60%;
-    --sky-soft: 217 91% 60% / 0.1;
-    --coral: 0 84% 60%;
-    --coral-soft: 0 84% 60% / 0.1;
-    --leaf: 142 71% 45%;
-    --leaf-soft: 142 71% 45% / 0.1;
-    --amber: 38 92% 50%;
-    --amber-soft: 38 92% 50% / 0.1;
+    --sky: 168 46% 33%;            /* teal replaces old blue */
+    --sky-soft: 168 46% 33% / 0.1;
+    --coral: 0 60% 58%;            /* muted red */
+    --coral-soft: 0 60% 58% / 0.1;
+    --leaf: 168 46% 33%;           /* teal */
+    --leaf-soft: 168 46% 33% / 0.1;
+    --amber: 38 72% 50%;           /* desaturated amber */
+    --amber-soft: 38 72% 50% / 0.1;
 
-    /* Mode Colors */
-    --mode-phrases: 258 90% 66%;
-    --mode-phrases-soft: 258 90% 66% / 0.1;
-    --mode-texts: 217 91% 60%;
-    --mode-texts-soft: 217 91% 60% / 0.1;
-    --mode-situations: 174 84% 39%;
-    --mode-situations-soft: 174 84% 39% / 0.1;
-    --mode-scripts: 25 95% 53%;
-    --mode-scripts-soft: 25 95% 53% / 0.1;
-    --mode-simulation: 142 71% 45%;
-    --mode-simulation-soft: 142 71% 45% / 0.1;
-    --mode-interview: 38 92% 50%;
-    --mode-interview-soft: 38 92% 50% / 0.1;
-    --mode-visual: 271 91% 65%;
-    --mode-visual-soft: 271 91% 65% / 0.1;
+    /* Mode Colors (slightly desaturated ~20% from original) */
+    --mode-phrases: 258 70% 66%;
+    --mode-phrases-soft: 258 70% 66% / 0.1;
+    --mode-texts: 217 71% 60%;
+    --mode-texts-soft: 217 71% 60% / 0.1;
+    --mode-situations: 174 64% 39%;
+    --mode-situations-soft: 174 64% 39% / 0.1;
+    --mode-scripts: 25 75% 53%;
+    --mode-scripts-soft: 25 75% 53% / 0.1;
+    --mode-simulation: 142 51% 45%;
+    --mode-simulation-soft: 142 51% 45% / 0.1;
+    --mode-interview: 38 72% 50%;
+    --mode-interview-soft: 38 72% 50% / 0.1;
+    --mode-visual: 271 71% 65%;
+    --mode-visual-soft: 271 71% 65% / 0.1;
 
     /* Brand danger token */
-    --danger: 0 84.2% 60.2%;
-    --danger-soft: 0 84.2% 60.2% / 0.1;
+    --danger: 0 60% 58%;
+    --danger-soft: 0 60% 58% / 0.1;
 
     /* Z-index scale */
     --z-header: 40;
@@ -90,79 +90,79 @@
 
   .dark {
     /* Base Colors - Dark Mode */
-    --background: 0 0% 4%;         /* #09090b */
-    --foreground: 0 0% 98%;        /* #fafafa */
+    --background: 220 20% 10%;     /* #151A23 */
+    --foreground: 210 20% 90%;     /* #DDE3EA */
 
     /* Card & Surface */
-    --card: 0 0% 10%;              /* #18181b */
-    --card-foreground: 0 0% 98%;   /* #fafafa */
-    --popover: 0 0% 10%;           /* #18181b */
-    --popover-foreground: 0 0% 98%; /* #fafafa */
+    --card: 220 18% 14%;           /* #1D222D */
+    --card-foreground: 210 20% 90%; /* #DDE3EA */
+    --popover: 220 18% 14%;        /* #1D222D */
+    --popover-foreground: 210 20% 90%; /* #DDE3EA */
 
     /* Secondary Surface */
-    --secondary: 0 0% 16%;         /* #27272a */
-    --secondary-foreground: 0 0% 98%; /* #fafafa */
-    --muted: 0 0% 16%;             /* #27272a */
-    --muted-foreground: 0 0% 63%;  /* #a1a1aa */
+    --secondary: 220 15% 20%;      /* #2A3040 */
+    --secondary-foreground: 210 20% 90%; /* #DDE3EA */
+    --muted: 220 15% 20%;          /* #2A3040 */
+    --muted-foreground: 210 14% 63%; /* lighter slate */
 
     /* Accent */
-    --accent: 0 0% 16%;            /* #27272a */
-    --accent-foreground: 0 0% 98%; /* #fafafa */
+    --accent: 168 34% 35%;         /* teal muted dark */
+    --accent-foreground: 210 20% 90%; /* #DDE3EA */
 
     /* Destructive */
-    --destructive: 0 84% 60%;      /* #ef4444 */
+    --destructive: 0 60% 58%;      /* #D94F4F */
     --destructive-foreground: 0 0% 98%; /* #fafafa */
 
     /* Borders & Inputs */
-    --border: 0 0% 16%;            /* #27272a */
-    --input: 0 0% 16%;             /* #27272a */
-    --ring: 217 91% 60%;           /* #3b82f6 */
+    --border: 220 15% 24%;
+    --input: 220 15% 24%;
+    --ring: 168 46% 38%;           /* teal ring */
 
     /* Sidebar */
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 220 18% 14%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 168 46% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 220 15% 20%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 15% 24%;
+    --sidebar-ring: 168 46% 38%;
 
     /* Brand Colors (dark) */
-    --brand-primary: 217 91% 60%;
-    --brand-primary-hover: 217 91% 70%;
-    --brand-primary-soft: 217 91% 60% / 0.15;
+    --brand-primary: 168 46% 38%;       /* #359E8D slightly brighter */
+    --brand-primary-hover: 168 46% 44%; /* teal lighter for hover */
+    --brand-primary-soft: 168 46% 38% / 0.15;
     --brand-special: 262 83% 68%;
 
     /* Semantic Aliases (dark) */
-    --sky: 217 91% 60%;
-    --sky-soft: 217 91% 60% / 0.15;
-    --coral: 0 84% 60%;
-    --coral-soft: 0 84% 60% / 0.15;
-    --leaf: 142 71% 55%;
-    --leaf-soft: 142 71% 55% / 0.15;
-    --amber: 38 92% 60%;
-    --amber-soft: 38 92% 60% / 0.15;
+    --sky: 168 46% 38%;            /* teal */
+    --sky-soft: 168 46% 38% / 0.15;
+    --coral: 0 60% 62%;            /* slightly brighter in dark */
+    --coral-soft: 0 60% 62% / 0.15;
+    --leaf: 168 46% 48%;           /* teal brighter */
+    --leaf-soft: 168 46% 48% / 0.15;
+    --amber: 38 72% 60%;           /* desaturated amber brighter */
+    --amber-soft: 38 72% 60% / 0.15;
 
-    /* Mode Colors (dark) */
-    --mode-phrases: 258 90% 72%;
-    --mode-phrases-soft: 258 90% 72% / 0.15;
-    --mode-texts: 217 91% 65%;
-    --mode-texts-soft: 217 91% 65% / 0.15;
-    --mode-situations: 174 84% 50%;
-    --mode-situations-soft: 174 84% 50% / 0.15;
-    --mode-scripts: 25 95% 60%;
-    --mode-scripts-soft: 25 95% 60% / 0.15;
-    --mode-simulation: 142 71% 55%;
-    --mode-simulation-soft: 142 71% 55% / 0.15;
-    --mode-interview: 38 92% 60%;
-    --mode-interview-soft: 38 92% 60% / 0.15;
-    --mode-visual: 271 91% 72%;
-    --mode-visual-soft: 271 91% 72% / 0.15;
+    /* Mode Colors (dark - slightly brighter than light) */
+    --mode-phrases: 258 70% 72%;
+    --mode-phrases-soft: 258 70% 72% / 0.15;
+    --mode-texts: 217 71% 65%;
+    --mode-texts-soft: 217 71% 65% / 0.15;
+    --mode-situations: 174 64% 50%;
+    --mode-situations-soft: 174 64% 50% / 0.15;
+    --mode-scripts: 25 75% 60%;
+    --mode-scripts-soft: 25 75% 60% / 0.15;
+    --mode-simulation: 142 51% 55%;
+    --mode-simulation-soft: 142 51% 55% / 0.15;
+    --mode-interview: 38 72% 60%;
+    --mode-interview-soft: 38 72% 60% / 0.15;
+    --mode-visual: 271 71% 72%;
+    --mode-visual-soft: 271 71% 72% / 0.15;
 
     /* Brand danger token (dark) */
-    --danger: 0 62.8% 30.6%;
-    --danger-soft: 0 62.8% 30.6% / 0.2;
+    --danger: 0 60% 62%;
+    --danger-soft: 0 60% 62% / 0.2;
   }
 }
 
@@ -350,7 +350,7 @@
 /* ─── Utility Classes ─── */
 
 .gradient-text {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--brand-special)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

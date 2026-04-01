@@ -25,7 +25,7 @@ export function AlertDialog({
     <BaseAlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <BaseAlertDialog.Portal>
         <BaseAlertDialog.Backdrop
-          className="fixed inset-0 z-(--z-modal) bg-black/60 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-opacity duration-150"
+          className="fixed inset-0 z-(--z-modal) bg-foreground/50 backdrop-blur-sm data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-opacity duration-150"
         />
         <BaseAlertDialog.Popup
           className={cn(

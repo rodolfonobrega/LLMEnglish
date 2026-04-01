@@ -38,13 +38,13 @@ const CATEGORY_LABELS: Record<ErrorCategory, string> = {
 
 const CATEGORY_COLORS: Record<ErrorCategory, string> = {
   grammar: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  pronunciation: 'bg-[var(--coral-soft)] text-[var(--coral)]',
-  vocabulary: 'bg-[var(--sky-soft)] text-[var(--sky)]',
-  fluency: 'bg-[var(--leaf-soft)] text-[var(--leaf)]',
+  pronunciation: 'bg-primary-soft text-primary',
+  vocabulary: 'bg-primary-soft text-primary',
+  fluency: 'bg-leaf-soft text-leaf',
   syntax: 'bg-[var(--amber-soft)] text-[var(--amber)]',
   preposition: 'bg-pink-500/10 text-pink-600 dark:text-pink-400',
-  'verb-tense': 'bg-[var(--coral-soft)] text-[var(--coral)]',
-  article: 'bg-[var(--sky-soft)] text-[var(--sky)]',
+  'verb-tense': 'bg-primary-soft text-primary',
+  article: 'bg-primary-soft text-primary',
   'word-order': 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
   other: 'bg-muted text-muted-foreground',
 };
@@ -128,7 +128,7 @@ export function ErrorDashboard() {
       {stats.totalErrors === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
           <div className="size-20 bg-[var(--leaf-soft)] rounded-full flex items-center justify-center">
-            <CheckCircle2 size={40} className="text-[var(--leaf)]" />
+            <CheckCircle2 size={40} className="text-leaf" />
           </div>
           <div className="space-y-2">
             <h3 className="text-xl font-bold text-foreground">Nenhum erro registrado</h3>
@@ -146,17 +146,17 @@ export function ErrorDashboard() {
               <p className="text-xs text-muted-foreground">Total de Erros</p>
             </div>
             <div className="bg-card rounded-2xl p-4 border border-border">
-              <p className="text-3xl font-extrabold text-[var(--coral)] tabular-nums">{stats.criticalErrors.length}</p>
+              <p className="text-3xl font-extrabold text-primary tabular-nums">{stats.criticalErrors.length}</p>
               <p className="text-xs text-muted-foreground">Problemas Críticos</p>
             </div>
           </div>
 
           {/* Progress Summary */}
-          <div className="bg-gradient-to-r from-[var(--sky-soft)] to-[var(--coral-soft)] rounded-2xl p-5">
+          <div className="bg-gradient-to-r from-primary-soft to-[var(--coral-soft)] rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <div className="size-10 bg-card rounded-full flex items-center justify-center border border-border flex-shrink-0">
                 {progressTimeline.overallTrend === 'improving' && (
-                  <TrendingUp className="text-[var(--leaf)]" size={20} />
+                  <TrendingUp className="text-leaf" size={20} />
                 )}
                 {progressTimeline.overallTrend === 'worsening' && (
                   <TrendingDown className="text-[var(--danger)]" size={20} />
@@ -189,7 +189,7 @@ export function ErrorDashboard() {
                       const heightPct = Math.min(100, (score / 10) * 100);
                       const barColor =
                         score >= 7
-                          ? 'bg-[var(--leaf)]'
+                          ? 'bg-leaf'
                           : score >= 4
                             ? 'bg-[var(--amber)]'
                             : 'bg-[var(--danger)]';
@@ -216,10 +216,10 @@ export function ErrorDashboard() {
           </div>
 
           {/* Recommended Focus */}
-          <div className="bg-gradient-to-r from-[var(--sky-soft)] to-[var(--coral-soft)] rounded-2xl p-5">
+          <div className="bg-gradient-to-r from-primary-soft to-[var(--coral-soft)] rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <div className="size-10 bg-card rounded-full flex items-center justify-center border border-border flex-shrink-0">
-                <Target className="text-[var(--sky)]" size={20} />
+                <Target className="text-primary" size={20} />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-muted-foreground mb-1">Foco Recomendado</p>
@@ -243,7 +243,7 @@ export function ErrorDashboard() {
                     )}
                     className={`p-3 rounded-xl text-left transition-colors duration-200 cursor-pointer ${
                       selectedCategory === category
-                        ? 'ring-2 ring-[var(--sky)] bg-card border border-border'
+                        ? 'ring-2 ring-primary bg-card border border-border'
                         : 'bg-card border border-border hover:bg-accent'
                     }`}
                   >
@@ -293,7 +293,7 @@ export function ErrorDashboard() {
                   onClick={() => setCurrencyFilter(currencyFilter === 'active' ? null : 'active')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                     currencyFilter === 'active'
-                      ? 'ring-2 ring-[var(--coral)] bg-[var(--coral-soft)] text-[var(--coral)]'
+                      ? 'ring-2 ring-primary bg-primary-soft text-primary'
                       : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
@@ -313,7 +313,7 @@ export function ErrorDashboard() {
                   onClick={() => setCurrencyFilter(currencyFilter === 'resolved' ? null : 'resolved')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                     currencyFilter === 'resolved'
-                      ? 'ring-2 ring-[var(--leaf)] bg-[var(--leaf-soft)] text-[var(--leaf)]'
+                      ? 'ring-2 ring-leaf bg-leaf-soft text-leaf'
                       : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
@@ -377,9 +377,9 @@ interface ErrorPatternCardProps {
 }
 
 const CURRENCY_STYLES: Record<ErrorCurrency, string> = {
-  active: 'bg-[var(--coral-soft)] text-[var(--coral)]',
+  active: 'bg-primary-soft text-primary',
   dormant: 'bg-[var(--amber-soft)] text-[var(--amber)]',
-  resolved: 'bg-[var(--leaf-soft)] text-[var(--leaf)]',
+  resolved: 'bg-leaf-soft text-leaf',
 };
 
 const CURRENCY_LABELS: Record<ErrorCurrency, string> = {
@@ -399,14 +399,14 @@ function ErrorPatternCard({ pattern, expanded = false }: ErrorPatternCardProps) 
     : pattern.trend === 'worsening' ? TrendingDown
     : Minus;
 
-  const trendColor = pattern.trend === 'improving' ? 'text-[var(--leaf)]'
+  const trendColor = pattern.trend === 'improving' ? 'text-leaf'
     : pattern.trend === 'worsening' ? 'text-[var(--danger)]'
     : 'text-muted-foreground';
 
   return (
     <div
       className={`bg-card rounded-2xl p-4 border border-border transition-colors duration-200 ${
-        isExpanded ? 'ring-2 ring-[var(--sky)]' : ''
+        isExpanded ? 'ring-2 ring-primary' : ''
       }`}
     >
       <div className="flex items-start justify-between mb-2">
@@ -437,7 +437,7 @@ function ErrorPatternCard({ pattern, expanded = false }: ErrorPatternCardProps) 
             <div key={idx} className="bg-muted rounded-lg p-3 text-xs space-y-1">
               <p className="text-muted-foreground">Prompt: {example.prompt}</p>
               <p className="text-[var(--danger)]">Você: {example.userTranscription}</p>
-              <p className="text-[var(--leaf)]">Melhor: {example.correctedVersion}</p>
+              <p className="text-leaf">Melhor: {example.correctedVersion}</p>
               <p className="text-muted-foreground">Nota: {example.score}/10</p>
             </div>
           ))}
@@ -447,7 +447,7 @@ function ErrorPatternCard({ pattern, expanded = false }: ErrorPatternCardProps) 
       {pattern.examples.length > 0 && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="mt-2 text-xs text-[var(--sky)] font-medium hover:text-[var(--sky-hover)] cursor-pointer"
+          className="mt-2 text-xs text-primary font-medium hover:text-primary/80 cursor-pointer"
         >
           {isExpanded ? 'Mostrar menos' : 'Ver exemplos'}
         </button>

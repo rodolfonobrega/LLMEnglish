@@ -6,7 +6,7 @@ export function Navigation() {
   return (
     <nav
       aria-label="Main navigation"
-      className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border z-40 pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-md border-t border-secondary z-40 pb-[env(safe-area-inset-bottom)]"
     >
       <div className="flex items-center justify-around px-1 py-1.5">
         {primaryNavItems.map(item => {
@@ -19,7 +19,7 @@ export function Navigation() {
                 cn(
                   'flex flex-col items-center gap-0.5 px-1.5 py-1.5 rounded-xl transition-colors duration-200 cursor-pointer min-w-[2.5rem]',
                   isActive
-                    ? 'text-[hsl(var(--sky))] bg-[hsl(var(--sky-soft))]'
+                    ? 'text-primary bg-primary-soft'
                     : 'text-muted-foreground hover:text-foreground',
                 )
               }

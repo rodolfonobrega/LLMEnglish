@@ -50,10 +50,10 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
                 aria-label="Start recording"
                 className={cn(
                   'size-16 rounded-full flex items-center justify-center transition-colors duration-200 cursor-pointer',
-                  'bg-[var(--coral)] text-white',
-                  'hover:bg-[var(--coral-hover)] active:scale-95',
+                  'bg-primary text-white',
+                  'hover:bg-primary/90 active:scale-95',
                   'disabled:opacity-40 disabled:cursor-not-allowed',
-                  'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--coral)]/40',
+                  'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40',
                 )}
               >
                 <Mic size={28} />
@@ -67,18 +67,18 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
         {isRecording && (
           <>
             <div className="relative">
-              <div className="absolute -inset-3 rounded-full bg-[var(--coral)]/15 animate-ping" style={{ animationDuration: '2s' }} />
-              <div className="absolute -inset-2 rounded-full border-2 border-[var(--coral)]/30 animate-pulse" />
+              <div className="absolute -inset-3 rounded-full bg-primary/15 animate-ping" style={{ animationDuration: '2s' }} />
+              <div className="absolute -inset-2 rounded-full border-2 border-primary/30 animate-pulse" />
               <button
                 onClick={stopRecording}
                 aria-label="Stop recording"
-                className="relative size-16 rounded-full flex items-center justify-center bg-[var(--coral)] text-white cursor-pointer"
+                className="relative size-16 rounded-full flex items-center justify-center bg-primary text-white cursor-pointer"
               >
                 <Square size={24} />
               </button>
             </div>
-            <div className="flex items-center gap-2 text-[var(--coral)] text-sm font-semibold">
-              <div className="size-2 bg-[var(--coral)] rounded-full animate-pulse" />
+            <div className="flex items-center gap-2 text-primary text-sm font-semibold">
+              <div className="size-2 bg-primary rounded-full animate-pulse" />
               Gravando...
             </div>
           </>
@@ -114,7 +114,7 @@ export function AudioRecorder({ onAudioReady, disabled }: AudioRecorderProps) {
               onClick={handleSubmit}
               disabled={disabled}
               aria-label="Submit recording"
-              className="rounded-full bg-[var(--leaf)] hover:bg-[var(--leaf)] cursor-pointer"
+              className="rounded-full bg-leaf hover:bg-leaf cursor-pointer"
             >
               <Send size={18} />
               Enviar

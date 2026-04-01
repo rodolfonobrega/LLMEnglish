@@ -1,3 +1,4 @@
+import { SelectionDot } from './SelectionDot';
 import { cn } from '../../utils/cn';
 
 const THEMES = [
@@ -26,12 +27,13 @@ export function ThemeSelector({ selected, onSelect }: ThemeSelectorProps) {
           key={theme.id}
           onClick={() => onSelect(theme.id)}
           className={cn(
-            'flex flex-col items-center gap-2 p-4 rounded-2xl text-sm font-semibold transition-all duration-200 cursor-pointer border-2 bg-card',
+            'flex flex-col items-center gap-2 p-4 rounded-2xl text-sm font-semibold transition-all duration-200 cursor-pointer border-2 relative',
             selected === theme.id
-              ? 'border-primary shadow-md'
-              : 'border-secondary hover:shadow-md hover:scale-[1.02]',
+              ? 'bg-card border-primary shadow-md'
+              : 'bg-card border-secondary hover:shadow-md hover:scale-[1.02]',
           )}
         >
+          {selected === theme.id && <SelectionDot />}
           <div className="w-16 h-16 rounded-xl overflow-hidden bg-secondary flex items-center justify-center">
             <img
               src={theme.image}
@@ -45,9 +47,6 @@ export function ThemeSelector({ selected, onSelect }: ThemeSelectorProps) {
             />
           </div>
           <span className="text-foreground text-center leading-tight">{theme.label}</span>
-          {selected === theme.id && (
-            <div className="w-2 h-2 bg-primary rounded-full" />
-          )}
         </button>
       ))}
     </div>

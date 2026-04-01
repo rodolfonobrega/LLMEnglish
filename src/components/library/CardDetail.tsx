@@ -102,10 +102,10 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
       {/* Review Stats */}
       <div className="bg-card rounded-2xl p-6 border border-border">
         <div className="flex items-center gap-2 mb-5">
-          <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
-            <BarChart3 size={14} className="text-[var(--sky)]" />
+          <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
+            <BarChart3 size={14} className="text-primary" />
           </div>
-          <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Histórico de Revisões</h3>
+          <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Histórico de Revisões</h3>
         </div>
         <div className="grid grid-cols-3 gap-4 text-center">
           <div className="bg-muted rounded-2xl p-3">
@@ -113,7 +113,7 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
             <p className="text-xs text-muted-foreground mt-0.5">Total</p>
           </div>
           <div className="bg-[var(--leaf-soft)] rounded-2xl p-3">
-            <p className="text-2xl font-extrabold text-[var(--leaf)] tabular-nums">{stats.correctCount}</p>
+            <p className="text-2xl font-extrabold text-leaf tabular-nums">{stats.correctCount}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Corretas</p>
           </div>
           <div className="bg-[var(--amber-soft)] rounded-2xl p-3">
@@ -141,10 +141,10 @@ export function CardDetail({ card, onBack }: CardDetailProps) {
       {card.latestEvaluation && (
         <div className="bg-card rounded-2xl p-6 border border-border">
           <div className="flex items-center gap-2 mb-5">
-            <div className="size-7 rounded-full bg-[var(--leaf-soft)] flex items-center justify-center">
-              <Repeat size={14} className="text-[var(--leaf)]" />
+            <div className="size-7 rounded-full bg-leaf-soft flex items-center justify-center">
+              <Repeat size={14} className="text-leaf" />
             </div>
-            <h3 className="text-sm font-bold text-[var(--leaf)] uppercase tracking-wide">Última Avaliação</h3>
+            <h3 className="text-sm font-bold text-leaf uppercase tracking-wide">Última Avaliação</h3>
           </div>
           <EvaluationResults result={card.latestEvaluation} showSaveButton={false} />
         </div>

@@ -141,8 +141,8 @@ export function ReviewPage() {
   if (dueCards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center space-y-6">
-        <div className="size-24 bg-[var(--leaf-soft)] rounded-full flex items-center justify-center">
-          <CheckCircle2 size={48} className="text-[var(--leaf)]" />
+        <div className="size-24 bg-leaf-soft rounded-full flex items-center justify-center">
+          <CheckCircle2 size={48} className="text-leaf" />
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl font-extrabold text-foreground text-balance">Tudo em dia!</h2>
@@ -185,7 +185,7 @@ export function ReviewPage() {
               <p className="text-xs text-muted-foreground">Revisados</p>
             </div>
             <div>
-              <p className="text-2xl font-extrabold text-[var(--leaf)] tabular-nums">{sessionScores.filter(s => s >= 7).length}</p>
+              <p className="text-2xl font-extrabold text-leaf tabular-nums">{sessionScores.filter(s => s >= 7).length}</p>
               <p className="text-xs text-muted-foreground">Corretos (7+)</p>
             </div>
           </div>
@@ -236,7 +236,7 @@ export function ReviewPage() {
           className={cn(
             'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
             reviewMode === 'standard'
-              ? 'bg-[var(--sky)] text-white'
+              ? 'bg-primary text-white'
               : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
           )}
         >
@@ -250,7 +250,7 @@ export function ReviewPage() {
           className={cn(
             'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
             reviewMode === 'intelligent'
-              ? 'bg-[var(--coral)] text-white'
+              ? 'bg-primary text-white'
               : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
           )}
         >
@@ -260,9 +260,9 @@ export function ReviewPage() {
       </div>
 
       {reviewMode === 'intelligent' && (
-        <div className="bg-[var(--coral-soft)] rounded-xl p-3 text-sm flex items-start gap-2">
-          <Lightbulb size={16} className="text-[var(--coral)] mt-0.5 flex-shrink-0" />
-          <p className="text-[var(--coral)] font-medium">
+        <div className="bg-primary-soft rounded-xl p-3 text-sm flex items-start gap-2">
+          <Lightbulb size={16} className="text-primary mt-0.5 flex-shrink-0" />
+          <p className="text-primary font-medium">
             A Revisão Inteligente prioriza cards com base nos seus pontos fracos e desempenho anterior.
           </p>
         </div>
@@ -270,7 +270,7 @@ export function ReviewPage() {
 
       <div className="h-2.5 bg-muted rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-[var(--sky)] to-[var(--coral)] rounded-full transition-all duration-500"
+          className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
           style={{ width: `${((currentIndex + (showResults ? 1 : 0)) / dueCards.length) * 100}%` }}
         />
       </div>
@@ -291,7 +291,7 @@ export function ReviewPage() {
             <>
               <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />
               {isEvaluating && (
-                <div className="flex items-center justify-center gap-2 text-[var(--sky)]">
+                <div className="flex items-center justify-center gap-2 text-primary">
                   <Loader2 size={20} className="animate-spin" />
                   <span className="font-medium">Avaliando...</span>
                 </div>

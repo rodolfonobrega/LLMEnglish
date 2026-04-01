@@ -143,7 +143,7 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
             className="w-full h-64 sm:h-72 object-cover"
           />
         ) : (
-          <div className="w-full h-64 sm:h-72 bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 flex items-center justify-center">
+          <div className="w-full h-64 sm:h-72 bg-gradient-to-br from-primary-soft via-muted to-secondary flex items-center justify-center">
             <span className="text-7xl drop-shadow-sm">{themeEmoji}</span>
           </div>
         )}

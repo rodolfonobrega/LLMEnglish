@@ -28,7 +28,7 @@ export function ProgressBar({ current, max, level, streak, showLabel = true, cla
 
       {/* Progress Bar */}
       <div className="relative">
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div
             className={cn(
               "h-full rounded-full transition-all duration-500",

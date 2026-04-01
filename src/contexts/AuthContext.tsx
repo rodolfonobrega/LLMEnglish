@@ -53,6 +53,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Load initial session and profile
   useEffect(() => {
+    // In dev mode without Supabase env vars, skip auth entirely
+    if (import.meta.env.DEV && (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY)) {
+      setLoading(false)
+      return
+    }
+
     let mounted = true
     const authBootstrapTimeoutMs = 4000
     const bootstrapTimeoutId = window.setTimeout(() => {

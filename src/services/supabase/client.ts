@@ -54,8 +54,12 @@ export function resetSupabaseClient(): void {
   clientInstance = null
 }
 
-// Export a default client for convenience
-export const supabase = getSupabaseClient()
+// Export a lazy client getter — avoids crashing at import time when env vars are missing (dev mode)
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return Reflect.get(getSupabaseClient(), prop)
+  },
+})
 
 // Re-export types for convenience
 export type { Database }

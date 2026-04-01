@@ -181,8 +181,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-8">
         <div className="relative">
-          <div className="size-24 bg-[hsl(var(--sky-soft))] rounded-full flex items-center justify-center">
-            <Sparkles size={40} className="text-[hsl(var(--sky))] animate-pulse" />
+          <div className="size-24 bg-primary-soft rounded-full flex items-center justify-center">
+            <Sparkles size={40} className="text-primary animate-pulse" />
           </div>
         </div>
         <div className="text-center space-y-2">
@@ -226,8 +226,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         </div>
 
         {mode === 'skill' && (
-          <div className="bg-[hsl(var(--sky-soft))] border border-[hsl(var(--sky))]/20 rounded-xl p-4 flex gap-3 text-sm text-[var(--sky-dark)]">
-            <UserIcon size={20} className="shrink-0 text-[hsl(var(--sky))]" />
+          <div className="bg-primary-soft border border-primary/20 rounded-xl p-4 flex gap-3 text-sm text-foreground">
+            <UserIcon size={20} className="shrink-0 text-primary" />
             <p>
               <strong>Simulador Profissional</strong> vai usar seu Perfil salvo (Nível: {userContext?.currentLevel || 'Intermediate'}) para gerar uma entrevista ou simulação profissional realista. Atualize seu perfil em <Link to="/settings" className="underline font-bold">Configurações</Link>.
             </p>
@@ -247,7 +247,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
                 className={cn(
                   'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-colors duration-200 flex-shrink-0 cursor-pointer',
                   theme === t.id
-                    ? 'bg-[hsl(var(--sky))] text-white'
+                    ? 'bg-primary text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
@@ -272,7 +272,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
             rows={4}
             className={cn(
               'w-full px-4 py-3 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground/60 resize-none',
-              'focus:outline-none focus:ring-2 focus:ring-[hsl(var(--sky))]/50 focus:border-[hsl(var(--sky))]',
+              'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
               'transition-colors text-sm leading-relaxed',
             )}
           />
@@ -296,7 +296,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
                 className={cn(
                   'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer text-center',
                   intensity === i.id
-                    ? 'bg-[hsl(var(--sky))] text-white'
+                    ? 'bg-primary text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >

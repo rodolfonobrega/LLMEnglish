@@ -116,7 +116,7 @@ export function LibraryPage() {
                   className={cn(
                     'py-2 rounded-xl text-sm font-semibold transition-colors duration-200 cursor-pointer',
                     newType === t
-                      ? 'bg-[var(--sky)] text-white'
+                      ? 'bg-primary text-white'
                       : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-accent',
                   )}
                 >
@@ -183,8 +183,8 @@ export function LibraryPage() {
         </div>
       ) : filteredCards.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-          <div className="size-20 bg-[var(--sky-soft)] rounded-full flex items-center justify-center">
-            <BookOpen size={36} className="text-[var(--sky)]" />
+          <div className="size-20 bg-primary-soft rounded-full flex items-center justify-center">
+            <BookOpen size={36} className="text-primary" />
           </div>
           <div className="space-y-1">
             <p className="text-lg font-bold text-foreground text-balance">Nenhum card ainda</p>
@@ -228,7 +228,7 @@ export function LibraryPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedCard(card)} className="text-[var(--sky)] cursor-pointer">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedCard(card)} className="text-primary cursor-pointer">
                     <Eye size={14} />
                     Ver
                   </Button>
@@ -246,7 +246,7 @@ export function LibraryPage() {
                     <Edit3 size={14} />
                   </Button>
                   {!card.nextReviewAt && (
-                    <Button variant="ghost" size="sm" onClick={() => { void handleScheduleReview(card) }} className="text-[var(--sky)] text-xs cursor-pointer">
+                    <Button variant="ghost" size="sm" onClick={() => { void handleScheduleReview(card) }} className="text-primary text-xs cursor-pointer">
                       + Revisão
                     </Button>
                   )}

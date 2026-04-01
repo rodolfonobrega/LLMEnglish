@@ -145,8 +145,8 @@ export function PathsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-8">
         <div className="relative">
-          <div className="size-24 bg-[var(--sky-soft)] rounded-full flex items-center justify-center">
-            <Sparkles size={40} className="text-[var(--sky)] animate-pulse" />
+          <div className="size-24 bg-primary-soft rounded-full flex items-center justify-center">
+            <Sparkles size={40} className="text-primary animate-pulse" />
           </div>
         </div>
         <div className="text-center space-y-2">
@@ -277,16 +277,16 @@ export function PathsPage() {
                 onClick={() => setExpandedTrail(isExpanded ? null : trail.id)}
                 className={cn(
                   'w-full text-left rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden',
-                  isExpanded ? 'border-[var(--sky)] shadow-md' : 'border-border hover:border-[var(--sky)]/40',
+                  isExpanded ? 'border-primary shadow-md' : 'border-border hover:border-primary/40',
                 )}
               >
-                <div className={cn('p-5', isExpanded && 'bg-[var(--sky-soft)]')}>
+                <div className={cn('p-5', isExpanded && 'bg-primary-soft')}>
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-foreground text-lg">{trail.label}</h3>
                         {isComplete && (
-                          <div className="size-5 rounded-full bg-[var(--leaf)] flex items-center justify-center">
+                          <div className="size-5 rounded-full bg-leaf flex items-center justify-center">
                             <Check className="w-3 h-3 text-white" />
                           </div>
                         )}
@@ -311,8 +311,8 @@ export function PathsPage() {
                       className={cn(
                         'h-full rounded-full transition-all duration-500',
                         isComplete
-                          ? 'bg-[var(--leaf)]'
-                          : 'bg-gradient-to-r from-[var(--sky)] to-[var(--sky)]/60',
+                          ? 'bg-leaf'
+                          : 'bg-gradient-to-r from-primary to-primary/60',
                       )}
                       style={{ width: `${trailProgress}%` }}
                     />
@@ -340,9 +340,9 @@ export function PathsPage() {
                         <div className={cn(
                           'flex-shrink-0 size-8 rounded-full flex items-center justify-center font-bold text-sm',
                           done
-                            ? 'bg-[var(--leaf)] text-white'
+                            ? 'bg-leaf text-white'
                             : isNext
-                              ? 'bg-[var(--sky)] text-white'
+                              ? 'bg-primary text-white'
                               : 'bg-muted text-muted-foreground',
                         )}>
                           {done ? <Check size={16} /> : idx + 1}
@@ -352,7 +352,7 @@ export function PathsPage() {
                         <div className="flex-1 min-w-0">
                           <p className={cn(
                             'font-semibold text-sm',
-                            done ? 'text-[var(--leaf)]' : 'text-foreground',
+                            done ? 'text-leaf' : 'text-foreground',
                           )}>
                             {step.label}
                           </p>
@@ -363,7 +363,7 @@ export function PathsPage() {
                         {done ? (
                           <button
                             onClick={() => handleStartStep(selectedTheme, trail, step)}
-                            className="text-xs font-semibold text-muted-foreground hover:text-[var(--sky)] transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-[var(--sky-soft)]"
+                            className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-primary-soft"
                           >
                             Refazer
                           </button>

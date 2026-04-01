@@ -13,7 +13,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
     <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
       <BaseDialog.Portal>
         <BaseDialog.Backdrop
-          className="fixed inset-0 z-(--z-modal) bg-black/60 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-opacity duration-150"
+          className="fixed inset-0 z-(--z-modal) bg-foreground/50 backdrop-blur-sm data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-opacity duration-150"
         />
         <BaseDialog.Popup
           className={cn(

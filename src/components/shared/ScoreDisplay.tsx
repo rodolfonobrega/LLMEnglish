@@ -7,16 +7,16 @@ interface ScoreDisplayProps {
 
 export function ScoreDisplay({ score, size = 'md' }: ScoreDisplayProps) {
   const getColor = () => {
-    if (score >= 8) return 'text-[var(--leaf)]';
+    if (score >= 8) return 'text-leaf';
     if (score >= 6) return 'text-[var(--amber)]';
-    if (score >= 4) return 'text-[var(--coral)]';
+    if (score >= 4) return 'text-primary';
     return 'text-[var(--danger)]';
   };
 
   const getStrokeColor = () => {
-    if (score >= 8) return 'stroke-[var(--leaf)]';
+    if (score >= 8) return 'stroke-leaf';
     if (score >= 6) return 'stroke-[var(--amber)]';
-    if (score >= 4) return 'stroke-[var(--coral)]';
+    if (score >= 4) return 'stroke-primary';
     return 'stroke-[var(--danger)]';
   };
 

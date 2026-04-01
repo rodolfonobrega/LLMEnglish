@@ -54,7 +54,7 @@ export function MicrophoneButton({
                 <div
                     key={ripple}
                     className={cn(
-                        'absolute rounded-full border-2 border-blue-400 animate-ping',
+                        'absolute rounded-full border-2 border-primary/40 animate-ping',
                         sizes[size]
                     )}
                     style={{
@@ -73,15 +73,15 @@ export function MicrophoneButton({
                     'shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95',
                     sizes[size],
                     isRecording
-                        ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-200'
-                        : 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-200',
+                        ? 'bg-gradient-to-br from-destructive to-destructive/80 shadow-destructive/20'
+                        : 'bg-gradient-to-br from-primary to-primary/80 shadow-primary/20',
                     disabled && 'opacity-50 cursor-not-allowed hover:scale-100'
                 )}
             >
                 {/* Inner glow */}
                 <div className={cn(
                     'absolute inset-2 rounded-full opacity-30',
-                    isRecording ? 'bg-red-300' : 'bg-blue-300'
+                    isRecording ? 'bg-destructive/30' : 'bg-primary/30'
                 )} />
 
                 {/* Icon */}
@@ -95,7 +95,7 @@ export function MicrophoneButton({
             {/* Recording indicator */}
             {isRecording && (
                 <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                    <span className="text-red-500 font-semibold text-sm animate-pulse">
+                    <span className="text-destructive font-semibold text-sm animate-pulse">
                         Gravando...
                     </span>
                 </div>

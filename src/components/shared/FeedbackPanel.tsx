@@ -16,8 +16,8 @@ interface FeedbackPanelProps {
 }
 
 const typeConfig = {
-  success: { bg: 'bg-[var(--leaf-soft)]', icon: Check, iconBg: 'bg-[var(--leaf)]', text: 'text-[var(--leaf)]' },
-  tip: { bg: 'bg-[var(--sky-soft)]', icon: Lightbulb, iconBg: 'bg-[var(--sky)]', text: 'text-[var(--sky)]' },
+  success: { bg: 'bg-leaf-soft', icon: Check, iconBg: 'bg-leaf', text: 'text-leaf' },
+  tip: { bg: 'bg-primary-soft', icon: Lightbulb, iconBg: 'bg-primary', text: 'text-primary' },
   warning: { bg: 'bg-[var(--amber-soft)]', icon: X, iconBg: 'bg-[var(--amber)]', text: 'text-[var(--amber)]' },
 };
 
@@ -43,7 +43,7 @@ export function FeedbackPanel({
           <div className="text-left">
             <h3 className="font-bold text-foreground">{title}</h3>
             {totalBonus > 0 && (
-              <span className="text-xs text-[var(--coral)] font-medium">
+              <span className="text-xs text-primary font-medium">
                 +{totalBonus} XP Bonus!
               </span>
             )}
@@ -79,7 +79,7 @@ export function FeedbackPanel({
                     </p>
                   </div>
                   {item.xpBonus != null && item.xpBonus > 0 && (
-                    <span className="text-xs font-bold text-[var(--coral)]">
+                    <span className="text-xs font-bold text-primary">
                       +{item.xpBonus} XP
                     </span>
                   )}

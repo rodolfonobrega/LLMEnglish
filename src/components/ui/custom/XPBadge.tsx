@@ -20,8 +20,8 @@ interface XPBadgeProps {
 const variantConfig = {
   xp: {
     icon: Star,
-    bgColor: 'bg-warning-soft',
-    textColor: 'text-warning',
+    bgColor: 'bg-amber-soft',
+    textColor: 'text-amber',
   },
   level: {
     icon: Zap,
@@ -30,8 +30,8 @@ const variantConfig = {
   },
   streak: {
     icon: Flame,
-    bgColor: 'bg-danger-soft',
-    textColor: 'text-danger',
+    bgColor: 'bg-amber-soft',
+    textColor: 'text-amber',
   },
 } as const;
 

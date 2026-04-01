@@ -254,7 +254,7 @@ export function SettingsPage() {
 
       {/* User Info Card */}
       <div className="bg-card rounded-2xl p-4 border border-border flex items-center gap-4">
-        <div className="size-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+        <div className="size-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg">
           {profile?.email?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
         </div>
         <div className="flex-1 min-w-0">
@@ -264,12 +264,12 @@ export function SettingsPage() {
       </div>
 
       {/* Security Notice */}
-      <div className="flex items-start gap-3 bg-[var(--sky-soft)] rounded-2xl p-4">
-        <div className="size-8 rounded-full bg-[var(--sky)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Shield size={16} className="text-[var(--sky)]" />
+      <div className="flex items-start gap-3 bg-primary-soft rounded-2xl p-4">
+        <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Shield size={16} className="text-primary" />
         </div>
         <div>
-          <h4 className="text-[var(--sky)] font-bold text-sm">Dados Sincronizados</h4>
+          <h4 className="text-primary font-bold text-sm">Dados Sincronizados</h4>
           <p className="text-muted-foreground text-sm mt-1 text-pretty">
             Suas API keys são armazenadas de forma criptografada no Supabase. Seus dados sincronizam entre dispositivos.
           </p>
@@ -279,10 +279,10 @@ export function SettingsPage() {
       {/* User Profile */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
-            <UserIcon size={14} className="text-[var(--sky)]" />
+          <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
+            <UserIcon size={14} className="text-primary" />
           </div>
-          <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Seu Perfil</h3>
+          <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Seu Perfil</h3>
         </div>
         <p className="text-xs text-muted-foreground text-pretty">
           Este contexto é salvo automaticamente e usado para personalizar seus exercícios e scripts.
@@ -325,10 +325,10 @@ export function SettingsPage() {
       {/* API Keys */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <div className="size-7 rounded-full bg-[var(--coral-soft)] flex items-center justify-center">
-            <KeyRound size={14} className="text-[var(--coral)]" />
+          <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
+            <KeyRound size={14} className="text-primary" />
           </div>
-          <h3 className="text-sm font-bold text-[var(--coral)] uppercase tracking-wide">API Keys</h3>
+          <h3 className="text-sm font-bold text-primary uppercase tracking-wide">API Keys</h3>
         </div>
 
         <div className="bg-card rounded-2xl p-5 border border-border space-y-4">
@@ -368,10 +368,10 @@ export function SettingsPage() {
       {/* Conversation Tone */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
-            <MessagesSquare size={14} className="text-[var(--sky)]" />
+          <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
+            <MessagesSquare size={14} className="text-primary" />
           </div>
-          <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Tom da Conversa</h3>
+          <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Tom da Conversa</h3>
         </div>
         <p className="text-xs text-muted-foreground text-pretty">
           Escolha o tom geral para conversas, exercícios e avaliações da IA no app.
@@ -404,27 +404,27 @@ export function SettingsPage() {
               className={cn(
                 'flex flex-col items-start gap-3 p-4 rounded-2xl border-2 transition-all duration-200 text-left cursor-pointer',
                 tone === option.id
-                  ? 'border-[var(--sky)] bg-[var(--sky-soft)] shadow-sm'
-                  : 'border-border bg-card hover:border-[var(--sky)]/40 hover:bg-muted/30'
+                  ? 'border-primary bg-primary-soft shadow-sm'
+                  : 'border-border bg-card hover:border-primary/40 hover:bg-muted/30'
               )}
             >
               <div className={cn(
                 'size-9 rounded-xl flex items-center justify-center',
-                tone === option.id ? 'bg-[var(--sky)] text-white' : 'bg-muted text-muted-foreground'
+                tone === option.id ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
               )}>
                 <option.icon size={18} />
               </div>
               <div>
                 <p className={cn(
                   'font-bold text-sm',
-                  tone === option.id ? 'text-[var(--sky)]' : 'text-foreground'
+                  tone === option.id ? 'text-primary' : 'text-foreground'
                 )}>
                   {option.label}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{option.desc}</p>
               </div>
               {tone === option.id && (
-                <div className="self-end size-5 bg-[var(--sky)] rounded-full flex items-center justify-center">
+                <div className="self-end size-5 bg-primary rounded-full flex items-center justify-center">
                   <Check size={12} className="text-white" />
                 </div>
               )}
@@ -437,10 +437,10 @@ export function SettingsPage() {
       <section className="space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="size-7 rounded-full bg-[var(--sky-soft)] flex items-center justify-center">
-              <Cpu size={14} className="text-[var(--sky)]" />
+            <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
+              <Cpu size={14} className="text-primary" />
             </div>
-            <h3 className="text-sm font-bold text-[var(--sky)] uppercase tracking-wide">Configuração de Modelos</h3>
+            <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Configuração de Modelos</h3>
           </div>
           <button
             onClick={handleReset}
@@ -530,9 +530,9 @@ export function SettingsPage() {
           },
         ].map(section => {
           const colorMap = {
-            sky: { bg: 'bg-[var(--sky-soft)]', text: 'text-[var(--sky)]' },
-            coral: { bg: 'bg-[var(--coral-soft)]', text: 'text-[var(--coral)]' },
-            leaf: { bg: 'bg-[var(--leaf-soft)]', text: 'text-[var(--leaf)]' },
+            sky: { bg: 'bg-primary-soft', text: 'text-primary' },
+            coral: { bg: 'bg-primary-soft', text: 'text-primary' },
+            leaf: { bg: 'bg-leaf-soft', text: 'text-leaf' },
             amber: { bg: 'bg-[var(--amber-soft)]', text: 'text-[var(--amber)]' },
           };
           const colors = colorMap[section.color];
@@ -556,7 +556,7 @@ export function SettingsPage() {
         variant={saved ? 'primary' : 'coral'}
         size="lg"
         onClick={handleSave}
-        className={cn('w-full text-lg font-bold py-4 rounded-2xl cursor-pointer', saved && 'bg-[var(--leaf)] hover:bg-[var(--leaf)]')}
+        className={cn('w-full text-lg font-bold py-4 rounded-2xl cursor-pointer', saved && 'bg-leaf hover:bg-leaf')}
       >
         {saved ? <Check size={20} /> : <Save size={20} />}
         {saved ? 'Salvo!' : 'Salvar Configurações'}

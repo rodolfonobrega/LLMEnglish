@@ -35,3 +35,5 @@ ctx-mode-test-*/
 
 # Superpowers temp files
 .superpowers/
+.claude/
+docs/superpowers/

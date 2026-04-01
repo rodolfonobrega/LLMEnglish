@@ -17,7 +17,7 @@ export function Sidebar() {
     }, []);
 
     return (
-        <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border h-screen sticky top-0">
+        <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-secondary h-screen sticky top-0">
             <div className="p-6">
     <div className="flex items-center gap-3">
       <div className="bg-primary p-2 rounded-xl">
@@ -44,8 +44,8 @@ export function Sidebar() {
                                         cn(
                                             "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors duration-200 cursor-pointer",
                                             isActive
-                                                ? "bg-[hsl(var(--sky-soft))] text-[hsl(var(--sky))] font-semibold"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                ? "bg-primary-soft text-primary font-semibold"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                         )
                                     }
                                     children={({ isActive }) => (
@@ -53,7 +53,7 @@ export function Sidebar() {
                                             <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
                                             <span>{item.label}</span>
                                             {isActive && (
-                                                <div className="ml-auto w-1.5 h-1.5 bg-[hsl(var(--sky))] rounded-full" />
+                                                <div className="ml-auto w-1.5 h-1.5 bg-primary rounded-full" />
                                             )}
                                         </>
                                     )}
@@ -67,10 +67,10 @@ export function Sidebar() {
 
             {stats && stats.streak > 0 && (
   <div className="p-3 border-t border-border">
-    <div className="bg-danger-soft border border-danger/20 rounded-xl p-4">
+    <div className="bg-amber-soft border border-amber/20 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-1">
-        <Flame className="w-4 h-4 text-danger fill-danger" />
-        <span className="font-semibold text-sm text-danger">{stats.streak} dias seguidos!</span>
+        <Flame className="w-4 h-4 text-amber fill-amber" />
+        <span className="font-semibold text-sm text-amber">{stats.streak} dias seguidos!</span>
       </div>
       <p className="text-xs text-muted-foreground">Continue assim! Você está indo muito bem.</p>
     </div>

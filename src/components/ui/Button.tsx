@@ -5,21 +5,21 @@ import { cva } from "class-variance-authority"
 import { cn } from "../../utils/cn"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-primary/20",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-primary/20 active:scale-[0.98] hover:scale-[1.02]",
   {
     variants: {
       variant: {
-        primary: "bg-primary text-white hover:bg-primary-hover shadow-sm",
-        secondary: "bg-secondary text-foreground border border-border hover:bg-muted",
-        ghost: "bg-transparent text-foreground hover:bg-muted",
-        destructive: "bg-danger/10 text-danger border border-danger/20 hover:bg-danger/15",
-        link: "text-primary underline-offset-4 hover:underline",
+        primary: "bg-primary text-white hover:brightness-110 shadow-sm rounded-xl",
+        secondary: "bg-white dark:bg-card text-foreground border border-secondary hover:bg-secondary rounded-xl",
+        ghost: "bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground rounded-xl",
+        destructive: "bg-destructive text-white hover:brightness-110 shadow-sm rounded-xl",
+        link: "text-primary hover:underline underline-offset-4",
       },
       size: {
-        sm: "h-8 px-3 text-xs rounded-md",
+        sm: "h-8 px-3 text-xs rounded-lg",
         default: "h-9 px-4 text-sm",
         lg: "h-11 px-6 text-base rounded-xl",
-        icon: "size-9 rounded-lg",
+        icon: "size-9 rounded-xl",
       },
     },
     defaultVariants: {
@@ -40,7 +40,7 @@ export interface ButtonProps extends Omit<React.ComponentProps<"button">, "size"
 
 // Backward compatibility: map old variants to new ones
 const legacyVariantMap: Record<string, ButtonVariant> = {
-  coral: "destructive",
+  coral: "primary",
   outline: "secondary",
   default: "primary",
 }

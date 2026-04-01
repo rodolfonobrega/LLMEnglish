@@ -17,6 +17,7 @@ export interface PracticeMode {
   colorVar: string;
   icon: LucideIcon;
   to: string;
+  image?: string;
   highlighted?: boolean;
 }
 
@@ -29,6 +30,7 @@ export const exerciseModes: readonly PracticeMode[] = [
     colorVar: 'phrases',
     icon: MessageSquare,
     to: '/exercises?mode=phrases',
+    image: '/images/modes/phrases.png',
   },
   {
     id: 'texts',
@@ -38,6 +40,7 @@ export const exerciseModes: readonly PracticeMode[] = [
     colorVar: 'texts',
     icon: FileText,
     to: '/exercises?mode=texts',
+    image: '/images/modes/texts.png',
   },
   {
     id: 'situations',
@@ -47,6 +50,7 @@ export const exerciseModes: readonly PracticeMode[] = [
     colorVar: 'situations',
     icon: Theater,
     to: '/exercises?mode=situations',
+    image: '/images/modes/situations.png',
   },
   {
     id: 'scripts',
@@ -56,6 +60,7 @@ export const exerciseModes: readonly PracticeMode[] = [
     colorVar: 'scripts',
     icon: PenTool,
     to: '/scripts',
+    image: '/images/modes/scripts.png',
   },
 ] as const;
 
@@ -68,6 +73,7 @@ export const conversationModes: readonly PracticeMode[] = [
     colorVar: 'simulation',
     icon: Mic,
     to: '/live',
+    image: '/images/modes/simulation.png',
   },
   {
     id: 'interview',
@@ -87,6 +93,7 @@ export const conversationModes: readonly PracticeMode[] = [
     colorVar: 'visual',
     icon: Image,
     to: '/exercises?mode=visual',
+    image: '/images/modes/visual.png',
   },
 ] as const;
 

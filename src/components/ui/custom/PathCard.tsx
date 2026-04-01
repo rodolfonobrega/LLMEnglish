@@ -1,16 +1,13 @@
-import { ChevronRight, Star } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '../../../utils/cn';
-
-// New accent color type
-type AccentColor = 'primary' | 'success' | 'warning' | 'danger' | 'special';
 
 interface PathCardProps {
   title: string;
   subtitle?: string;
+  image?: string;
   emoji?: string;
-  gradient?: string;  // Backward compatible - accepts any string
-  accentColor?: AccentColor;  // New API
-  xpRange?: string;
+  gradient?: string;
   progress?: number;
   stepsDone?: number;
   stepsTotal?: number;
@@ -18,57 +15,19 @@ interface PathCardProps {
   className?: string;
 }
 
-// Map old gradient names to new accent colors
-function getAccentFromGradient(grad?: string): AccentColor {
-  if (!grad) return 'primary';
-  if (grad.includes('sky') || grad.includes('blue')) return 'primary';
-  if (grad.includes('emerald') || grad.includes('teal') || grad.includes('green')) return 'success';
-  if (grad.includes('amber') || grad.includes('orange')) return 'warning';
-  if (grad.includes('rose') || grad.includes('pink') || grad.includes('red')) return 'danger';
-  if (grad.includes('violet') || grad.includes('purple')) return 'special';
-  return 'primary';
-}
-
 export function PathCard({
   title,
   subtitle,
+  image,
   emoji,
   gradient,
-  accentColor,
-  xpRange,
   progress,
   stepsDone,
   stepsTotal,
   onClick,
   className,
 }: PathCardProps) {
-  // Use accentColor if provided, otherwise derive from gradient for backward compatibility
-  const effectiveColor = accentColor ?? getAccentFromGradient(gradient);
-
-  const colorMap = {
-    primary: {
-      icon: 'bg-primary-soft text-primary',
-      badge: 'bg-primary-soft text-primary border-primary/20',
-    },
-    success: {
-      icon: 'bg-success-soft text-success',
-      badge: 'bg-success-soft text-success border-success/20',
-    },
-    warning: {
-      icon: 'bg-warning-soft text-warning',
-      badge: 'bg-warning-soft text-warning border-warning/20',
-    },
-    danger: {
-      icon: 'bg-danger-soft text-danger',
-      badge: 'bg-danger-soft text-danger border-danger/20',
-    },
-    special: {
-      icon: 'bg-special-soft text-special',
-      badge: 'bg-special-soft text-special border-special/20',
-    },
-  };
-
-  const colors = colorMap[effectiveColor];
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div
@@ -80,47 +39,36 @@ export function PathCard({
         className,
       )}
     >
-      {/* Top Accent Line */}
-      <div className={cn(
-        "absolute top-0 left-0 right-0 h-0.5",
-        effectiveColor === 'primary' && 'bg-gradient-to-r from-primary to-special',
-        effectiveColor === 'success' && 'bg-success',
-        effectiveColor === 'warning' && 'bg-warning',
-        effectiveColor === 'danger' && 'bg-danger',
-        effectiveColor === 'special' && 'bg-special',
-      )} />
-
-      <div className="p-5">
-        <div className="flex items-start justify-between mb-3">
+      <div className="h-32 w-full overflow-hidden bg-muted rounded-t-xl">
+        {image && !imgError ? (
+          <img
+            src={image}
+            alt={title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
           <div className={cn(
-            "size-12 rounded-lg flex items-center justify-center text-2xl",
-            colors.icon
+            'w-full h-full flex items-center justify-center text-4xl',
+            gradient ? `bg-gradient-to-br ${gradient}` : 'bg-muted',
           )}>
             {emoji || '📘'}
           </div>
+        )}
+      </div>
 
-          {xpRange && (
-            <div className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-semibold",
-              colors.badge
-            )}>
-              <Star className="w-3 h-3 fill-current" />
-              <span>{xpRange} XP</span>
-            </div>
-          )}
-        </div>
-
+      <div className="p-4">
         <h3 className="text-foreground font-semibold text-base mb-1">{title}</h3>
-        {subtitle && <p className="text-muted-foreground text-sm mb-4">{subtitle}</p>}
+        {subtitle && <p className="text-muted-foreground text-sm mb-3">{subtitle}</p>}
 
-        {/* Progress */}
         {progress != null && (
           <div className="flex items-center gap-3">
             <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
               <div
                 className={cn(
-                  "h-full rounded-full transition-all duration-500",
-                  progress === 100 ? 'bg-success' : 'bg-primary'
+                  'h-full rounded-full transition-all duration-500',
+                  progress === 100 ? 'bg-leaf' : 'bg-primary',
                 )}
                 style={{ width: `${progress}%` }}
               />
@@ -133,7 +81,6 @@ export function PathCard({
           </div>
         )}
 
-        {/* Arrow on hover */}
         {onClick && (
           <div className="absolute bottom-4 right-4 size-8 bg-muted rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <ChevronRight className="w-4 h-4 text-muted-foreground" />

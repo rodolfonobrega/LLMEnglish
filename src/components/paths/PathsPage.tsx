@@ -213,6 +213,7 @@ export function PathsPage() {
                 key={theme.id}
                 title={theme.label}
                 subtitle={`${trails.length} trilha${trails.length !== 1 ? 's' : ''} · ${done}/${total} etapas`}
+                image={`/images/trails/${theme.id}.png`}
                 emoji={theme.emoji}
                 gradient={theme.gradient}
                 progress={progress}

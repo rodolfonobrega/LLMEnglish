@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { exerciseModes, conversationModes } from '../../config/modes';
+import { exerciseModes, conversationModes, trailsMode } from '../../config/modes';
 import { ModeCard } from '../shared/ModeCard';
 import { ModeTooltip } from '../shared/ModeTooltip';
 
@@ -62,6 +62,29 @@ export function PracticeHubPage() {
               </div>
             </ModeTooltip>
           ))}
+        </div>
+      </section>
+
+      {/* Trilhas Section */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <div
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: 'hsl(var(--mode-trails))' }}
+          />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Trilhas
+          </span>
+        </div>
+        <div className="flex flex-col gap-2">
+          <ModeTooltip mode={trailsMode}>
+            <div>
+              <ModeCard
+                mode={trailsMode}
+                onClick={() => navigate(trailsMode.to)}
+              />
+            </div>
+          </ModeTooltip>
         </div>
       </section>
     </div>

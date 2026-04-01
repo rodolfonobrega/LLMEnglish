@@ -271,7 +271,7 @@ export function SettingsPage() {
         <div>
           <h4 className="text-primary font-bold text-sm">Dados Sincronizados</h4>
           <p className="text-muted-foreground text-sm mt-1 text-pretty">
-            Suas API keys são armazenadas de forma criptografada no Supabase. Seus dados sincronizam entre dispositivos.
+            Suas API keys são armazenadas de forma criptografada na nuvem. Seus dados sincronizam entre dispositivos.
           </p>
         </div>
       </div>

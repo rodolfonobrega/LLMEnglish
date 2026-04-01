@@ -8,12 +8,12 @@ describe('exerciseSetupSteps', () => {
 });
 
 describe('liveSetupScenarios', () => {
-  it('includes everyday and interview scenarios', () => {
-    expect(liveSetupScenarios.map(s => s.id)).toEqual(['everyday', 'interview']);
+  it('includes everyday and skill scenarios', () => {
+    expect(liveSetupScenarios.map(s => s.id)).toEqual(['everyday', 'skill']);
   });
 
-  it('interview scenario is highlighted', () => {
-    const interview = liveSetupScenarios.find(s => s.id === 'interview');
-    expect(interview?.highlighted).toBe(true);
+  it('skill scenario is highlighted', () => {
+    const skill = liveSetupScenarios.find(s => s.id === 'skill');
+    expect(skill?.highlighted).toBe(true);
   });
 });

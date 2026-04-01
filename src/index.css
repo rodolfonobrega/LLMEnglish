@@ -76,6 +76,8 @@
     --mode-interview-soft: 38 72% 50% / 0.1;
     --mode-visual: 271 71% 65%;
     --mode-visual-soft: 271 71% 65% / 0.1;
+    --mode-trails: 200 65% 50%;
+    --mode-trails-soft: 200 65% 50% / 0.1;
 
     /* Brand danger token */
     --danger: 0 60% 58%;
@@ -159,6 +161,8 @@
     --mode-interview-soft: 38 72% 60% / 0.15;
     --mode-visual: 271 71% 72%;
     --mode-visual-soft: 271 71% 72% / 0.15;
+    --mode-trails: 200 65% 60%;
+    --mode-trails-soft: 200 65% 60% / 0.15;
 
     /* Brand danger token (dark) */
     --danger: 0 60% 62%;
@@ -210,6 +214,8 @@
   --color-mode-interview-soft: hsl(var(--mode-interview-soft));
   --color-mode-visual: hsl(var(--mode-visual));
   --color-mode-visual-soft: hsl(var(--mode-visual-soft));
+  --color-mode-trails: hsl(var(--mode-trails));
+  --color-mode-trails-soft: hsl(var(--mode-trails-soft));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));

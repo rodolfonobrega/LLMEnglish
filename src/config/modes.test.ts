@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   exerciseModes,
   conversationModes,
+  trailsMode,
   allModes,
   type PracticeMode,
 } from './modes';
@@ -33,23 +34,23 @@ describe('exerciseModes', () => {
 });
 
 describe('conversationModes', () => {
-  it('has exactly 3 conversation modes in the correct order', () => {
+  it('has exactly 2 conversation modes in the correct order', () => {
     expect(conversationModes.map(m => m.id)).toEqual([
       'simulation',
-      'interview',
       'visual',
     ]);
   });
 
-  it('interview is marked as highlighted', () => {
-    const interview = conversationModes.find(m => m.id === 'interview');
-    expect(interview?.highlighted).toBe(true);
-  });
-
-  it('only interview is highlighted', () => {
+  it('no modes are highlighted', () => {
     const highlighted = conversationModes.filter(m => m.highlighted);
-    expect(highlighted).toHaveLength(1);
-    expect(highlighted[0].id).toBe('interview');
+    expect(highlighted).toHaveLength(0);
+  });
+});
+
+describe('trailsMode', () => {
+  it('has the correct id and route', () => {
+    expect(trailsMode.id).toBe('trails');
+    expect(trailsMode.to).toBe('/paths');
   });
 });
 

@@ -4,8 +4,8 @@ import {
   Theater,
   PenTool,
   Mic,
-  Briefcase,
   Image,
+  Route,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -35,8 +35,8 @@ export const exerciseModes: readonly PracticeMode[] = [
   {
     id: 'texts',
     label: 'Textos',
-    description: 'Leia um texto e responda perguntas sobre ele',
-    example: 'Leia um artigo sobre viagens e responda 5 perguntas',
+    description: 'Receba um texto em português e fale em inglês com naturalidade',
+    example: 'Leia um parágrafo sobre viagens e fale em inglês',
     colorVar: 'texts',
     icon: FileText,
     to: '/exercises?mode=texts',
@@ -55,8 +55,8 @@ export const exerciseModes: readonly PracticeMode[] = [
   {
     id: 'scripts',
     label: 'Scripts',
-    description: 'Receba um contexto e escreva um texto completo',
-    example: 'Escreva um email formal para um cliente',
+    description: 'Gere diálogos para praticar como um ator, lendo e atuando as falas',
+    example: 'Atue uma entrevista técnica com um recrutador do Google',
     colorVar: 'scripts',
     icon: PenTool,
     to: '/scripts',
@@ -68,22 +68,12 @@ export const conversationModes: readonly PracticeMode[] = [
   {
     id: 'simulation',
     label: 'Simulação ao Vivo',
-    description: 'Converse em tempo real com a IA por voz',
+    description: 'Converse em tempo real com a IA por voz ou pratique entrevistas',
     example: 'Simule uma conversa num café em Londres',
     colorVar: 'simulation',
     icon: Mic,
     to: '/live',
     image: '/images/modes/simulation.png',
-  },
-  {
-    id: 'interview',
-    label: 'Entrevista',
-    description: 'Pratique entrevistas de emprego em inglês',
-    example: 'Pratique se apresentar como faria numa entrevista real',
-    colorVar: 'interview',
-    icon: Briefcase,
-    to: '/live?scenario=interview',
-    highlighted: true,
   },
   {
     id: 'visual',
@@ -97,7 +87,19 @@ export const conversationModes: readonly PracticeMode[] = [
   },
 ] as const;
 
+export const trailsMode: PracticeMode = {
+  id: 'trails',
+  label: 'Trilhas',
+  description: 'Siga trilhas guiadas por situações da vida real',
+  example: 'Complete uma trilha de viagem: aeroporto, hotel, restaurante',
+  colorVar: 'trails',
+  icon: Route,
+  to: '/paths',
+  image: '/images/modes/trails.png',
+};
+
 export const allModes: readonly PracticeMode[] = [
   ...exerciseModes,
   ...conversationModes,
+  trailsMode,
 ];

@@ -1,21 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ThemeSelector } from '../shared/ThemeSelector';
 import {
   chatCompletion,
-  chatCompletionWithImage,
-  generateImage,
   speechToText,
 } from '../../services/openai';
-import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images';
 import {
   getPhraseGenerationPrompt,
   getTextGenerationPrompt,
   getRoleplayGenerationPrompt,
   getEvaluationPrompt,
-  getImageQuestionPrompt,
 } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
@@ -26,15 +22,12 @@ import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification'
 import type { EvaluationResult } from '../../types/card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { SkeletonText, Skeleton } from '../ui/Skeleton';
+import { SkeletonText } from '../ui/Skeleton';
 import { cn } from '../../utils/cn';
 import type { LucideIcon } from 'lucide-react';
 
-// ─── Types ───────────────────────────────────────────────────────────
-type ExerciseType = 'phrase' | 'text' | 'roleplay';
-type OutputFormat = 'audio' | 'image';
+export type ExerciseType = 'phrase' | 'text' | 'roleplay';
 
-// ─── Section label ───────────────────────────────────────────────────
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-widest mb-2.5">
@@ -43,7 +36,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Config ──────────────────────────────────────────────────────────
 const exerciseConfig: Record<
   ExerciseType,
   {
@@ -81,19 +73,6 @@ const exerciseConfig: Record<
   },
 };
 
-const exerciseTypes: ExerciseType[] = ['phrase', 'text', 'roleplay'];
-
-const IMAGE_SCENES = [
-  'a busy street market',
-  'a cozy coffee shop',
-  'a park on a sunny day',
-  'an airport terminal',
-  'a kitchen with food being prepared',
-  'a beach scene',
-  'a city skyline at sunset',
-];
-
-// ─── Helpers ─────────────────────────────────────────────────────────
 function getSystemPrompt(
   type: ExerciseType,
   vocabArr: string[] | undefined,
@@ -121,21 +100,18 @@ function getUserMessage(type: ExerciseType) {
   }
 }
 
-// ─── Component ───────────────────────────────────────────────────────
-export function ExerciseMode() {
-  // Form state
-  const [exerciseType, setExerciseType] = useState<ExerciseType>('phrase');
-  const [outputFormat, setOutputFormat] = useState<OutputFormat>('audio');
+interface ExerciseModeProps {
+  initialType?: ExerciseType;
+}
+
+export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
   const [theme, setTheme] = useState<string | null>('random');
   const [targetVocab, setTargetVocab] = useState('');
   const [context, setContext] = useState('');
 
-  // Guided flow step: format | type | theme | generate
-  const [setupStep, setSetupStep] = useState<'format' | 'type' | 'theme' | 'generate'>('format');
+  const [setupStep, setSetupStep] = useState<'theme' | 'generate'>('theme');
 
-  // Session state
   const [prompt, setPrompt] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -143,18 +119,9 @@ export function ExerciseMode() {
   const [saved, setSaved] = useState(false);
   const [userAudioBase64, setUserAudioBase64] = useState<string | null>(null);
 
-  const isAudio = outputFormat === 'audio';
-  const config = exerciseConfig[exerciseType];
-  const hasActiveSession = !!prompt || !!imageUrl;
+  const config = exerciseConfig[initialType];
+  const hasActiveSession = !!prompt;
 
-  // Auto-advance past type step when switching to image format
-  useEffect(() => {
-    if (outputFormat === 'image' && setupStep === 'type') {
-      setSetupStep('theme');
-    }
-  }, [outputFormat, setupStep]);
-
-  // ── Generate ─────────────────────────────────────────────────────
   const generate = async () => {
     setIsGenerating(true);
     setError(null);
@@ -162,9 +129,7 @@ export function ExerciseMode() {
     setSaved(false);
     setUserAudioBase64(null);
     setPrompt('');
-    setImageUrl('');
 
-    // VALIDATION: Require either a theme or a specific context
     if (!theme && !context?.trim()) {
       setError('Selecione um tema ou escreva um tópico específico.');
       setIsGenerating(false);
@@ -172,40 +137,17 @@ export function ExerciseMode() {
     }
 
     try {
-      if (isAudio) {
-        // Audio + Text mode
-        const vocabArr = targetVocab
-          ? targetVocab.split(',').map(v => v.trim()).filter(Boolean)
-          : undefined;
-        const systemPrompt = getSystemPrompt(
-          exerciseType,
-          vocabArr,
-          context || undefined,
-          theme !== 'random' ? theme : null,
-        );
-        const result = await chatCompletion(systemPrompt, getUserMessage(exerciseType));
-        setPrompt(result.trim());
-      } else {
-        // Visual Prompt mode
-        let scene = context?.trim();
-        if (!scene) {
-          if (theme === 'random') {
-            scene = IMAGE_SCENES[Math.floor(Math.random() * IMAGE_SCENES.length)];
-          } else if (theme) {
-            scene = `a scene related to ${theme}`;
-          }
-        }
-
-        const imgUrl = await generateImage(
-          `${BASE_IMAGE_STYLE_PROMPT} A highly detailed, immersive everyday scene that would be interesting to describe: ${scene}`,
-          getImageConfigAuto('exerciseMode')
-        );
-        setImageUrl(imgUrl);
-
-        const questionPrompt = getImageQuestionPrompt();
-        const q = await chatCompletionWithImage(questionPrompt, imgUrl);
-        setPrompt(q.trim());
-      }
+      const vocabArr = targetVocab
+        ? targetVocab.split(',').map(v => v.trim()).filter(Boolean)
+        : undefined;
+      const systemPrompt = getSystemPrompt(
+        initialType,
+        vocabArr,
+        context || undefined,
+        theme !== 'random' ? theme : null,
+      );
+      const result = await chatCompletion(systemPrompt, getUserMessage(initialType));
+      setPrompt(result.trim());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate');
     } finally {
@@ -213,15 +155,13 @@ export function ExerciseMode() {
     }
   };
 
-  // ── Evaluate recording ───────────────────────────────────────────
   const handleAudioReady = async (blob: Blob, base64: string) => {
     setIsEvaluating(true);
     setError(null);
     setUserAudioBase64(base64);
     try {
       const transcription = await speechToText(blob);
-      const evalType = isAudio ? config.evalType : 'image description';
-      const evalPrompt = getEvaluationPrompt(prompt, transcription, evalType);
+      const evalPrompt = getEvaluationPrompt(prompt, transcription, config.evalType);
       const evalResponse = await chatCompletion(
         'You are an expert English language evaluator. Respond only with valid JSON.',
         evalPrompt,
@@ -231,7 +171,6 @@ export function ExerciseMode() {
       evalResult.userTranscription = transcription;
       setEvaluation(evalResult);
 
-      // Record error patterns for intelligent review
       const tempCardId = `temp_${Date.now()}`;
       const patterns = await extractErrorPatterns(evalResult, prompt, tempCardId);
       await recordErrorPatterns(patterns)
@@ -246,68 +185,47 @@ export function ExerciseMode() {
     }
   };
 
-  // ── Save to library ──────────────────────────────────────────────
   const handleSaveToLibrary = async () => {
     if (!evaluation) return;
 
-    const card = isAudio
-      ? createDefaultCard({
-        type: exerciseType,
-        prompt,
-        targetVocabulary:
-          config.hasVocab && targetVocab
-            ? targetVocab.split(',').map(v => v.trim())
-            : undefined,
-        context: context || undefined,
-        theme: theme || undefined,
-        latestEvaluation: evaluation,
-        userAudioBlob: userAudioBase64 || undefined,
-      })
-      : createDefaultCard({
-        type: 'image',
-        prompt,
-        imageUrl,
-        latestEvaluation: evaluation,
-        userAudioBlob: userAudioBase64 || undefined,
-      });
+    const card = createDefaultCard({
+      type: initialType,
+      prompt,
+      targetVocabulary:
+        config.hasVocab && targetVocab
+          ? targetVocab.split(',').map(v => v.trim())
+          : undefined,
+      context: context || undefined,
+      theme: theme || undefined,
+      latestEvaluation: evaluation,
+      userAudioBlob: userAudioBase64 || undefined,
+    });
 
     await addCard(card)
     await syncGamificationState()
     setSaved(true);
   };
 
-  // ── Reset ────────────────────────────────────────────────────────
   const reset = () => {
     setPrompt('');
-    setImageUrl('');
     setEvaluation(null);
     setError(null);
     setSaved(false);
     setUserAudioBase64(null);
-    setSetupStep('format');
+    setSetupStep('theme');
   };
 
-  // ── Step index for guided flow ─────────────────────────────────
-  // format=0, type=1, theme=2, generate=3
-  // When outputFormat is image, skip the type step (index 1)
   const getActiveStepIndex = (): number => {
-    // Determine which step the user should be on
-    if (setupStep === 'type') return isAudio ? 1 : 2; // skip type for image
-    if (setupStep === 'theme') return isAudio ? 2 : 1;
-    if (setupStep === 'generate') return isAudio ? 3 : 2;
-    return 0; // format
+    if (setupStep === 'generate') return 1;
+    return 0;
   };
 
-  // ── Render: Setup form (guided stepped flow) ──────────────────
   if (!hasActiveSession && !isGenerating) {
     const stepIndex = getActiveStepIndex();
-    const stepLabels = isAudio
-      ? ['Formato', 'Tipo', 'Tema', 'Gerar']
-      : ['Formato', 'Tema', 'Gerar'];
+    const stepLabels = ['Tema', 'Gerar'];
 
     return (
       <div className="bg-card rounded-2xl p-5 border border-border space-y-5">
-        {/* Step indicator */}
         <div className="flex items-center gap-1.5">
           {stepLabels.map((label, i) => (
             <div
@@ -322,43 +240,48 @@ export function ExerciseMode() {
           ))}
         </div>
 
-        {/* ── Step: Format ───────────────────────────────────────── */}
-        {setupStep === 'format' && (
+        {setupStep === 'theme' && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-base font-bold text-foreground">Escolha o formato</h3>
-              <p className="text-sm text-muted-foreground mt-1">Como voce quer praticar?</p>
+              <h3 className="text-base font-bold text-foreground">Contexto e tema</h3>
+              <p className="text-sm text-muted-foreground mt-1">Sobre o que você quer falar?</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setOutputFormat('audio')}
-                className={cn(
-                  'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer border-2',
-                  isAudio
-                    ? 'bg-primary text-white border-primary shadow-sm'
-                    : 'bg-card text-foreground border-secondary hover:border-primary/50 hover:shadow-md',
-                )}
-              >
-                <Mic size={24} />
-                <span className="font-semibold text-sm">Audio + Texto</span>
-              </button>
-              <button
-                onClick={() => setOutputFormat('image')}
-                className={cn(
-                  'flex flex-col items-center gap-2 py-5 rounded-2xl transition-colors duration-200 cursor-pointer border-2',
-                  !isAudio
-                    ? 'bg-primary text-white border-primary shadow-sm'
-                    : 'bg-card text-foreground border-secondary hover:border-primary/50 hover:shadow-md',
-                )}
-              >
-                <ImageIcon size={24} />
-                <span className="font-semibold text-sm">Desafio Visual</span>
-              </button>
-            </div>
+            <ThemeSelector
+              selected={theme || ''}
+              onSelect={(t) => setTheme(t)}
+            />
+
+            {config.hasVocab && (
+              <div className="pt-2">
+                <SectionLabel>Vocabulário Alvo</SectionLabel>
+                <Input
+                  value={targetVocab}
+                  onChange={e => setTargetVocab(e.target.value)}
+                  placeholder="ex: gonna, would, might"
+                  hint="Separe com vírgulas"
+                />
+              </div>
+            )}
+
+            {theme === 'custom' && (
+              <div className="pt-2">
+                <SectionLabel>Tópico / Contexto Específico</SectionLabel>
+                <Input
+                  value={context}
+                  onChange={e => setContext(e.target.value)}
+                  placeholder={
+                    initialType === 'roleplay'
+                      ? 'ex: devolver um produto, consulta médica'
+                      : 'ex: pedir um café, entrevista de emprego'
+                  }
+                />
+              </div>
+            )}
+
             <Button
               variant="coral"
               size="lg"
-              onClick={() => setSetupStep(isAudio ? 'type' : 'theme')}
+              onClick={() => setSetupStep('generate')}
               className="w-full rounded-2xl cursor-pointer"
             >
               Continuar
@@ -367,142 +290,18 @@ export function ExerciseMode() {
           </div>
         )}
 
-        {/* ── Step: Type (audio mode only) ───────────────────────── */}
-        {setupStep === 'type' && isAudio && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-foreground">Tipo de pratica</h3>
-              <p className="text-sm text-muted-foreground mt-1">O que voce quer treinar?</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {exerciseTypes.map(type => {
-                const TypeIcon = exerciseConfig[type].icon;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => setExerciseType(type)}
-                    className={cn(
-                      'flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl text-sm font-semibold transition-colors duration-200 cursor-pointer border-2',
-                      exerciseType === type
-                        ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-card text-foreground border-secondary hover:border-primary/50 hover:shadow-md',
-                    )}
-                  >
-                    <TypeIcon size={20} />
-                    <span>{exerciseConfig[type].label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => setSetupStep('format')}
-                className="flex-1 rounded-2xl cursor-pointer"
-              >
-                <ChevronLeft size={18} />
-                Voltar
-              </Button>
-              <Button
-                variant="coral"
-                size="lg"
-                onClick={() => setSetupStep('theme')}
-                className="flex-1 rounded-2xl cursor-pointer"
-              >
-                Continuar
-                <ChevronRight size={18} />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step: Theme ────────────────────────────────────────── */}
-        {setupStep === 'theme' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-foreground">Contexto e tema</h3>
-              <p className="text-sm text-muted-foreground mt-1">Sobre o que voce quer falar?</p>
-            </div>
-            <ThemeSelector
-              selected={theme || ''}
-              onSelect={(t) => setTheme(t)}
-            />
-
-            {/* Target vocabulary — only for phrase/text in audio mode */}
-            {isAudio && config.hasVocab && (
-              <div className="pt-2">
-                <SectionLabel>Vocabulario Alvo</SectionLabel>
-                <Input
-                  value={targetVocab}
-                  onChange={e => setTargetVocab(e.target.value)}
-                  placeholder="ex: gonna, would, might"
-                  hint="Separe com virgulas"
-                />
-              </div>
-            )}
-
-            {/* Specific topic — only when custom theme selected */}
-            {theme === 'custom' && (
-              <div className="pt-2">
-                <SectionLabel>Topico / Contexto Especifico</SectionLabel>
-                <Input
-                  value={context}
-                  onChange={e => setContext(e.target.value)}
-                  placeholder={
-                    !isAudio
-                      ? 'ex: um mercado movimentado, cafeteria aconchegante'
-                      : exerciseType === 'roleplay'
-                        ? 'ex: devolver um produto, consulta medica'
-                        : 'ex: pedir um cafe, entrevista de emprego'
-                  }
-                />
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => setSetupStep(isAudio ? 'type' : 'format')}
-                className="flex-1 rounded-2xl cursor-pointer"
-              >
-                <ChevronLeft size={18} />
-                Voltar
-              </Button>
-              <Button
-                variant="coral"
-                size="lg"
-                onClick={() => setSetupStep('generate')}
-                className="flex-1 rounded-2xl cursor-pointer"
-              >
-                Continuar
-                <ChevronRight size={18} />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step: Generate (review + fire) ─────────────────────── */}
         {setupStep === 'generate' && (
           <div className="space-y-4">
             <div>
               <h3 className="text-base font-bold text-foreground">Tudo pronto!</h3>
-              <p className="text-sm text-muted-foreground mt-1">Revise e gere seu exercicio.</p>
+              <p className="text-sm text-muted-foreground mt-1">Revise e gere seu exercício.</p>
             </div>
 
-            {/* Summary pills */}
             <div className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
-                {isAudio ? <Mic size={14} /> : <ImageIcon size={14} />}
-                {isAudio ? 'Audio + Texto' : 'Desafio Visual'}
+                {(() => { const Icon = config.icon; return <Icon size={14} />; })()}
+                {config.label}
               </span>
-              {isAudio && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
-                  {(() => { const Icon = config.icon; return <Icon size={14} />; })()}
-                  {config.label}
-                </span>
-              )}
               {theme && theme !== 'random' && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
                   Tema: {theme}
@@ -523,11 +322,11 @@ export function ExerciseMode() {
               <Button
                 variant="coral"
                 size="lg"
-                onClick={generate}
+                onClick={() => { void generate(); }}
                 className="flex-1 text-lg font-bold py-4 rounded-2xl cursor-pointer"
               >
                 <Sparkles size={20} />
-                {isAudio ? 'Gerar Exercicio' : 'Gerar Desafio Visual'}
+                Gerar Exercício
               </Button>
             </div>
           </div>
@@ -542,11 +341,9 @@ export function ExerciseMode() {
     );
   }
 
-  // ── Render: Generating skeleton ──────────────────────────────────
   if (isGenerating && !hasActiveSession) {
     return (
       <div className="space-y-4">
-        {!isAudio && <Skeleton className="aspect-video w-full rounded-2xl" />}
         <div className="bg-card rounded-2xl p-6 border border-border">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles
@@ -554,23 +351,19 @@ export function ExerciseMode() {
               className="text-primary animate-pulse"
             />
             <p className="text-sm text-muted-foreground font-semibold">
-              {isAudio
-                ? `Gerando ${config.label.toLowerCase()}...`
-                : 'Gerando desafio visual...'}
+              Gerando {config.label.toLowerCase()}...
             </p>
           </div>
-          <SkeletonText lines={isAudio ? config.skeletonLines : 2} />
+          <SkeletonText lines={config.skeletonLines} />
         </div>
       </div>
     );
   }
 
-  // ── Render: Active session (prompt shown, before evaluation) ─────
   if (hasActiveSession && !evaluation) {
-    const ActiveIcon = isAudio ? config.icon : ImageIcon;
+    const ActiveIcon = config.icon;
     return (
       <div className="space-y-6">
-        {/* Back button - positioned above, aligned with page title */}
         <div className="flex items-center -ml-1">
           <Button
             variant="ghost"
@@ -583,49 +376,25 @@ export function ExerciseMode() {
           </Button>
         </div>
 
-        {/* Image (visual prompt only) */}
-        {imageUrl && (
-          <div className="relative">
-            <div className="overflow-hidden rounded-2xl border border-border">
-              <img
-                src={imageUrl}
-                alt="Challenge image to describe"
-                className="w-full aspect-video object-cover"
-              />
-            </div>
-            <button
-              onClick={reset}
-              aria-label="Dismiss prompt"
-              className="absolute top-3 right-3 size-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
-
-        {/* Prompt card */}
         <div className="relative">
           <div className="bg-card rounded-2xl p-6 border border-border">
             <div className="flex items-center gap-2 mb-3">
               <ActiveIcon size={18} className="text-muted-foreground" />
               <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">
-                {isAudio ? config.promptLabel : 'Sua Tarefa'}
+                {config.promptLabel}
               </p>
             </div>
             <p className="text-lg text-foreground leading-relaxed whitespace-pre-line text-pretty">
               {prompt}
             </p>
           </div>
-          {/* Dismiss (audio mode only — image mode has dismiss on image) */}
-          {!imageUrl && (
-            <button
-              onClick={reset}
-              aria-label="Dismiss prompt"
-              className="absolute top-4 right-4 size-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-          )}
+          <button
+            onClick={reset}
+            aria-label="Dismiss prompt"
+            className="absolute top-4 right-4 size-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         <AudioRecorder onAudioReady={handleAudioReady} disabled={isEvaluating} />
@@ -646,23 +415,10 @@ export function ExerciseMode() {
     );
   }
 
-  // ── Render: Evaluation results ───────────────────────────────────
   if (evaluation) {
-    const ResultIcon = isAudio ? config.icon : ImageIcon;
+    const ResultIcon = config.icon;
     return (
       <div className="space-y-5">
-        {/* Image thumbnail (visual prompt only) */}
-        {imageUrl && (
-          <div className="overflow-hidden rounded-2xl border border-border">
-            <img
-              src={imageUrl}
-              alt="Challenge image"
-              className="w-full max-h-48 object-cover"
-            />
-          </div>
-        )}
-
-        {/* Original prompt */}
         <div className="bg-card rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <ResultIcon size={16} className="text-muted-foreground" />

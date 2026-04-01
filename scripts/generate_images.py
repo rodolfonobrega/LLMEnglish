@@ -1,6 +1,6 @@
 """
-Generate flat minimalist illustrations for SpeakLab.
-Uses OpenAI-compatible API for image generation.
+Generate cohesive UI illustrations for LLMEnglish.
+Uses OpenAI-compatible API (LiteLLM proxy) with Gemini image model.
 """
 
 import base64
@@ -10,33 +10,41 @@ import sys
 import openai
 
 client = openai.OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY", ""),
+    api_key=os.environ.get("OPENAI_API_KEY") or os.environ.get("LITELLM_API_KEY", ""),
     base_url=os.environ.get("IMAGE_API_BASE_URL", "https://api.openai.com/v1"),
 )
 
-BASE_STYLE = "Flat minimalist illustration, simple geometric shapes, limited color palette with muted teal and slate tones, editorial style, clean white background, no text, no people faces, icon-like composition"
+BASE_STYLE = "Warm, inviting illustration in a soft anime/cartoon style. Soft lighting, vibrant but not oversaturated colors. No text overlays, no detailed faces. Clean composition suitable as a UI card thumbnail"
 
 THEMES = {
-    "food": "a plate with fork and knife, steam rising, restaurant table setting",
-    "travel": "a suitcase with airplane silhouette and passport",
-    "shopping": "shopping bags with price tags and gift boxes",
-    "work": "a laptop with briefcase and coffee cup on desk",
-    "health": "a stethoscope with heart and medical cross symbol",
-    "social": "speech bubbles with handshake gesture",
-    "transport": "a car with abstract road signs (no text, no words on signs) and map pin markers",
-    "entertainment": "a blank movie clapperboard (no text, no labels, no writing) with popcorn bowl and musical notes floating nearby",
-    "education": "an open book with graduation cap and pencil",
-    "custom": "a sparkle star shape with lightbulb and question mark, centered composition, pure white background with no border or frame",
+    "food": "a close-up of a beautifully plated meal on a restaurant table, warm lighting",
+    "travel": "a suitcase with passport and boarding pass, world map in background",
+    "shopping": "colorful shopping bags arranged together, storefront display windows behind",
+    "work": "a laptop on a desk with coffee cup, modern office backdrop with windows",
+    "health": "a stethoscope and medical chart, clean clinical setting with soft lighting",
+    "social": "group of friends chatting at an outdoor cafe, string lights overhead",
+    "transport": "a taxi and bus at a city bus stop, urban street scene",
+    "entertainment": "movie theater seats with a big screen, popcorn bucket in foreground",
+    "education": "stack of textbooks with an apple on top, classroom blackboard behind",
+    "custom": "a magic wand with sparkles, blank canvas suggesting creativity and possibility",
 }
 
 MODES = {
-    "phrases": "a speech bubble with quote marks and sound waves",
-    "texts": "a document page with lines of text and a pen",
-    "situations": "a theater mask with stage curtain",
-    "scripts": "a screenplay document page with indented line blocks and visual formatting structure, absolutely no text, no words, no letters — only colored line shapes representing layout",
-    "simulation": "a microphone with conversation arrows going back and forth",
-    "interview": "two people silhouettes facing each other across a table",
-    "visual": "an eye looking at a framed picture with magnifying glass",
+    "phrases": "a person speaking into a speech bubble with English text fragments, notebook nearby",
+    "texts": "an open book with highlighted paragraphs, microphone beside it",
+    "situations": "a theater stage with two characters in a roleplay scenario, spotlight",
+    "scripts": "a movie clapperboard with a dialogue script page, spotlight beam",
+    "simulation": "two people having a conversation in a cozy cafe, speech bubbles above",
+    "visual": "a camera viewfinder framing a colorful scene, magnifying glass nearby",
+    "trails": "a winding path through diverse landmarks like airport, restaurant, and office",
+}
+
+TRAILS = {
+    "travel": "an airport terminal with departure boards, planes visible through large windows, travelers with luggage, warm interior lighting",
+    "food": "a cozy restaurant interior with warm lighting, beautifully set tables, and a welcoming kitchen in background",
+    "shopping": "a colorful shopping street with inviting storefronts, display windows, and shopping bags",
+    "work": "a modern open-plan office with meeting rooms, whiteboards, and a professional atmosphere",
+    "health": "a clean, welcoming clinic lobby with a reception desk, plants, and a calming atmosphere",
 }
 
 BACKGROUNDS = {
@@ -46,7 +54,12 @@ BACKGROUNDS = {
 }
 
 
-def generate_image(item_id: str, description: str, output_dir: str, size: str = "512x512") -> str:
+def generate_image(item_id: str, description: str, output_dir: str, size: str = "512x512", force: bool = False) -> str:
+    output_path = os.path.join(output_dir, f"{item_id}.png")
+    if os.path.exists(output_path) and not force:
+        print(f"  Skipping {item_id} (already exists, use --force to regenerate)")
+        return output_path
+
     prompt = f"{BASE_STYLE}, depicting {description}"
     print(f"  Generating {item_id}... ", end="", flush=True)
 
@@ -62,7 +75,6 @@ def generate_image(item_id: str, description: str, output_dir: str, size: str = 
     b64 = data[0].b64_json
     assert b64 is not None, f"No b64_json returned for {item_id}"
     image_data = base64.b64decode(b64)
-    output_path = os.path.join(output_dir, f"{item_id}.png")
     with open(output_path, "wb") as f:
         f.write(image_data)
 
@@ -72,13 +84,15 @@ def generate_image(item_id: str, description: str, output_dir: str, size: str = 
 
 def main():
     base_dir = os.path.join(os.path.dirname(__file__), "..", "public", "images")
+    force = "--force" in sys.argv
+    args = [a for a in sys.argv[1:] if a != "--force"]
 
-    if len(sys.argv) < 2:
-        print("Usage: python generate_images.py [themes|modes|backgrounds] [optional: specific_id]")
+    if len(args) < 1:
+        print("Usage: python generate_images.py [themes|modes|trails|backgrounds] [optional: specific_id] [--force]")
         sys.exit(1)
 
-    category = sys.argv[1]
-    specific_id = sys.argv[2] if len(sys.argv) > 2 else None
+    category = args[0]
+    specific_id = args[1] if len(args) > 1 else None
 
     if category == "themes":
         output_dir = os.path.join(base_dir, "themes")
@@ -88,12 +102,16 @@ def main():
         output_dir = os.path.join(base_dir, "modes")
         items = MODES
         size = "512x512"
+    elif category == "trails":
+        output_dir = os.path.join(base_dir, "trails")
+        items = TRAILS
+        size = "1024x1024"
     elif category == "backgrounds":
         output_dir = os.path.join(base_dir, "backgrounds")
         items = BACKGROUNDS
         size = "1024x1024"
     else:
-        print(f"Unknown category: {category}. Use: themes, modes, backgrounds")
+        print(f"Unknown category: {category}. Use: themes, modes, trails, backgrounds")
         sys.exit(1)
 
     os.makedirs(output_dir, exist_ok=True)
@@ -102,11 +120,11 @@ def main():
         if specific_id not in items:
             print(f"Unknown {category} id: {specific_id}. Available: {', '.join(items.keys())}")
             sys.exit(1)
-        generate_image(specific_id, items[specific_id], output_dir, size)
+        generate_image(specific_id, items[specific_id], output_dir, size, force)
     else:
         print(f"Generating {len(items)} {category}:")
         for item_id, desc in items.items():
-            generate_image(item_id, desc, output_dir, size)
+            generate_image(item_id, desc, output_dir, size, force)
 
     print("Done!")
 

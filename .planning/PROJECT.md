@@ -27,10 +27,10 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - ✓ Dev mode routing with mock auth (RELI-04) — Validated in Phase 01: dev-mode-routing
 - ✓ Layered error boundaries with Portuguese fallback UI (RELI-01, RELI-02, RELI-03) — Validated in Phase 02: error-boundaries
 - ✓ Code splitting with React.lazy + Suspense, chunk error soft retry (PERF-01, PERF-02, PERF-03) — Validated in Phase 03: code-splitting
+- ✓ Secure API key storage with PBKDF2 encryption, proxy-only AI calls, client-side encryption removal (SEC-01, SEC-02, SEC-03, SEC-04) — Validated in Phase 04: secure-storage
 
 ### Active
 
-- [ ] Secure API key storage — encrypt at rest, remove plaintext localStorage exposure
 - [ ] Consolidate dual storage layer (localStorage + Supabase) to eliminate duplicate function signatures and import confusion
 - [ ] Redesign Praticar page with image-card layout inspired by PathCard (vertical cards with image banner, different proportions from trilhas)
 
@@ -89,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after Phase 03 completion*
+*Last updated: 2026-04-02 after Phase 04 completion*

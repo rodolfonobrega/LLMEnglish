@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: Code Splitting** — Lazy-load all routes and extract heavy vendors from the initial bundle
 - [ ] **Phase 4: Secure Storage** — Fix encryption parameters and route API calls server-side so keys are never exposed
 - [ ] **Phase 5: Storage Consolidation** — Unify the dual storage layer behind a single facade to eliminate import confusion
-- [ ] **Phase 6: Praticar Redesign** — Redesign practice hub with image-banner cards and keyboard accessibility
+- [x] **Phase 6: Praticar Redesign** — Redesign practice hub with image-banner cards and keyboard accessibility
 
 ## Phase Details
 
@@ -116,4 +116,4 @@ Note: Phases 4-5 can run in parallel with phases 2-3 if desired (no code depende
 | 3. Code Splitting | 0/? | Not started | - |
 | 4. Secure Storage | 0/2 | Planning complete | - |
 | 5. Storage Consolidation | 2/2 | Complete | 2026-04-02 |
-| 6. Praticar Redesign | 0/1 | Planning complete | - |
+| 6. Praticar Redesign | 1/1 | Complete | 2026-04-02 |

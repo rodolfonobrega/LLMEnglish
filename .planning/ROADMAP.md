@@ -69,10 +69,11 @@ Plans:
   2. Encryption uses PBKDF2 with 600K+ iterations and a unique random salt per user
   3. API key usage routes through a Supabase Edge Function proxy rather than making direct browser calls to AI providers
   4. Existing users' encrypted keys continue to work after the encryption parameter changes (migration path exists)
-**Plans**: 1 plan
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md -- Add PBKDF2 encryption utilities to Edge Function, wire into saveApiKey/getApiKey with plaintext migration
+- [ ] 04-02-PLAN.md -- Redirect openai.ts through aiProxy, gut client-side encryption, update SettingsPage dev mode
 
 ### Phase 5: Storage Consolidation
 **Goal**: Developers import from a single storage module regardless of auth state, with no duplicate signatures
@@ -112,6 +113,6 @@ Note: Phases 4-5 can run in parallel with phases 2-3 if desired (no code depende
 | 1. Dev Mode Routing | 0/1 | Planning complete | - |
 | 2. Error Boundaries | 0/1 | Planning complete | - |
 | 3. Code Splitting | 0/? | Not started | - |
-| 4. Secure Storage | 0/? | Not started | - |
+| 4. Secure Storage | 0/2 | Planning complete | - |
 | 5. Storage Consolidation | 0/? | Not started | - |
 | 6. Praticar Redesign | 0/? | Not started | - |

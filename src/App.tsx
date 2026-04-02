@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ErrorBoundary } from 'react-error-boundary';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './components/auth/LoginPage';
@@ -14,6 +15,8 @@ import { PracticeHubPage } from './components/practice/PracticeHubPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { ErrorDashboard } from './components/errors/ErrorDashboard';
 import { HistoryPage } from './components/history/HistoryPage';
+import { AppErrorFallback } from './components/errors/AppErrorFallback';
+import { ErrorFallback } from './components/errors/ErrorFallback';
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
@@ -39,30 +42,32 @@ function ProtectedApp() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/migrate" element={<MigrationPage />} />
+    <ErrorBoundary FallbackComponent={AppErrorFallback}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} errorElement={<ErrorFallback />} />
+            <Route path="/migrate" element={<MigrationPage />} errorElement={<ErrorFallback />} />
 
-          {/* Protected routes with Layout */}
-          <Route path="/" element={<Layout />}>
-            <Route index element={<ProtectedApp />} />
-            <Route path="review" element={<ReviewPage />} />
-            <Route path="live" element={<LiveRoleplayPage />} />
-            <Route path="paths" element={<PathsPage />} />
-            <Route path="exercises" element={<ExercisesPage />} />
-            <Route path="library" element={<LibraryPage />} />
-            <Route path="scripts" element={<PracticePage />} />
-            <Route path="practice" element={<PracticeHubPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="errors" element={<ErrorDashboard />} />
-            <Route path="history" element={<HistoryPage />} />
-          </Route>
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+            {/* Protected routes with Layout -- errorElement renders inside Layout (sidebar preserved) */}
+            <Route path="/" element={<Layout />}>
+              <Route index element={<ProtectedApp />} errorElement={<ErrorFallback />} />
+              <Route path="review" element={<ReviewPage />} errorElement={<ErrorFallback />} />
+              <Route path="live" element={<LiveRoleplayPage />} errorElement={<ErrorFallback />} />
+              <Route path="paths" element={<PathsPage />} errorElement={<ErrorFallback />} />
+              <Route path="exercises" element={<ExercisesPage />} errorElement={<ErrorFallback />} />
+              <Route path="library" element={<LibraryPage />} errorElement={<ErrorFallback />} />
+              <Route path="scripts" element={<PracticePage />} errorElement={<ErrorFallback />} />
+              <Route path="practice" element={<PracticeHubPage />} errorElement={<ErrorFallback />} />
+              <Route path="settings" element={<SettingsPage />} errorElement={<ErrorFallback />} />
+              <Route path="errors" element={<ErrorDashboard />} errorElement={<ErrorFallback />} />
+              <Route path="history" element={<HistoryPage />} errorElement={<ErrorFallback />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

@@ -87,7 +87,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — Gut storage.ts into facade (delegates to runtimeState + supabase/storage), create unit tests, remove dead code
-- [ ] 05-02-PLAN.md — Migrate 13 supabase/storage import sites to facade, fix dual import in ConversationAnalysis, deprecate barrel
+- [x] 05-02-PLAN.md — Migrate 13 supabase/storage import sites to facade, fix dual import in ConversationAnalysis, deprecate barrel
 
 ### Phase 6: Praticar Redesign
 **Goal**: The practice hub displays visually polished, keyboard-accessible image-banner cards
@@ -115,5 +115,5 @@ Note: Phases 4-5 can run in parallel with phases 2-3 if desired (no code depende
 | 2. Error Boundaries | 0/1 | Planning complete | - |
 | 3. Code Splitting | 0/? | Not started | - |
 | 4. Secure Storage | 0/2 | Planning complete | - |
-| 5. Storage Consolidation | 0/2 | Planning complete | - |
+| 5. Storage Consolidation | 2/2 | Complete | 2026-04-02 |
 | 6. Praticar Redesign | 0/? | Not started | - |

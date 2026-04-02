@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LiveScenario, ConversationTurn, LiveSession as LiveSessionData } from '../../types/scenario';
 import { chatCompletion, textToSpeech } from '../../services/openai';
-import { getModelConfig } from '../../services/storage';
-import { saveLiveSession } from '../../services/supabase/storage'
+import { getModelConfig, saveLiveSession } from '../../services/storage';
 import { getConversationAnalysisPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';

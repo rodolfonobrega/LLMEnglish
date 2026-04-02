@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 import { Loader2, FileText, Download, Clapperboard } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { chatCompletion } from '../../services/openai';
-import { getConversationTone, getUserContext } from '../../services/supabase/storage';
+import { getConversationTone, getUserContext } from '../../services/storage';
 import { getCustomDialoguePrompt } from '../../utils/prompts';
 import type { ConversationTone, UserContext } from '../../types/settings';
 

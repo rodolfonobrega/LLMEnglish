@@ -7,7 +7,7 @@ import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images
 import { getImageQuestionPrompt, getEvaluationPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/supabase/storage';
+import { addCard } from '../../services/storage';
 import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';

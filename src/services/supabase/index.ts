@@ -22,6 +22,10 @@ export {
   type AuthSession,
 } from './auth'
 
+/**
+ * @deprecated Import from 'services/storage' instead of 'services/supabase'.
+ * The storage.ts facade provides the same functions with auth-aware routing.
+ */
 // Storage
 export {
   // Cards

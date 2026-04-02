@@ -45,7 +45,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-01-PLAN.md -- Install layered error boundaries (react-error-boundary + route errorElement + fallback components)
+- [x] 02-01-PLAN.md -- Install layered error boundaries (react-error-boundary + route errorElement + fallback components)
 
 ### Phase 3: Code Splitting
 **Goal**: Users only download the code for the page they are viewing, with loading feedback

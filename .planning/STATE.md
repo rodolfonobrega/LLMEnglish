@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-02T01:40:58.774Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-04-02T12:49:20.162Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Phase 01 — dev-mode-routing
+**Current focus:** Phase 02 — error-boundaries
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (error-boundaries) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 5min | 2 tasks | 4 files |
+| Phase 02 P01 | 13min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Mock user injection in AuthContext dev-mode block ensures all auth-gated features render correctly
 - [Phase ?]: handleSignOut no-ops in dev mode for graceful degradation without Supabase
 - [Phase ?]: DevBanner uses existing amber CSS tokens and returns null in production for zero visual impact
+- [Phase 02]: AppErrorFallback uses raw button instead of Button component -- UI library itself may have caused the crash
+- [Phase 02]: Route-level errorElement preserves Layout/sidebar so users can navigate away from broken pages
+- [Phase 02]: ChunkErrorFallback uses resetErrorBoundary() for Phase 3 lazy loading retry without full page reload
 
 ### Pending Todos
 
@@ -82,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T01:34:14.260Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-02T12:49:20.146Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None

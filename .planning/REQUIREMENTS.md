@@ -32,9 +32,9 @@
 
 ### Visual
 
-- [ ] **VIS-01**: Praticar page displays practice modes as image-banner cards (inspired by PathCard)
-- [ ] **VIS-02**: Praticar cards use different proportions than Trilhas cards to maintain visual distinction
-- [ ] **VIS-03**: All Praticar cards are keyboard accessible (button elements, ARIA attributes)
+- [x] **VIS-01**: Praticar page displays practice modes as image-banner cards (inspired by PathCard)
+- [x] **VIS-02**: Praticar cards use different proportions than Trilhas cards to maintain visual distinction
+- [x] **VIS-03**: All Praticar cards are keyboard accessible (button elements, ARIA attributes)
 
 ## v2 Requirements
 
@@ -94,9 +94,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-04 | Phase 4 | Pending |
 | STOR-01 | Phase 5 | Complete |
 | STOR-02 | Phase 5 | Complete |
-| VIS-01 | Phase 6 | Pending |
-| VIS-02 | Phase 6 | Pending |
-| VIS-03 | Phase 6 | Pending |
+| VIS-01 | Phase 6 | Complete |
+| VIS-02 | Phase 6 | Complete |
+| VIS-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 16 total

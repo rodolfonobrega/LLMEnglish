@@ -101,7 +101,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 06-01-PLAN.md — Create PracticeModeCard component (image-banner + button accessibility + gradient fallback), rewrite PracticeHubPage (2-section Solo/Ao Vivo layout, remove ModeTooltip), add unit tests for VIS-01/VIS-02/VIS-03
+- [x] 06-01-PLAN.md — Create PracticeModeCard component (image-banner + button accessibility + gradient fallback), rewrite PracticeHubPage (2-section Solo/Ao Vivo layout, remove ModeTooltip), add unit tests for VIS-01/VIS-02/VIS-03
 
 ## Progress
 

@@ -2,12 +2,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect } from 'vitest';
 
-// Mock react-router-dom to provide useRouteError
+// Mock react-router-dom to provide useRouteError and useNavigate
 vi.mock('react-router-dom', () => ({
   useRouteError: vi.fn(),
+  useNavigate: vi.fn(),
 }));
 
-import { useRouteError } from 'react-router-dom';
+import { useRouteError, useNavigate } from 'react-router-dom';
 import { ErrorFallback } from '../ErrorFallback';
 
 describe('ErrorFallback', () => {

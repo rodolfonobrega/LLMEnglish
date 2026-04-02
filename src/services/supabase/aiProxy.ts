@@ -215,17 +215,10 @@ export async function getGeminiKeyForLive(): Promise<string> {
 
 export async function withFallback<T>(
   proxyCall: () => Promise<T>,
-  fallbackCall: () => Promise<T>,
-  useFallback: boolean = false
+  _fallbackCall: () => Promise<T>,
+  _useFallback: boolean = false
 ): Promise<T> {
-  if (useFallback) {
-    return fallbackCall()
-  }
-
-  try {
-    return await proxyCall()
-  } catch (error) {
-    console.warn('Edge Function call failed, falling back to direct API:', error)
-    return fallbackCall()
-  }
+  // SEC-04: Always use proxy. Direct browser-to-provider calls are eliminated.
+  // Fallback call parameter is kept for API compatibility but never executed.
+  return proxyCall()
 }

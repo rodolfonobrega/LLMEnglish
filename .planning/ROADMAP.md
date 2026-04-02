@@ -29,10 +29,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Running `npx vite` renders the same Layout + Routes structure as production
   2. Navigation sidebar and all page routes are accessible in dev mode
   3. Dev mode shows a mock authenticated user so auth-gated features render correctly
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Inject mock user in AuthContext, remove dev-mode bypass in ProtectedApp, create DevBanner, wire into Layout
 
 ### Phase 2: Error Boundaries
 **Goal**: Any component crash shows a friendly error with retry instead of a whitescreen
@@ -109,7 +109,7 @@ Note: Phases 4-5 can run in parallel with phases 2-3 if desired (no code depende
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Dev Mode Routing | 0/? | Not started | - |
+| 1. Dev Mode Routing | 0/1 | Planning complete | - |
 | 2. Error Boundaries | 0/? | Not started | - |
 | 3. Code Splitting | 0/? | Not started | - |
 | 4. Secure Storage | 0/? | Not started | - |

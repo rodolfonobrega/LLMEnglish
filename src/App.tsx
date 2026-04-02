@@ -1,22 +1,46 @@
+import { lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './components/auth/LoginPage';
 import { MigrationPage } from './components/auth/MigrationPage';
-import { DiscoveryPage } from './components/discovery/DiscoveryPage';
-import { ReviewPage } from './components/review/ReviewPage';
-import { LiveRoleplayPage } from './components/live-roleplay/LiveRoleplayPage';
-import { PathsPage } from './components/paths/PathsPage';
-import { ExercisesPage } from './components/exercises/ExercisesPage';
-import { LibraryPage } from './components/library/LibraryPage';
-import { PracticePage } from './components/practice/PracticePage';
-import { PracticeHubPage } from './components/practice/PracticeHubPage';
-import { SettingsPage } from './components/settings/SettingsPage';
-import { ErrorDashboard } from './components/errors/ErrorDashboard';
-import { HistoryPage } from './components/history/HistoryPage';
 import { AppErrorFallback } from './components/errors/AppErrorFallback';
 import { ErrorFallback } from './components/errors/ErrorFallback';
+
+const DiscoveryPage = lazy(() =>
+  import('./components/discovery/DiscoveryPage').then(m => ({ default: m.DiscoveryPage }))
+);
+const ReviewPage = lazy(() =>
+  import('./components/review/ReviewPage').then(m => ({ default: m.ReviewPage }))
+);
+const LiveRoleplayPage = lazy(() =>
+  import('./components/live-roleplay/LiveRoleplayPage').then(m => ({ default: m.LiveRoleplayPage }))
+);
+const PathsPage = lazy(() =>
+  import('./components/paths/PathsPage').then(m => ({ default: m.PathsPage }))
+);
+const ExercisesPage = lazy(() =>
+  import('./components/exercises/ExercisesPage').then(m => ({ default: m.ExercisesPage }))
+);
+const LibraryPage = lazy(() =>
+  import('./components/library/LibraryPage').then(m => ({ default: m.LibraryPage }))
+);
+const PracticePage = lazy(() =>
+  import('./components/practice/PracticePage').then(m => ({ default: m.PracticePage }))
+);
+const PracticeHubPage = lazy(() =>
+  import('./components/practice/PracticeHubPage').then(m => ({ default: m.PracticeHubPage }))
+);
+const SettingsPage = lazy(() =>
+  import('./components/settings/SettingsPage').then(m => ({ default: m.SettingsPage }))
+);
+const ErrorDashboard = lazy(() =>
+  import('./components/errors/ErrorDashboard').then(m => ({ default: m.ErrorDashboard }))
+);
+const HistoryPage = lazy(() =>
+  import('./components/history/HistoryPage').then(m => ({ default: m.HistoryPage }))
+);
 
 function ProtectedApp() {
   const { user, loading } = useAuth();

@@ -1,7 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { exerciseModes, conversationModes, trailsMode } from '../../config/modes';
-import { ModeCard } from '../shared/ModeCard';
-import { ModeTooltip } from '../shared/ModeTooltip';
+import type { PracticeMode } from '../../config/modes';
+import { PracticeModeCard } from '../shared/PracticeModeCard';
+
+const soloModes: readonly PracticeMode[] = [
+  ...exerciseModes,
+  conversationModes.find(m => m.id === 'visual')!,
+];
+
+const liveModes: readonly PracticeMode[] = [
+  conversationModes.find(m => m.id === 'simulation')!,
+  trailsMode,
+];
 
 export function PracticeHubPage() {
   const navigate = useNavigate();
@@ -15,76 +25,41 @@ export function PracticeHubPage() {
         </p>
       </div>
 
-      {/* Exercícios Section */}
+      {/* Pratica Solo Section */}
       <section>
-        <div className="flex items-center gap-2 mb-3">
-          <div
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--mode-phrases))' }}
-          />
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full bg-primary" />
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Exercícios
+            Pratica Solo
           </span>
         </div>
-        <div className="flex flex-col gap-2">
-          {exerciseModes.map((mode) => (
-            <ModeTooltip key={mode.id} mode={mode}>
-              <div>
-                <ModeCard
-                  mode={mode}
-                  onClick={() => navigate(mode.to)}
-                />
-              </div>
-            </ModeTooltip>
+        <div className="flex flex-col gap-3">
+          {soloModes.map((mode) => (
+            <PracticeModeCard
+              key={mode.id}
+              mode={mode}
+              onClick={() => navigate(mode.to)}
+            />
           ))}
         </div>
       </section>
 
-      {/* Conversação Section */}
+      {/* Ao Vivo Section */}
       <section>
-        <div className="flex items-center gap-2 mb-3">
-          <div
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--mode-simulation))' }}
-          />
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full bg-primary" />
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Conversação
+            Ao Vivo
           </span>
         </div>
-        <div className="flex flex-col gap-2">
-          {conversationModes.map((mode) => (
-            <ModeTooltip key={mode.id} mode={mode}>
-              <div>
-                <ModeCard
-                  mode={mode}
-                  onClick={() => navigate(mode.to)}
-                />
-              </div>
-            </ModeTooltip>
+        <div className="flex flex-col gap-3">
+          {liveModes.map((mode) => (
+            <PracticeModeCard
+              key={mode.id}
+              mode={mode}
+              onClick={() => navigate(mode.to)}
+            />
           ))}
-        </div>
-      </section>
-
-      {/* Trilhas Section */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <div
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--mode-trails))' }}
-          />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Trilhas
-          </span>
-        </div>
-        <div className="flex flex-col gap-2">
-          <ModeTooltip mode={trailsMode}>
-            <div>
-              <ModeCard
-                mode={trailsMode}
-                onClick={() => navigate(trailsMode.to)}
-              />
-            </div>
-          </ModeTooltip>
         </div>
       </section>
     </div>

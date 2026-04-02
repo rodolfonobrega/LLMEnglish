@@ -6,7 +6,7 @@ import { getImageConfigAuto } from '../../config/images';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
-import { getUserContext } from '../../services/supabase/storage';
+import { getUserContext } from '../../services/storage';
 import type { UserContext } from '../../types/settings';
 import { Sparkles, Briefcase, Coffee, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';

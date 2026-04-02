@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCardsDueForReview, updateCard } from '../../services/supabase/storage';
+import { getCardsDueForReview, updateCard } from '../../services/storage';
 import { updateCardSchedule } from '../../services/spacedRepetition';
 import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
 import { extractErrorPatterns, recordErrorPatterns, recordSessionSnapshot } from '../../services/errorAnalysis';

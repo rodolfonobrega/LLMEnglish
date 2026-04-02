@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCards, deleteCard, updateCard, addCard } from '../../services/supabase/storage';
+import { getCards, deleteCard, updateCard, addCard } from '../../services/storage';
 import { createDefaultCard } from '../../services/spacedRepetition';
 import { syncGamificationState } from '../../services/gamification';
 import { computeReviewStats } from '../../types/review';

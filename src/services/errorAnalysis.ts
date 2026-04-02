@@ -1,6 +1,6 @@
 import { getCurrentUser } from './supabase/auth'
 import { supabase } from './supabase/client'
-import { getCards } from './supabase/storage'
+import { getCards } from './storage'
 import type { Card, EvaluationResult } from '../types/card'
 import type {
   ErrorCategory,

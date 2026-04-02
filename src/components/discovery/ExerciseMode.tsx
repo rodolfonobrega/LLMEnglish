@@ -15,7 +15,7 @@ import {
 } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/supabase/storage';
+import { addCard } from '../../services/storage';
 import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
 import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';

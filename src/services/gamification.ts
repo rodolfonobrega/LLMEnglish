@@ -5,7 +5,7 @@ import {
   getGamification,
   saveGamification,
   saveSessionReport,
-} from './supabase/storage'
+} from './storage'
 import { setRuntimeGamification } from './runtimeState'
 
 function isToday(dateStr: string | null): boolean {

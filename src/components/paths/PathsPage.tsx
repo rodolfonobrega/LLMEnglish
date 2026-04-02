@@ -7,7 +7,7 @@ import { cleanJson } from '../../utils/cleanJson';
 import { getTrailsForTheme, THEMES_WITH_TRAILS } from '../../utils/roleplayTrails';
 import type { ThemeMeta } from '../../utils/roleplayTrails';
 import type { LiveScenario, ConversationTurn, PathProgress, RoleplayTrail, RoleplayTrailStep } from '../../types/scenario';
-import { getPathProgress, markStepComplete } from '../../services/supabase/storage';
+import { getPathProgress, markStepComplete } from '../../services/storage';
 import { LiveSession } from '../live-roleplay/LiveSession';
 import { ConversationAnalysis } from '../live-roleplay/ConversationAnalysis';
 import { PathCard } from '../ui/custom/PathCard';

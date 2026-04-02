@@ -4,7 +4,7 @@ import {
   getConversationTone, saveConversationTone,
   getUserContext, saveUserContext,
   saveApiKeys,
-} from '../../services/supabase/storage';
+} from '../../services/storage';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   hydrateRuntimeState,

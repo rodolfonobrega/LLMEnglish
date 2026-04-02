@@ -24,6 +24,7 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - ✓ Dark/light theme support — existing
 - ✓ TTS and STT audio integration — existing
 - ✓ User settings and API key management — existing
+- ✓ Dev mode routing with mock auth (RELI-04) — Validated in Phase 01: dev-mode-routing
 
 ### Active
 
@@ -87,4 +88,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after initialization*
+*Last updated: 2026-04-02 after Phase 01 completion*

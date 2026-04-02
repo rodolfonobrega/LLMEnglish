@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { clearLiveSessions, getLiveSessions } from '../../services/supabase/storage';
+import { clearLiveSessions, getLiveSessions } from '../../services/storage';
 import type { LiveSession } from '../../types/scenario';
 import { Clock, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, ChevronLeft } from 'lucide-react';
 import { Button } from '../ui/Button';

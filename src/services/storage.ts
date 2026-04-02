@@ -1,7 +1,20 @@
+/**
+ * Storage Facade
+ *
+ * Single import point for all storage operations.
+ * Sync functions read from runtimeState cache.
+ * Async functions delegate to supabase/storage.
+ * Dev mode (no VITE_SUPABASE_URL) returns defaults for reads and no-ops for writes.
+ */
+
 import type { Card } from '../types/card';
 import type { GamificationState, SessionReport } from '../types/gamification';
 import type { LiveSession, PathProgress } from '../types/scenario';
-import type { ModelConfig, ConversationTone } from '../types/settings';
+import type { ModelConfig, ConversationTone, UserContext } from '../types/settings';
+
+// Re-export UserContext from canonical source (per Pitfall 6 in RESEARCH.md)
+export type { UserContext } from '../types/settings';
+
 import {
   getRuntimeApiKey,
   getRuntimeConversationTone,
@@ -10,162 +23,75 @@ import {
   getRuntimeUserContext,
 } from './runtimeState'
 
-const KEYS = {
-  cards: 'el_cards',
-  gamification: 'el_gamification',
-  liveSessions: 'el_live_sessions',
-  sessionReports: 'el_session_reports',
-  pathProgress: 'el_path_progress',
-  openaiKey: 'el_openai_key',
-  geminiKey: 'el_gemini_key',
-  groqKey: 'el_groq_key',
-  audioCache: 'el_audio_cache',
-  modelConfig: 'el_model_config',
-  conversationTone: 'el_conversation_tone',
-};
+import {
+  getCards as supabaseGetCards,
+  saveCards as supabaseSaveCards,
+  addCard as supabaseAddCard,
+  updateCard as supabaseUpdateCard,
+  deleteCard as supabaseDeleteCard,
+  getCardById as supabaseGetCardById,
+  getCardsDueForReview as supabaseGetCardsDueForReview,
+  getGamification as supabaseGetGamification,
+  saveGamification as supabaseSaveGamification,
+  getLiveSessions as supabaseGetLiveSessions,
+  saveLiveSession as supabaseSaveLiveSession,
+  clearLiveSessions as supabaseClearLiveSessions,
+  getPathProgress as supabaseGetPathProgress,
+  savePathProgress as supabaseSavePathProgress,
+  markStepComplete as supabaseMarkStepComplete,
+  isStepComplete as supabaseIsStepComplete,
+  getTrailCompletedCount as supabaseGetTrailCompletedCount,
+  getSessionReports as supabaseGetSessionReports,
+  saveSessionReport as supabaseSaveSessionReport,
+  getSessionReportsByDateRange as supabaseGetSessionReportsByDateRange,
+  getLatestSessionReports as supabaseGetLatestSessionReports,
+  getModelConfig as supabaseGetModelConfig,
+  saveModelConfig as supabaseSaveModelConfig,
+  getConversationTone as supabaseGetConversationTone,
+  saveConversationTone as supabaseSaveConversationTone,
+  getUserContext as supabaseGetUserContext,
+  saveUserContext as supabaseSaveUserContext,
+  saveApiKey as supabaseSaveApiKey,
+  getApiKey as supabaseGetApiKey,
+  saveApiKeys as supabaseSaveApiKeys,
+} from './supabase/storage'
 
-// --- Cards ---
-
-export function getCards(): Card[] {
-  const raw = localStorage.getItem(KEYS.cards);
-  return raw ? JSON.parse(raw) : [];
+// --- Dev mode detection (consistent with AuthContext.tsx:90, SettingsPage.tsx:50) ---
+function isDevMode(): boolean {
+  return !import.meta.env.VITE_SUPABASE_URL;
 }
 
-export function saveCards(cards: Card[]): void {
-  localStorage.setItem(KEYS.cards, JSON.stringify(cards));
-}
+// ============================================================
+// SYNC FUNCTIONS — delegate to runtimeState cache (D-07, D-11)
+// ============================================================
 
-export function addCard(card: Card): void {
-  const cards = getCards();
-  cards.push(card);
-  saveCards(cards);
+export function getModelConfig(): ModelConfig {
+  return getRuntimeModelConfig();
 }
-
-export function updateCard(updated: Card): void {
-  const cards = getCards().map(c => (c.id === updated.id ? updated : c));
-  saveCards(cards);
-}
-
-export function deleteCard(id: string): void {
-  const cards = getCards().filter(c => c.id !== id);
-  saveCards(cards);
-}
-
-export function getCardById(id: string): Card | undefined {
-  return getCards().find(c => c.id === id);
-}
-
-export function getCardsDueForReview(): Card[] {
-  const now = new Date().toISOString();
-  return getCards().filter(c => c.nextReviewAt && c.nextReviewAt <= now);
-}
-
-// --- Gamification ---
 
 export function getGamification(): GamificationState {
   return getRuntimeGamification();
 }
 
-export function saveGamification(state: GamificationState): void {
-  localStorage.setItem(KEYS.gamification, JSON.stringify(state));
+export function getConversationTone(): ConversationTone {
+  return getRuntimeConversationTone();
 }
 
-// --- Live Sessions ---
-
-export function getLiveSessions(): LiveSession[] {
-  const raw = localStorage.getItem(KEYS.liveSessions);
-  return raw ? JSON.parse(raw) : [];
+export function getUserContext(): UserContext {
+  return getRuntimeUserContext();
 }
 
-export function saveLiveSession(session: LiveSession): void {
-  const sessions = getLiveSessions();
-  const idx = sessions.findIndex(s => s.id === session.id);
-  if (idx >= 0) {
-    sessions[idx] = session;
-  } else {
-    sessions.push(session);
-  }
-  localStorage.setItem(KEYS.liveSessions, JSON.stringify(sessions));
-}
-
-// --- Path Progress ---
-
-const DEFAULT_PATH_PROGRESS: PathProgress = { completedSteps: {} };
-
-export function getPathProgress(): PathProgress {
-  const raw = localStorage.getItem(KEYS.pathProgress);
-  if (!raw) return { ...DEFAULT_PATH_PROGRESS };
-  try {
-    return { ...DEFAULT_PATH_PROGRESS, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULT_PATH_PROGRESS };
-  }
-}
-
-export function savePathProgress(progress: PathProgress): void {
-  localStorage.setItem(KEYS.pathProgress, JSON.stringify(progress));
-}
-
-export function markStepComplete(trailId: string, stepId: string): void {
-  const progress = getPathProgress();
-  const steps = progress.completedSteps[trailId] ?? [];
-  if (!steps.includes(stepId)) {
-    progress.completedSteps[trailId] = [...steps, stepId];
-    savePathProgress(progress);
-  }
-}
-
-export function isStepComplete(trailId: string, stepId: string): boolean {
-  const progress = getPathProgress();
-  return (progress.completedSteps[trailId] ?? []).includes(stepId);
-}
-
-export function getTrailCompletedCount(trailId: string): number {
-  const progress = getPathProgress();
-  return (progress.completedSteps[trailId] ?? []).length;
-}
-
-// --- Session Reports ---
-
-const MAX_SESSION_REPORTS = 200;
-
-export function getSessionReports(): SessionReport[] {
-  const raw = localStorage.getItem(KEYS.sessionReports);
-  return raw ? JSON.parse(raw) : [];
-}
-
-export function saveSessionReport(report: SessionReport): void {
-  const reports = getSessionReports();
-  reports.push(report);
-  if (reports.length > MAX_SESSION_REPORTS) {
-    reports.splice(0, reports.length - MAX_SESSION_REPORTS);
-  }
-  localStorage.setItem(KEYS.sessionReports, JSON.stringify(reports));
-}
-
-export function getSessionReportsByDateRange(startDate: string, endDate: string): SessionReport[] {
-  const reports = getSessionReports();
-  return reports.filter(
-    r => r.date >= startDate && r.date <= endDate
-  );
-}
-
-export function getLatestSessionReports(limit: number): SessionReport[] {
-  const reports = getSessionReports();
-  return [...reports]
-    .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0))
-    .slice(0, limit);
-}
-
-// --- API Keys ---
-// Priority: localStorage (user-entered in Settings) > .env file (VITE_OPENAI_API_KEY / VITE_GEMINI_API_KEY)
-
+// Named API key wrappers (D-10, D-11)
 export function getOpenAIKey(): string {
   return getRuntimeApiKey('openai');
 }
 
 export function setOpenAIKey(key: string): void {
-  localStorage.setItem(KEYS.openaiKey, key);
+  if (isDevMode()) {
+    console.warn('setOpenAIKey: write ignored in dev mode');
+    return;
+  }
+  void supabaseSaveApiKey('openai', key);
 }
 
 export function getGeminiKey(): string {
@@ -173,7 +99,11 @@ export function getGeminiKey(): string {
 }
 
 export function setGeminiKey(key: string): void {
-  localStorage.setItem(KEYS.geminiKey, key);
+  if (isDevMode()) {
+    console.warn('setGeminiKey: write ignored in dev mode');
+    return;
+  }
+  void supabaseSaveApiKey('gemini', key);
 }
 
 export function getGroqKey(): string {
@@ -181,64 +111,193 @@ export function getGroqKey(): string {
 }
 
 export function setGroqKey(key: string): void {
-  localStorage.setItem(KEYS.groqKey, key);
-}
-
-// --- Model Config ---
-
-export function getModelConfig(): ModelConfig {
-  return getRuntimeModelConfig();
-}
-
-export function saveModelConfig(config: ModelConfig): void {
-  localStorage.setItem(KEYS.modelConfig, JSON.stringify(config));
-}
-
-// --- Conversation Tone ---
-
-export function getConversationTone(): ConversationTone {
-  return getRuntimeConversationTone();
-}
-
-export function saveConversationTone(tone: ConversationTone): void {
-  localStorage.setItem(KEYS.conversationTone, tone);
-}
-
-// --- Audio Cache ---
-
-export function getCachedAudio(key: string): string | null {
-  try {
-    const cache = JSON.parse(localStorage.getItem(KEYS.audioCache) || '{}');
-    return cache[key] || null;
-  } catch {
-    return null;
+  if (isDevMode()) {
+    console.warn('setGroqKey: write ignored in dev mode');
+    return;
   }
+  void supabaseSaveApiKey('groq', key);
 }
 
-export function setCachedAudio(key: string, base64Audio: string): void {
-  try {
-    const cache = JSON.parse(localStorage.getItem(KEYS.audioCache) || '{}');
-    cache[key] = base64Audio;
-    localStorage.setItem(KEYS.audioCache, JSON.stringify(cache));
-  } catch {
-    // If storage is full, clear cache and retry
-    localStorage.setItem(KEYS.audioCache, JSON.stringify({ [key]: base64Audio }));
+// ============================================================
+// ASYNC QUERY FUNCTIONS — delegate to supabase/storage (D-08)
+// ============================================================
+
+const EMPTY_CARDS: Card[] = [];
+const EMPTY_SESSIONS: LiveSession[] = [];
+const EMPTY_REPORTS: SessionReport[] = [];
+const DEFAULT_PATH_PROGRESS: PathProgress = { completedSteps: {} };
+
+export async function getCards(): Promise<Card[]> {
+  if (isDevMode()) return [...EMPTY_CARDS];
+  return supabaseGetCards();
+}
+
+export async function saveCards(cards: Card[]): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveCards: write ignored in dev mode');
+    return;
   }
+  return supabaseSaveCards(cards);
 }
 
-// --- User Context ---
-
-export interface UserContext {
-  profile: string;
-  interests: string;
-  goals: string;
-  currentLevel: string;
+export async function addCard(card: Card): Promise<void> {
+  if (isDevMode()) {
+    console.warn('addCard: write ignored in dev mode');
+    return;
+  }
+  return supabaseAddCard(card);
 }
 
-export function getUserContext(): UserContext {
-  return getRuntimeUserContext();
+export async function updateCard(updated: Card): Promise<void> {
+  if (isDevMode()) {
+    console.warn('updateCard: write ignored in dev mode');
+    return;
+  }
+  return supabaseUpdateCard(updated);
 }
 
-export function saveUserContext(context: UserContext): void {
-  localStorage.setItem('el_user_context', JSON.stringify(context));
+export async function deleteCard(id: string): Promise<void> {
+  if (isDevMode()) {
+    console.warn('deleteCard: write ignored in dev mode');
+    return;
+  }
+  return supabaseDeleteCard(id);
+}
+
+export async function getCardById(id: string): Promise<Card | undefined> {
+  if (isDevMode()) return undefined;
+  return supabaseGetCardById(id);
+}
+
+export async function getCardsDueForReview(): Promise<Card[]> {
+  if (isDevMode()) return [...EMPTY_CARDS];
+  return supabaseGetCardsDueForReview();
+}
+
+export async function saveGamification(state: GamificationState): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveGamification: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveGamification(state);
+}
+
+export async function getLiveSessions(): Promise<LiveSession[]> {
+  if (isDevMode()) return [...EMPTY_SESSIONS];
+  return supabaseGetLiveSessions();
+}
+
+export async function saveLiveSession(session: LiveSession): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveLiveSession: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveLiveSession(session);
+}
+
+export async function clearLiveSessions(): Promise<void> {
+  if (isDevMode()) {
+    console.warn('clearLiveSessions: write ignored in dev mode');
+    return;
+  }
+  return supabaseClearLiveSessions();
+}
+
+export async function getPathProgress(): Promise<PathProgress> {
+  if (isDevMode()) return { ...DEFAULT_PATH_PROGRESS };
+  return supabaseGetPathProgress();
+}
+
+export async function savePathProgress(progress: PathProgress): Promise<void> {
+  if (isDevMode()) {
+    console.warn('savePathProgress: write ignored in dev mode');
+    return;
+  }
+  return supabaseSavePathProgress(progress);
+}
+
+export async function markStepComplete(trailId: string, stepId: string): Promise<void> {
+  if (isDevMode()) {
+    console.warn('markStepComplete: write ignored in dev mode');
+    return;
+  }
+  return supabaseMarkStepComplete(trailId, stepId);
+}
+
+export async function isStepComplete(trailId: string, stepId: string): Promise<boolean> {
+  if (isDevMode()) return false;
+  return supabaseIsStepComplete(trailId, stepId);
+}
+
+export async function getTrailCompletedCount(trailId: string): Promise<number> {
+  if (isDevMode()) return 0;
+  return supabaseGetTrailCompletedCount(trailId);
+}
+
+export async function getSessionReports(): Promise<SessionReport[]> {
+  if (isDevMode()) return [...EMPTY_REPORTS];
+  return supabaseGetSessionReports();
+}
+
+export async function saveSessionReport(report: SessionReport): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveSessionReport: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveSessionReport(report);
+}
+
+export async function getSessionReportsByDateRange(startDate: string, endDate: string): Promise<SessionReport[]> {
+  if (isDevMode()) return [...EMPTY_REPORTS];
+  return supabaseGetSessionReportsByDateRange(startDate, endDate);
+}
+
+export async function getLatestSessionReports(limit: number): Promise<SessionReport[]> {
+  if (isDevMode()) return [...EMPTY_REPORTS];
+  return supabaseGetLatestSessionReports(limit);
+}
+
+export async function saveModelConfig(config: ModelConfig): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveModelConfig: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveModelConfig(config);
+}
+
+export async function saveConversationTone(tone: ConversationTone): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveConversationTone: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveConversationTone(tone);
+}
+
+export async function saveUserContext(context: UserContext): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveUserContext: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveUserContext(context);
+}
+
+export async function saveApiKey(provider: 'openai' | 'gemini' | 'groq', key: string): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveApiKey: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveApiKey(provider, key);
+}
+
+export async function getApiKey(provider: 'openai' | 'gemini' | 'groq'): Promise<string> {
+  if (isDevMode()) return getRuntimeApiKey(provider);
+  return supabaseGetApiKey(provider);
+}
+
+export async function saveApiKeys(keys: { openai?: string; gemini?: string; groq?: string }): Promise<void> {
+  if (isDevMode()) {
+    console.warn('saveApiKeys: write ignored in dev mode');
+    return;
+  }
+  return supabaseSaveApiKeys(keys);
 }

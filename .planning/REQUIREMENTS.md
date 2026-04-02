@@ -20,9 +20,9 @@
 
 ### Security
 
-- [ ] **SEC-01**: API keys are not decryptable with a hardcoded fallback secret (remove hardcoded fallback)
-- [ ] **SEC-02**: Encryption uses OWASP-recommended PBKDF2 iterations (600K+)
-- [ ] **SEC-03**: Each user gets a unique random salt for encryption (not deterministic from userId)
+- [x] **SEC-01**: API keys are not decryptable with a hardcoded fallback secret (remove hardcoded fallback)
+- [x] **SEC-02**: Encryption uses OWASP-recommended PBKDF2 iterations (600K+)
+- [x] **SEC-03**: Each user gets a unique random salt for encryption (not deterministic from userId)
 - [ ] **SEC-04**: User's API keys are not sent directly to AI providers from the browser (server-side Edge Function proxy)
 
 ### Storage
@@ -88,9 +88,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-01 | Phase 3 | Pending |
 | PERF-02 | Phase 3 | Pending |
 | PERF-03 | Phase 3 | Pending |
-| SEC-01 | Phase 4 | Pending |
-| SEC-02 | Phase 4 | Pending |
-| SEC-03 | Phase 4 | Pending |
+| SEC-01 | Phase 4 | Complete |
+| SEC-02 | Phase 4 | Complete |
+| SEC-03 | Phase 4 | Complete |
 | SEC-04 | Phase 4 | Pending |
 | STOR-01 | Phase 5 | Pending |
 | STOR-02 | Phase 5 | Pending |

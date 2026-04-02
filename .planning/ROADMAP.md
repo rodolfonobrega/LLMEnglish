@@ -72,7 +72,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- Add PBKDF2 encryption utilities to Edge Function, wire into saveApiKey/getApiKey with plaintext migration
+- [x] 04-01-PLAN.md -- Add PBKDF2 encryption utilities to Edge Function, wire into saveApiKey/getApiKey with plaintext migration
 - [ ] 04-02-PLAN.md -- Redirect openai.ts through aiProxy, gut client-side encryption, update SettingsPage dev mode
 
 ### Phase 5: Storage Consolidation

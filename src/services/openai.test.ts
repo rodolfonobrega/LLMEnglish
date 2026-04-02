@@ -3,36 +3,30 @@ import { DEFAULT_MODEL_CONFIG, type ModelConfig } from '../types/settings';
 
 const {
   getModelConfigMock,
-  getOpenAIKeyMock,
-  getGeminiKeyMock,
-  getGroqKeyMock,
-  getCachedAudioMock,
-  setCachedAudioMock,
-  generateContentMock,
+  proxyChatMock,
+  proxyChatWithImageMock,
+  proxyTTSMock,
+  proxySTTMock,
+  proxyImageMock,
 } = vi.hoisted(() => ({
   getModelConfigMock: vi.fn(),
-  getOpenAIKeyMock: vi.fn(),
-  getGeminiKeyMock: vi.fn(),
-  getGroqKeyMock: vi.fn(),
-  getCachedAudioMock: vi.fn(),
-  setCachedAudioMock: vi.fn(),
-  generateContentMock: vi.fn(),
+  proxyChatMock: vi.fn(),
+  proxyChatWithImageMock: vi.fn(),
+  proxyTTSMock: vi.fn(),
+  proxySTTMock: vi.fn(),
+  proxyImageMock: vi.fn(),
 }));
 
-vi.mock('./storage', () => ({
-  getModelConfig: getModelConfigMock,
-  getOpenAIKey: getOpenAIKeyMock,
-  getGeminiKey: getGeminiKeyMock,
-  getGroqKey: getGroqKeyMock,
-  getCachedAudio: getCachedAudioMock,
-  setCachedAudio: setCachedAudioMock,
+vi.mock('./supabase/aiProxy', () => ({
+  chatCompletion: proxyChatMock,
+  chatCompletionWithImage: proxyChatWithImageMock,
+  textToSpeech: proxyTTSMock,
+  speechToText: proxySTTMock,
+  generateImage: proxyImageMock,
 }));
 
-vi.mock('@google/genai', () => ({
-  GoogleGenAI: class {
-    models = { generateContent: generateContentMock };
-  },
-  Modality: { AUDIO: 'AUDIO' },
+vi.mock('./runtimeState', () => ({
+  getRuntimeModelConfig: getModelConfigMock,
 }));
 
 import {
@@ -42,54 +36,34 @@ import {
   textToSpeech,
 } from './openai';
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-function textResponse(text: string, status: number): Response {
-  return new Response(text, { status });
-}
-
-describe('openai service dispatch', () => {
+describe('openai service proxy dispatch', () => {
   let config: ModelConfig;
 
   beforeEach(() => {
     config = { ...DEFAULT_MODEL_CONFIG };
     getModelConfigMock.mockImplementation(() => config);
-    getOpenAIKeyMock.mockReturnValue('sk-test-openai');
-    getGeminiKeyMock.mockReturnValue('gm-test');
-    getGroqKeyMock.mockReturnValue('gsk-test');
-    getCachedAudioMock.mockReturnValue(null);
-    generateContentMock.mockReset();
-    (globalThis.fetch as unknown) = vi.fn();
-    (globalThis as unknown as { FileReader: unknown }).FileReader = class {
-      result: string | ArrayBuffer | null = null;
-      onloadend: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-
-      readAsDataURL(blob: Blob): void {
-        void blob;
-        this.result = 'data:audio/mp3;base64,ZmFrZS1hdWRpbw==';
-        this.onloadend?.();
-      }
-    };
+    proxyChatMock.mockReset();
+    proxyChatWithImageMock.mockReset();
+    proxyTTSMock.mockReset();
+    proxySTTMock.mockReset();
+    proxyImageMock.mockReset();
   });
 
   it('uses primary chat provider successfully', async () => {
     config.chatProvider = 'openai';
     config.chatModel = 'gpt-4o-mini';
-
-    vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ choices: [{ message: { content: 'ok from openai' } }] })
-    );
+    proxyChatMock.mockResolvedValue('ok from openai');
 
     const result = await chatCompletion('sys', 'hi');
 
     expect(result).toBe('ok from openai');
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(proxyChatMock).toHaveBeenCalledTimes(1);
+    expect(proxyChatMock).toHaveBeenCalledWith({
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      systemPrompt: 'sys',
+      userMessage: 'hi',
+    });
   });
 
   it('falls back on chat when primary fails', async () => {
@@ -98,66 +72,45 @@ describe('openai service dispatch', () => {
     config.chatFallbackProvider = 'openai';
     config.chatFallbackModel = 'gpt-fallback';
 
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(textResponse('boom', 500))
-      .mockResolvedValueOnce(jsonResponse({ choices: [{ message: { content: 'fallback ok' } }] }));
+    proxyChatMock
+      .mockRejectedValueOnce(new Error('primary failed'))
+      .mockResolvedValueOnce('fallback ok');
 
     const result = await chatCompletion('sys', 'hi');
 
     expect(result).toBe('fallback ok');
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(proxyChatMock).toHaveBeenCalledTimes(2);
   });
 
-  it('returns cached TTS audio when available', async () => {
-    getCachedAudioMock.mockReturnValue('cached-audio');
-
-    const result = await textToSpeech('hello world');
-
-    expect(result).toBe('cached-audio');
-    expect(fetch).not.toHaveBeenCalled();
-    expect(setCachedAudioMock).not.toHaveBeenCalled();
-  });
-
-  it('falls back in TTS and caches generated audio', async () => {
+  it('falls back in TTS', async () => {
     config.ttsProvider = 'openai';
     config.ttsModel = 'tts-primary';
     config.ttsFallbackProvider = 'openai';
     config.ttsFallbackModel = 'tts-fallback';
     config.ttsVoice = 'nova';
 
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(textResponse('unavailable', 500))
-      .mockResolvedValueOnce(new Response('audio-bytes', { status: 200 }));
+    proxyTTSMock
+      .mockRejectedValueOnce(new Error('primary failed'))
+      .mockResolvedValueOnce('audio-base64');
 
     const base64 = await textToSpeech('short text');
 
-    expect(base64.length).toBeGreaterThan(0);
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(setCachedAudioMock).toHaveBeenCalledTimes(1);
+    expect(base64).toBe('audio-base64');
+    expect(proxyTTSMock).toHaveBeenCalledTimes(2);
   });
 
-  it('generates image with OpenAI and returns data URL', async () => {
+  it('generates image through proxy', async () => {
     config.imageProvider = 'openai';
     config.imageModel = 'gpt-image-1-mini';
-
-    vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ data: [{ b64_json: 'abc123' }] })
-    );
+    proxyImageMock.mockResolvedValue('data:image/png;base64,abc123');
 
     const image = await generateImage('a cat');
     expect(image).toBe('data:image/png;base64,abc123');
-  });
-
-  it('generates image with Gemini Imagen endpoint', async () => {
-    config.imageProvider = 'gemini';
-    config.imageModel = 'imagen-4.0-fast-generate-001';
-
-    vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ predictions: [{ bytesBase64: 'gemimg' }] })
-    );
-
-    const image = await generateImage('a robot');
-    expect(image).toBe('data:image/png;base64,gemimg');
+    expect(proxyImageMock).toHaveBeenCalledWith({
+      provider: 'openai',
+      model: 'gpt-image-1-mini',
+      prompt: 'a cat',
+    });
   });
 
   it('falls back in speech-to-text', async () => {
@@ -166,21 +119,37 @@ describe('openai service dispatch', () => {
     config.sttFallbackProvider = 'groq';
     config.sttFallbackModel = 'whisper-large-v3-turbo';
 
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(textResponse('rate limit', 429))
-      .mockResolvedValueOnce(jsonResponse({ text: 'fallback transcript' }));
+    proxySTTMock
+      .mockRejectedValueOnce(new Error('rate limit'))
+      .mockResolvedValueOnce('fallback transcript');
 
     const transcript = await speechToText(new Blob(['fake audio'], { type: 'audio/webm' }));
 
     expect(transcript).toBe('fallback transcript');
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(proxySTTMock).toHaveBeenCalledTimes(2);
   });
 
-  it('throws fast when OpenAI key is missing', async () => {
+  it('throws when proxy fails with no fallback configured', async () => {
     config.chatProvider = 'openai';
-    getOpenAIKeyMock.mockReturnValue('');
+    config.chatModel = 'gpt-4o-mini';
+    // No fallback configured
+    proxyChatMock.mockRejectedValue(new Error('Not authenticated'));
 
-    await expect(chatCompletion('sys', 'hi')).rejects.toThrow('OpenAI API key not configured');
-    expect(fetch).not.toHaveBeenCalled();
+    await expect(chatCompletion('sys', 'hi')).rejects.toThrow('Not authenticated');
+    expect(proxyChatMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses detectProvider for model overrides in chatCompletion', async () => {
+    proxyChatMock.mockResolvedValue('gemini response');
+
+    const result = await chatCompletion('sys', 'hi', 'gemini-2.5-flash');
+
+    expect(result).toBe('gemini response');
+    expect(proxyChatMock).toHaveBeenCalledWith({
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      systemPrompt: 'sys',
+      userMessage: 'hi',
+    });
   });
 });

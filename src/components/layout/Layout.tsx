@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 import { Sidebar } from './Sidebar';
+import { DevBanner } from './DevBanner';
 
 export function Layout() {
   return (
@@ -12,6 +13,7 @@ export function Layout() {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
+        <DevBanner />
         <Header />
         <main className="flex-1 max-w-4xl mx-auto px-4 py-6 pb-24 w-full">
           <Outlet />

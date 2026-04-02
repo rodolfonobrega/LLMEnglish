@@ -25,10 +25,10 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - ✓ TTS and STT audio integration — existing
 - ✓ User settings and API key management — existing
 - ✓ Dev mode routing with mock auth (RELI-04) — Validated in Phase 01: dev-mode-routing
+- ✓ Layered error boundaries with Portuguese fallback UI (RELI-01, RELI-02, RELI-03) — Validated in Phase 02: error-boundaries
 
 ### Active
 
-- [ ] Add React Error Boundaries to prevent full-app whitescreen on component crashes
 - [ ] Implement code splitting with lazy loading for all page routes (especially heavy deps: jspdf, motion)
 - [ ] Secure API key storage — encrypt at rest, remove plaintext localStorage exposure
 - [ ] Consolidate dual storage layer (localStorage + Supabase) to eliminate duplicate function signatures and import confusion
@@ -46,12 +46,13 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 **Brownfield codebase** — React 19 SPA with Vite, Tailwind CSS, Supabase BaaS, Radix UI primitives. No external state management library; state lives in React Context (auth), singleton module (runtimeState), and localStorage.
 
 **Key architectural issues (from codebase map):**
-- No error boundaries — any component crash whitescreens the entire app
+- ~~No error boundaries — any component crash whitescreens the entire app~~ ✓ Fixed in Phase 02
 - No code splitting — all 12 page components eagerly loaded including jspdf and motion
 - API keys stored in localStorage plaintext alongside a Supabase encryption path with hardcoded fallback secret
 - Dual storage layer (localStorage + Supabase) with duplicate function signatures creates import confusion
 - Sequential N+1 database writes in saveCards
 - Dev mode routing bypasses Layout wrapper
+- Error boundaries installed (app-level + route-level + chunk-load) — Portuguese fallback UI preserves sidebar navigation
 
 **Praticar page:** Currently uses `ModeCard` — horizontal list-style cards with colored left border and small icon thumbnails. User wants it redesigned to use image-banner cards similar to `PathCard` (vertical cards with h-32 image on top, title, subtitle) but with different proportions to distinguish from the Trilhas page.
 
@@ -88,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after Phase 01 completion*
+*Last updated: 2026-04-02 after Phase 02 completion*

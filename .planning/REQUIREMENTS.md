@@ -7,9 +7,9 @@
 
 ### Reliability
 
-- [ ] **RELI-01**: User sees a friendly error message instead of whitescreen when any page crashes (app-level error boundary)
-- [ ] **RELI-02**: User can navigate away from a broken page without losing the entire app (route-level error boundaries)
-- [ ] **RELI-03**: User sees a retry option when a page chunk fails to load (chunk-load error recovery)
+- [x] **RELI-01**: User sees a friendly error message instead of whitescreen when any page crashes (app-level error boundary)
+- [x] **RELI-02**: User can navigate away from a broken page without losing the entire app (route-level error boundaries)
+- [x] **RELI-03**: User sees a retry option when a page chunk fails to load (chunk-load error recovery)
 - [x] **RELI-04**: Developer can test error boundaries and routing in dev mode (dev mode uses Layout wrapper)
 
 ### Performance
@@ -81,9 +81,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RELI-01 | Phase 2 | Pending |
-| RELI-02 | Phase 2 | Pending |
-| RELI-03 | Phase 2 | Pending |
+| RELI-01 | Phase 2 | Complete |
+| RELI-02 | Phase 2 | Complete |
+| RELI-03 | Phase 2 | Complete |
 | RELI-04 | Phase 1 | Complete |
 | PERF-01 | Phase 3 | Pending |
 | PERF-02 | Phase 3 | Pending |

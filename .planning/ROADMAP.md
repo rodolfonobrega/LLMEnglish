@@ -86,7 +86,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Gut storage.ts into facade (delegates to runtimeState + supabase/storage), create unit tests, remove dead code
+- [x] 05-01-PLAN.md — Gut storage.ts into facade (delegates to runtimeState + supabase/storage), create unit tests, remove dead code
 - [ ] 05-02-PLAN.md — Migrate 13 supabase/storage import sites to facade, fix dual import in ConversationAnalysis, deprecate barrel
 
 ### Phase 6: Praticar Redesign

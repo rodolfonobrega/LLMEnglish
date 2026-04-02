@@ -27,8 +27,8 @@
 
 ### Storage
 
-- [ ] **STOR-01**: Developer imports from a single storage module regardless of auth state (StorageAdapter facade)
-- [ ] **STOR-02**: Conflicting function signatures between localStorage and Supabase storage are renamed to prevent import confusion
+- [x] **STOR-01**: Developer imports from a single storage module regardless of auth state (StorageAdapter facade)
+- [x] **STOR-02**: Conflicting function signatures between localStorage and Supabase storage are renamed to prevent import confusion
 
 ### Visual
 
@@ -92,8 +92,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-02 | Phase 4 | Complete |
 | SEC-03 | Phase 4 | Complete |
 | SEC-04 | Phase 4 | Pending |
-| STOR-01 | Phase 5 | Pending |
-| STOR-02 | Phase 5 | Pending |
+| STOR-01 | Phase 5 | Complete |
+| STOR-02 | Phase 5 | Complete |
 | VIS-01 | Phase 6 | Pending |
 | VIS-02 | Phase 6 | Pending |
 | VIS-03 | Phase 6 | Pending |

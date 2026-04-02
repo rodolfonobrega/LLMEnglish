@@ -101,7 +101,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Create PracticeModeCard component (image-banner + button accessibility + gradient fallback), rewrite PracticeHubPage (2-section Solo/Ao Vivo layout, remove ModeTooltip), add unit tests for VIS-01/VIS-02/VIS-03
 
 ## Progress
 
@@ -116,4 +116,4 @@ Note: Phases 4-5 can run in parallel with phases 2-3 if desired (no code depende
 | 3. Code Splitting | 0/? | Not started | - |
 | 4. Secure Storage | 0/2 | Planning complete | - |
 | 5. Storage Consolidation | 2/2 | Complete | 2026-04-02 |
-| 6. Praticar Redesign | 0/? | Not started | - |
+| 6. Praticar Redesign | 0/1 | Planning complete | - |

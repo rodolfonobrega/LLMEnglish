@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md — Inject mock user in AuthContext, remove dev-mode bypass in ProtectedApp, create DevBanner, wire into Layout
+- [x] 01-01-PLAN.md — Inject mock user in AuthContext, remove dev-mode bypass in ProtectedApp, create DevBanner, wire into Layout
 
 ### Phase 2: Error Boundaries
 **Goal**: Any component crash shows a friendly error with retry instead of a whitescreen

@@ -56,3 +56,8 @@
 
 - [ ] Revisit all prompts to ensure they sound conversational and native-like.
 - [ ] Add examples of natural versus stiff phrasing where that improves output quality.
+
+## 12. Reverse Translation
+
+- [ ] Add a feature where users receive Portuguese text and must translate it literally to English.
+- [ ] Implement evaluation to check translation accuracy and natural phrasing.

@@ -58,7 +58,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md -- Convert all routes to React.lazy(), add Suspense + PageSkeleton in Layout, chunk error detection in ErrorFallback
 
 ### Phase 4: Secure Storage
 **Goal**: User API keys are properly encrypted at rest and never sent directly to AI providers from the browser

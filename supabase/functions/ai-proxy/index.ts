@@ -117,27 +117,31 @@ async function getApiKey(userId: string, provider: 'openai' | 'gemini' | 'groq')
     return null
   }
 
-  // For now, keys are stored as simple base64 (migration from LocalStorage)
-  // In production, you'd decrypt them here
   try {
-    // If the key is JSON (encrypted format), decrypt it
-    if (encryptedKey.startsWith('{')) {
-      const parsed = JSON.parse(encryptedKey)
-      if (parsed.ciphertext && parsed.iv) {
-        return await decrypt(parsed.ciphertext, parsed.iv, ENCRYPTION_KEY)
-      }
+    const parsed = JSON.parse(encryptedKey)
+    // New format: {ciphertext, iv, salt} — decrypt with PBKDF2
+    if (parsed.ciphertext && parsed.iv && parsed.salt) {
+      return await decrypt(parsed.ciphertext, parsed.iv, parsed.salt, ENCRYPTION_KEY)
     }
-    // Otherwise, assume it's already plaintext (migration scenario)
-    return encryptedKey
+    // Old format: {ciphertext, iv} without salt — treat as plaintext (broken encryption)
+    // Fall through to migration path below
   } catch {
-    return encryptedKey
+    // Not JSON — it's plaintext, fall through to migration
   }
+
+  // Plaintext key (or old client-side encrypted) — auto-migrate by re-encrypting server-side
+  const plaintextValue = encryptedKey
+  await saveApiKey(userId, provider, plaintextValue)
+  return plaintextValue
 }
 
 /**
- * Save an encrypted API key
+ * Save an encrypted API key — encrypts with PBKDF2 before storing
  */
 async function saveApiKey(userId: string, provider: 'openai' | 'gemini' | 'groq', key: string): Promise<void> {
+  const encrypted = await encrypt(key, ENCRYPTION_KEY)
+  const encryptedValue = JSON.stringify(encrypted)
+
   const { data: existing } = await supabase
     .from('encrypted_api_keys')
     .select('id')
@@ -145,7 +149,7 @@ async function saveApiKey(userId: string, provider: 'openai' | 'gemini' | 'groq'
     .single()
 
   const updateData: Record<string, string> = {}
-  updateData[`${provider}_key`] = key
+  updateData[`${provider}_key`] = encryptedValue
   updateData[`${provider}_key_updated_at`] = new Date().toISOString()
 
   if (existing) {

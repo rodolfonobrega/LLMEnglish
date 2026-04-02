@@ -7,7 +7,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AuthUser } from '../services/supabase/auth'
-import { hydrateRuntimeState, resetRuntimeState } from '../services/runtimeState'
+import { hydrateRuntimeState, resetRuntimeState, setRuntimeGamification } from '../services/runtimeState'
 import {
   getSession,
   signInWithGoogle,
@@ -19,6 +19,7 @@ import {
   updateProfile,
 } from '../services/supabase/auth'
 import type { Profile } from '../types/supabase'
+import type { GamificationState } from '../types/gamification'
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -29,6 +30,38 @@ interface AuthContextValue {
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<Omit<Profile, 'id' | 'created_at' | 'updated_at'>>) => Promise<Profile>
   refreshProfile: () => Promise<void>
+}
+
+const MOCK_USER: AuthUser = {
+  id: '00000000-0000-0000-0000-000000000001',
+  email: 'dev@speaklab.local',
+}
+
+const MOCK_PROFILE: Profile = {
+  id: MOCK_USER.id,
+  email: MOCK_USER.email,
+  profile: 'English learner practicing daily',
+  interests: 'Technology, Music, Travel',
+  goals: 'Fluent conversation',
+  current_level: 'Intermediate',
+  conversation_tone: 'balanced',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+}
+
+const MOCK_GAMIFICATION: GamificationState = {
+  xp: 1250,
+  level: 5,
+  streak: 7,
+  longestStreak: 14,
+  lastPracticeDate: new Date().toISOString().split('T')[0],
+  totalSessions: 42,
+  totalCards: 87,
+  badges: [
+    { id: 'first_card', name: 'First Steps', description: 'Complete your first exercise', icon: '🎯', earnedAt: '2026-03-15' },
+    { id: 'streak_7', name: 'Unstoppable', description: '7-day streak', icon: '⚡', earnedAt: '2026-03-28' },
+    { id: 'level_5', name: 'Rising Star', description: 'Reach level 5', icon: '⭐', earnedAt: '2026-03-30' },
+  ],
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -53,8 +86,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Load initial session and profile
   useEffect(() => {
-    // In dev mode without Supabase env vars, skip auth entirely
+    // In dev mode without Supabase env vars, inject mock user for local development
     if (import.meta.env.DEV && (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY)) {
+      setUser(MOCK_USER)
+      setProfile(MOCK_PROFILE)
+      setRuntimeGamification(MOCK_GAMIFICATION)
       setLoading(false)
       return
     }
@@ -163,13 +199,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return updatedProfile
   }
 
+  const handleSignOut = async () => {
+    if (import.meta.env.DEV && (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY)) {
+      // In dev mode without Supabase, sign out is a no-op
+      console.info('Sign out is not available in dev mode without Supabase')
+      return
+    }
+    await signOut()
+  }
+
   const value: AuthContextValue = {
     user,
     profile,
     loading,
     signInWithGoogle,
     signInWithGithub,
-    signOut,
+    signOut: handleSignOut,
     updateProfile: handleUpdateProfile,
     refreshProfile,
   }

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-04-02T20:35:47.533Z"
+last_updated: "2026-04-02T20:45:35.211Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 67
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 Phase: 05 (storage-consolidation) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
 Progress: [███████░░░] 67%
@@ -58,6 +58,7 @@ Progress: [███████░░░] 67%
 | Phase 04 P01 | 2min | 2 tasks | 1 files |
 | Phase 04 P02 | 4min | 2 tasks | 5 files |
 | Phase 05 P01 | 6min | 1 tasks | 2 files |
+| Phase 05 P02 | 4min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Sync storage reads delegate to runtimeState cache (zero async overhead); async queries delegate to supabase/storage
 - [Phase 05]: Dev mode detected via !VITE_SUPABASE_URL -- returns empty defaults for reads, console.warn for writes
 - [Phase 05]: Dead code removed from storage.ts: getCachedAudio, setCachedAudio, KEYS constant, local UserContext interface
+- [Phase 05]: Barrel re-exports in supabase/index.ts kept with @deprecated JSDoc to avoid breaking consumers during transition
+- [Phase 05]: Only 3 files import directly from supabase/storage: facade (storage.ts), hydration (runtimeState.ts), barrel (supabase/index.ts)
 
 ### Pending Todos
 
@@ -97,12 +100,12 @@ None yet.
 ### Blockers/Concerns
 
 - Phase 4 (Secure Storage): Need to audit which AI provider call paths already use Edge Function proxy vs direct client calls. Scope of SEC-04 proxy work is unclear.
-- Phase 5 (Storage Consolidation): Need complete grep audit of all import sites referencing old `storage.ts` before work begins.
+- Phase 5 (Storage Consolidation): COMPLETE - all 13 import sites migrated to facade, grep audit done.
 - Phase 6 (Praticar Redesign): Visual design decisions (exact card proportions, layout grid) are subjective and may benefit from a mockup review.
 - Gemini Live WebSocket constraint: API key must be exposed client-side for direct WebSocket connection. Accepted risk that needs user-facing documentation during Phase 4.
 
 ## Session Continuity
 
-Last session: 2026-04-02T20:35:47.504Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-04-02T20:43:35Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

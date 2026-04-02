@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 6 context gathered
-last_updated: "2026-04-02T22:14:22.735Z"
+stopped_at: Completed 06-01-PLAN.md (Task 3 checkpoint pending)
+last_updated: "2026-04-02T23:09:49.262Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 6
+  total_plans: 8
+  completed_plans: 8
   percent: 67
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Phase 05 — storage-consolidation
+**Current focus:** Phase 06 — praticar-redesign
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (praticar-redesign) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
@@ -59,6 +59,7 @@ Progress: [███████░░░] 67%
 | Phase 04 P02 | 4min | 2 tasks | 5 files |
 | Phase 05 P01 | 6min | 1 tasks | 2 files |
 | Phase 05 P02 | 4min | 2 tasks | 13 files |
+| Phase 06 P01 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 05]: Dead code removed from storage.ts: getCachedAudio, setCachedAudio, KEYS constant, local UserContext interface
 - [Phase 05]: Barrel re-exports in supabase/index.ts kept with @deprecated JSDoc to avoid breaking consumers during transition
 - [Phase 05]: Only 3 files import directly from supabase/storage: facade (storage.ts), hydration (runtimeState.ts), barrel (supabase/index.ts)
+- [Phase 06]: Created new PracticeModeCard component instead of modifying ModeCard -- safer, no risk to other consumers
+- [Phase 06]: Inline mode grouping (soloModes/liveModes) in PracticeHubPage instead of modifying modes.ts config
+- [Phase 06]: Section headers use bg-primary neutral dot instead of mode-colored dots per UI-SPEC
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T22:14:22.706Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-praticar-redesign/06-CONTEXT.md
+Last session: 2026-04-02T23:09:49.225Z
+Stopped at: Completed 06-01-PLAN.md (Task 3 checkpoint pending)
+Resume file: None

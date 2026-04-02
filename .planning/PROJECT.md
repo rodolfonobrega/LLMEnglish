@@ -48,8 +48,8 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 **Key architectural issues (from codebase map):**
 - ~~No error boundaries — any component crash whitescreens the entire app~~ ✓ Fixed in Phase 02
 - ~~No code splitting — all 12 page components eagerly loaded including jspdf and motion~~ ✓ Fixed in Phase 03
-- API keys stored in localStorage plaintext alongside a Supabase encryption path with hardcoded fallback secret
-- Dual storage layer (localStorage + Supabase) with duplicate function signatures creates import confusion
+- ~~API keys stored in localStorage plaintext alongside a Supabase encryption path with hardcoded fallback secret~~ ✓ Fixed in Phase 04
+- ~~Dual storage layer (localStorage + Supabase) with duplicate function signatures creates import confusion~~ ✓ Fixed in Phase 05
 - Sequential N+1 database writes in saveCards
 - Dev mode routing bypasses Layout wrapper
 - Error boundaries installed (app-level + route-level + chunk-load) — Portuguese fallback UI preserves sidebar navigation
@@ -89,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after Phase 04 completion*
+*Last updated: 2026-04-02 after Phase 05 completion*

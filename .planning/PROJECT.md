@@ -28,11 +28,12 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - ✓ Layered error boundaries with Portuguese fallback UI (RELI-01, RELI-02, RELI-03) — Validated in Phase 02: error-boundaries
 - ✓ Code splitting with React.lazy + Suspense, chunk error soft retry (PERF-01, PERF-02, PERF-03) — Validated in Phase 03: code-splitting
 - ✓ Secure API key storage with PBKDF2 encryption, proxy-only AI calls, client-side encryption removal (SEC-01, SEC-02, SEC-03, SEC-04) — Validated in Phase 04: secure-storage
+- ✓ Consolidated dual storage layer into single facade with Supabase primary + localStorage fallback (STOR-01, STOR-02, STOR-03) — Validated in Phase 05: storage-consolidation
+- ✓ Praticar page redesign with vertical image-banner cards, 2-section layout, full keyboard accessibility (VIS-01, VIS-02, VIS-03) — Validated in Phase 06: praticar-redesign
 
 ### Active
 
-- [ ] Consolidate dual storage layer (localStorage + Supabase) to eliminate duplicate function signatures and import confusion
-- [ ] Redesign Praticar page with image-card layout inspired by PathCard (vertical cards with image banner, different proportions from trilhas)
+(All milestone requirements complete)
 
 ### Out of Scope
 
@@ -89,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after Phase 05 completion*
+*Last updated: 2026-04-02 after Phase 06 completion*

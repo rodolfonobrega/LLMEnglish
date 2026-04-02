@@ -47,6 +47,7 @@ const NONE_OPTION = { value: '', label: 'Nenhum (sem fallback)' };
 
 export function SettingsPage() {
   const { user, profile, signOut: authSignOut, refreshProfile } = useAuth();
+  const isDevMode = !import.meta.env.VITE_SUPABASE_URL;
   const [openaiKey, setOpenaiKeyState] = useState('');
   const [geminiKey, setGeminiKeyState] = useState('');
   const [groqKey, setGroqKeyState] = useState('');
@@ -155,6 +156,7 @@ export function SettingsPage() {
     : [];
 
   const handleSave = async () => {
+    if (isDevMode) return;
     try {
       // Save API keys to Supabase (encrypted via Edge Function)
       if (openaiKey || geminiKey || groqKey) {
@@ -332,12 +334,21 @@ export function SettingsPage() {
         </div>
 
         <div className="bg-card rounded-2xl p-5 border border-border space-y-4">
+          {isDevMode && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                API keys loaded from environment variables. Sign in to manage your own keys.
+              </p>
+            </div>
+          )}
           <Input
             label="OpenAI API Key"
             type="password"
             value={openaiKey}
             onChange={e => setOpenaiKeyState(e.target.value)}
             placeholder="sk-..."
+            disabled={isDevMode}
+            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
             hint={import.meta.env.VITE_OPENAI_API_KEY && !localStorage.getItem('el_openai_key')
               ? 'Carregada do arquivo .env'
               : 'Obtenha em platform.openai.com/api-keys'}
@@ -348,6 +359,8 @@ export function SettingsPage() {
             value={geminiKey}
             onChange={e => setGeminiKeyState(e.target.value)}
             placeholder="AI..."
+            disabled={isDevMode}
+            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
             hint={import.meta.env.VITE_GEMINI_API_KEY && !localStorage.getItem('el_gemini_key')
               ? 'Carregada do arquivo .env'
               : 'Obtenha em aistudio.google.com/apikey'}
@@ -358,6 +371,8 @@ export function SettingsPage() {
             value={groqKey}
             onChange={e => setGroqKeyState(e.target.value)}
             placeholder="gsk_..."
+            disabled={isDevMode}
+            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
             hint={import.meta.env.VITE_GROQ_API_KEY && !localStorage.getItem('el_groq_key')
               ? 'Carregada do arquivo .env'
               : 'Obtenha em console.groq.com'}

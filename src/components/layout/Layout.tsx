@@ -1,8 +1,10 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 import { Sidebar } from './Sidebar';
 import { DevBanner } from './DevBanner';
+import { PageSkeleton } from '../ui/PageSkeleton';
 
 export function Layout() {
   return (
@@ -16,7 +18,9 @@ export function Layout() {
         <DevBanner />
         <Header />
         <main className="flex-1 max-w-4xl mx-auto px-4 py-6 pb-24 w-full">
-          <Outlet />
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

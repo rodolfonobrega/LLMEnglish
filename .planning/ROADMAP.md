@@ -42,10 +42,10 @@ Plans:
   1. A crashed page shows a friendly error message with a retry button instead of a blank whitescreen
   2. User can navigate away from a broken page using the sidebar without losing the rest of the app
   3. When a lazy-loaded chunk fails to load, user sees an error with retry instead of a whitescreen
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md -- Install layered error boundaries (react-error-boundary + route errorElement + fallback components)
 
 ### Phase 3: Code Splitting
 **Goal**: Users only download the code for the page they are viewing, with loading feedback
@@ -55,7 +55,7 @@ Plans:
   1. Initial page load does not include jspdf or motion in the main bundle (verifiable via network tab or bundle analysis)
   2. User sees a loading indicator while navigating to a page for the first time
   3. Each route loads as a separate chunk that appears in the network tab only when that page is visited
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 03-01: TBD
@@ -69,7 +69,7 @@ Plans:
   2. Encryption uses PBKDF2 with 600K+ iterations and a unique random salt per user
   3. API key usage routes through a Supabase Edge Function proxy rather than making direct browser calls to AI providers
   4. Existing users' encrypted keys continue to work after the encryption parameter changes (migration path exists)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 04-01: TBD
@@ -82,7 +82,7 @@ Plans:
   1. All storage imports resolve to a single StorageAdapter facade module (no dual import paths remain)
   2. No two exported functions share the same name across the old storage files (rename complete, zero compile errors)
   3. All existing features that read or write data continue to work identically after consolidation
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 05-01: TBD
@@ -95,7 +95,7 @@ Plans:
   1. Praticar page shows vertical cards with an image banner on top, title, and subtitle (inspired by PathCard layout)
   2. Praticar cards have visibly different proportions than Trilhas PathCards (distinct height, aspect ratio, or spacing)
   3. All practice mode cards are fully keyboard navigable (focusable, activatable with Enter/Space, ARIA-labeled)
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
 
 Plans:
@@ -110,7 +110,7 @@ Note: Phases 4-5 can run in parallel with phases 2-3 if desired (no code depende
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Dev Mode Routing | 0/1 | Planning complete | - |
-| 2. Error Boundaries | 0/? | Not started | - |
+| 2. Error Boundaries | 0/1 | Planning complete | - |
 | 3. Code Splitting | 0/? | Not started | - |
 | 4. Secure Storage | 0/? | Not started | - |
 | 5. Storage Consolidation | 0/? | Not started | - |

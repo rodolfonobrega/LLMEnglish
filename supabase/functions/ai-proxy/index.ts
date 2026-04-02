@@ -30,29 +30,66 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 // ENCRYPTION UTILITIES
 // ============================================================================
 
-/**
- * Decrypt data using AES-256-GCM
- */
-async function decrypt(ciphertext: string, iv: string, key: string): Promise<string> {
-  const keyBytes = new TextEncoder().encode(key)
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyBytes,
-    { name: 'AES-GCM' },
-    false,
-    ['decrypt']
-  )
+const PBKDF2_ITERATIONS = 600_000
+const SALT_LENGTH = 16
+const IV_LENGTH = 12
+const KEY_LENGTH = 256
 
+/**
+ * Derive a cryptographic key from the encryption key and salt using PBKDF2
+ */
+async function deriveKey(encryptionKey: string, salt: Uint8Array): Promise<CryptoKey> {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(encryptionKey),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  )
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: KEY_LENGTH },
+    false,
+    ['encrypt', 'decrypt']
+  )
+}
+
+/**
+ * Decrypt data using AES-256-GCM with PBKDF2-derived key
+ */
+async function decrypt(ciphertext: string, iv: string, salt: string, key: string): Promise<string> {
+  const saltBytes = Uint8Array.from(atob(salt), c => c.charCodeAt(0))
+  const cryptoKey = await deriveKey(key, saltBytes)
   const ivBytes = Uint8Array.from(atob(iv), c => c.charCodeAt(0))
   const ciphertextBytes = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0))
-
   const decrypted = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: ivBytes },
     cryptoKey,
     ciphertextBytes
   )
-
   return new TextDecoder().decode(decrypted)
+}
+
+/**
+ * Encrypt data using AES-256-GCM with PBKDF2-derived key and random salt
+ */
+async function encrypt(plaintext: string, key: string): Promise<{ ciphertext: string; iv: string; salt: string }> {
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const cryptoKey = await deriveKey(key, salt)
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    new TextEncoder().encode(plaintext)
+  )
+  const ciphertextBytes = new Uint8Array(encrypted)
+  const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes))
+  return {
+    ciphertext: toBase64(ciphertextBytes),
+    iv: toBase64(iv),
+    salt: toBase64(salt),
+  }
 }
 
 // ============================================================================
@@ -80,27 +117,31 @@ async function getApiKey(userId: string, provider: 'openai' | 'gemini' | 'groq')
     return null
   }
 
-  // For now, keys are stored as simple base64 (migration from LocalStorage)
-  // In production, you'd decrypt them here
   try {
-    // If the key is JSON (encrypted format), decrypt it
-    if (encryptedKey.startsWith('{')) {
-      const parsed = JSON.parse(encryptedKey)
-      if (parsed.ciphertext && parsed.iv) {
-        return await decrypt(parsed.ciphertext, parsed.iv, ENCRYPTION_KEY)
-      }
+    const parsed = JSON.parse(encryptedKey)
+    // New format: {ciphertext, iv, salt} — decrypt with PBKDF2
+    if (parsed.ciphertext && parsed.iv && parsed.salt) {
+      return await decrypt(parsed.ciphertext, parsed.iv, parsed.salt, ENCRYPTION_KEY)
     }
-    // Otherwise, assume it's already plaintext (migration scenario)
-    return encryptedKey
+    // Old format: {ciphertext, iv} without salt — treat as plaintext (broken encryption)
+    // Fall through to migration path below
   } catch {
-    return encryptedKey
+    // Not JSON — it's plaintext, fall through to migration
   }
+
+  // Plaintext key (or old client-side encrypted) — auto-migrate by re-encrypting server-side
+  const plaintextValue = encryptedKey
+  await saveApiKey(userId, provider, plaintextValue)
+  return plaintextValue
 }
 
 /**
- * Save an encrypted API key
+ * Save an encrypted API key — encrypts with PBKDF2 before storing
  */
 async function saveApiKey(userId: string, provider: 'openai' | 'gemini' | 'groq', key: string): Promise<void> {
+  const encrypted = await encrypt(key, ENCRYPTION_KEY)
+  const encryptedValue = JSON.stringify(encrypted)
+
   const { data: existing } = await supabase
     .from('encrypted_api_keys')
     .select('id')
@@ -108,7 +149,7 @@ async function saveApiKey(userId: string, provider: 'openai' | 'gemini' | 'groq'
     .single()
 
   const updateData: Record<string, string> = {}
-  updateData[`${provider}_key`] = key
+  updateData[`${provider}_key`] = encryptedValue
   updateData[`${provider}_key_updated_at`] = new Date().toISOString()
 
   if (existing) {

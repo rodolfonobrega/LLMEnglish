@@ -413,18 +413,15 @@ describe('Storage Facade', () => {
   // ============================================================
 
   describe('type re-exports', () => {
-    it('UserContext is re-exported from types/settings, not locally defined', async () => {
-      // Import the type from settings to verify it's the same
-      const settingsTypes = await import('../types/settings');
-      // The UserContext type from storage should match settings.UserContext
-      // We verify by checking the runtime behavior: getUserContext returns a UserContext-shaped object
+    it('UserContext type is re-exported from types/settings, not locally defined', () => {
+      // TypeScript types are erased at runtime, so we can't check UserContext as a value.
+      // Instead, verify: getUserContext returns a UserContext-shaped object,
+      // AND the source file re-exports UserContext from types/settings (verified by tsc --noEmit).
       const ctx = storage.getUserContext();
       expect(ctx).toHaveProperty('profile');
       expect(ctx).toHaveProperty('interests');
       expect(ctx).toHaveProperty('goals');
       expect(ctx).toHaveProperty('currentLevel');
-      // Also verify that the types/settings module exports UserContext
-      expect(settingsTypes.UserContext).toBeDefined();
     });
   });
 

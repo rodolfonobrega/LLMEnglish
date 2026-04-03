@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, X, ImageIcon, Sparkles } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
@@ -7,10 +7,11 @@ import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images
 import { getImageQuestionPrompt, getEvaluationPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/storage';
+import { addCard, getConversationTone } from '../../services/storage';
 import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';
+import type { ConversationTone } from '../../types/settings';
 import { Button } from '../ui/Button';
 import { Skeleton, SkeletonText } from '../ui/Skeleton';
 
@@ -23,6 +24,11 @@ export function ImageMode() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [userAudioBase64, setUserAudioBase64] = useState<string | null>(null);
+  const [tone, setTone] = useState<ConversationTone>('balanced');
+
+  useEffect(() => {
+    setTone(getConversationTone());
+  }, []);
 
   const generateImageAndQuestion = async () => {
     setIsGenerating(true);
@@ -40,7 +46,7 @@ export function ImageMode() {
       );
       setImageUrl(imgUrl);
 
-      const questionPrompt = getImageQuestionPrompt();
+      const questionPrompt = getImageQuestionPrompt(tone);
       const q = await chatCompletionWithImage(questionPrompt, imgUrl);
       setQuestion(q.trim());
     } catch (err) {
@@ -56,7 +62,7 @@ export function ImageMode() {
     setUserAudioBase64(base64);
     try {
       const transcription = await speechToText(blob);
-      const evalPrompt = getEvaluationPrompt(question, transcription, 'image description');
+      const evalPrompt = getEvaluationPrompt(question, transcription, 'image description', tone);
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
       const cleanResponse = cleanJson(evalResponse);
       const evalResult: EvaluationResult = JSON.parse(cleanResponse);

@@ -7,7 +7,8 @@ import { cleanJson } from '../../utils/cleanJson';
 import { getTrailsForTheme, THEMES_WITH_TRAILS } from '../../utils/roleplayTrails';
 import type { ThemeMeta } from '../../utils/roleplayTrails';
 import type { LiveScenario, ConversationTurn, PathProgress, RoleplayTrail, RoleplayTrailStep } from '../../types/scenario';
-import { getPathProgress, markStepComplete } from '../../services/storage';
+import { getPathProgress, markStepComplete, getConversationTone } from '../../services/storage';
+import type { ConversationTone } from '../../types/settings';
 import { LiveSession } from '../live-roleplay/LiveSession';
 import { ConversationAnalysis } from '../live-roleplay/ConversationAnalysis';
 import { PathCard } from '../ui/custom/PathCard';
@@ -35,6 +36,7 @@ export function PathsPage() {
   const [scenario, setScenario] = useState<LiveScenario | null>(null);
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [tone] = useState<ConversationTone>(() => getConversationTone());
   const refreshProgress = useCallback(async () => {
     setProgress(await getPathProgress())
   }, [])
@@ -68,7 +70,7 @@ export function PathsPage() {
     setError(null);
 
     try {
-      const prompt = getScenarioGenerationPrompt(theme.id, 'adventurous', step.scenarioContext);
+      const prompt = getScenarioGenerationPrompt(theme.id, 'adventurous', step.scenarioContext, tone);
 
       const response = await chatCompletion(
         'You are a world-class creative director who designs immersive role-play scenarios. You create vivid, specific characters with distinct voices and personalities. Respond only with valid JSON.',
@@ -87,6 +89,7 @@ export function PathsPage() {
         parsed.characterPersonality,
         parsed.characterSpeechStyle,
         parsed.openingLine,
+        tone,
       );
 
       const imagePromise = generateImage(

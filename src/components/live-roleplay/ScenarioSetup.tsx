@@ -6,8 +6,8 @@ import { getImageConfigAuto } from '../../config/images';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
-import { getUserContext } from '../../services/storage';
-import type { UserContext } from '../../types/settings';
+import { getUserContext, getConversationTone } from '../../services/storage';
+import type { UserContext, ConversationTone } from '../../types/settings';
 import { Sparkles, Briefcase, Coffee, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
@@ -54,10 +54,16 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userContext, setUserContext] = useState<UserContext | null>(null);
+  const [tone, setTone] = useState<ConversationTone>('balanced');
 
   useEffect(() => {
     void (async () => {
-      setUserContext(await getUserContext());
+      const [ctx, conversationTone] = await Promise.all([
+        getUserContext(),
+        getConversationTone(),
+      ]);
+      setUserContext(ctx);
+      setTone(conversationTone);
     })();
   }, [mode]);
 
@@ -108,14 +114,15 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         } else {
           if (theme !== 'random') themeForPrompt = theme ?? undefined;
         }
-        prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc);
+        prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc, tone);
       } else {
         activeTheme = 'custom';
         prompt = getSkillScenarioPrompt(
           customDescription.trim(),
           userContext?.profile || '',
           userContext?.currentLevel || 'Intermediate',
-          userContext?.goals || ''
+          userContext?.goals || '',
+          tone
         );
       }
 
@@ -136,7 +143,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         parsed.systemDetails,
         parsed.characterPersonality,
         parsed.characterSpeechStyle,
-        parsed.openingLine
+        parsed.openingLine,
+        tone
       );
 
       const imagePromise = generateImage(

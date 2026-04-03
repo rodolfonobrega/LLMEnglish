@@ -35,13 +35,14 @@ ${getToneInstruction(tone)}
 
 Rules:
 - The phrase MUST be something a person would actually SAY in real life (spoken language, NOT written/formal). Focus on natural, everyday speech, avoiding stiff or textbook-style sentences.
-- Use common expressions, contractions, and appropriate slang if casual.
 - The expected English translation should match the tone above — perfectly natural and native-sounding.
 - Examples: ordering food, asking for directions, making small talk, expressing feelings.
-- Keep it to 1-2 sentences maximum.`;
+- Keep it to 1-2 sentences maximum.
+- Write ENTIRELY in natural Brazilian Portuguese. NEVER insert the target English vocabulary into the Portuguese phrase — express the same meaning using Portuguese words only. Common Brazilian loanwords (e.g., "shopping", "delivery") are fine, but do NOT use the target English expressions themselves.`;
 
   if (targetVocab && targetVocab.length > 0) {
-    prompt += `\n- The English translation MUST use these words: ${targetVocab.join(', ')}.`;
+    prompt += `\n- TARGET VOCABULARY: The student's English translation must naturally use these words: ${targetVocab.join(', ')}. Your job is to write a Portuguese phrase whose MEANING requires these English words in translation. Write the phrase 100% in Portuguese — convey the idea, not the English words. Example: if the target is "hang out", write "a gente pode ficar de boa lá em casa" (NOT "vamos hang out"). If the target is "figure out", write "preciso entender o que tá acontecendo" (NOT "preciso figure out isso").`;
+    prompt += `\n- ABSOLUTE RULE: The following English words/phrases are BANNED from your output: ${targetVocab.map(w => `"${w}"`).join(', ')}. You MUST use their Portuguese equivalents instead. For reference: "hang out" → "sair / ficar de boa / curtir"; "kind of" → "meio / tipo / mais ou menos"; "get" → "pegar / conseguir / chegar"; "stuck" → "preso / travado / enroscado"; "figure out" → "descobrir / entender / resolver"; "deal with" → "lidar com / resolver / encarar"; "by the way" → "por falar nisso / aliás / a propósito". If a target has no listed equivalent, find the natural Portuguese expression yourself. NEVER write ANY of the banned English words in the Portuguese phrase.`;
   }
   if (context) {
     prompt += `\n- Context/topic: ${context}.`;
@@ -63,10 +64,12 @@ Rules:
 - The text MUST represent SPOKEN language. It should feel exactly like someone talking out loud—e.g., a presentation at work, ordering at a restaurant, telling a vivid story to a friend.
 - Include natural conversational elements (filler words, self-corrections if casual, idioms).
 - The expected English translation should perfectly match the tone above. Avoid stiff, translated-sounding structures ("engessada").
-- Make it highly realistic, with the natural rhythm and flow of real native speech.`;
+- Make it highly realistic, with the natural rhythm and flow of real native speech.
+- Write ENTIRELY in natural Brazilian Portuguese. NEVER insert the target English vocabulary into the Portuguese text — express the same meaning using Portuguese words only. Common Brazilian loanwords (e.g., "shopping", "delivery", "feedback") are fine, but do NOT use the target English expressions themselves.`;
 
   if (targetVocab && targetVocab.length > 0) {
-    prompt += `\n- The English translation MUST use these words: ${targetVocab.join(', ')}.`;
+    prompt += `\n- TARGET VOCABULARY: The student's English translation must naturally use these words: ${targetVocab.join(', ')}. Your job is to write a Portuguese text whose MEANING requires these English words in translation — but writing ONLY in Portuguese.`;
+    prompt += `\n- ABSOLUTE RULE: The following English words/phrases are BANNED from your output: ${targetVocab.map(w => `"${w}"`).join(', ')}. You MUST use their Portuguese equivalents instead. For reference: "hang out" → "sair / ficar de boa / curtir"; "kind of" → "meio / tipo / mais ou menos"; "get" → "pegar / conseguir / chegar"; "stuck" → "preso / travado / enroscado"; "figure out" → "descobrir / entender / resolver"; "deal with" → "lidar com / resolver / encarar"; "by the way" → "por falar nisso / aliás / a propósito". If a target has no listed equivalent, find the natural Portuguese expression yourself. NEVER write ANY of the banned English words in the Portuguese text.`;
   }
   if (context) {
     prompt += `\n- Context/topic: ${context}.`;
@@ -85,9 +88,10 @@ export function getRoleplayGenerationPrompt(context?: string, theme?: string, ta
 ${getToneInstruction(tone)}
 
 Rules:
-- Describe a highly realistic, everyday situation the student needs to handle by speaking English.
+- Describe a highly realistic situation the student needs to handle by speaking English.
 - The situation should naturally call for the spoken English tone described above (incorporate typical contexts for casual or professional language).
-- Examples: checking into a hotel, dealing with a flight cancellation, making a doctor's appointment, chatting with a coworker at the water cooler.
+- MANDATORY: The situation MUST include a concrete problem, complication, or unexpected twist — for example: your credit card was declined, the order arrived completely wrong and you have an allergy, overbooking with no rooms left, a leak flooding your hotel room, the wrong medication was prescribed, your luggage was lost and the airline has no information. NEVER generate a routine, trivial scenario where everything goes smoothly (e.g., just checking into a hotel, just ordering food, just making small talk).
+- The complication must be explicitly stated in the situation description, not merely implied.
 - Write ONLY the situation description — do NOT include what the student should say.
 - Do NOT include "your role" or "my role" labels.
 - Do NOT include objectives or hints about what to say.
@@ -161,9 +165,9 @@ Rules:
 - Focus STRICTLY on SPOKEN English. IGNORE written grammar rules entirely.
 - Evaluate naturalness above all else — does it sound exactly like a real native speaker using the tone above? Is it fluid or robotic?
 - NATURALNESS PENALTY (CRITICAL): You MUST deduct points if the speech sounds stiff, overly formal, translated, or textbook-like ("engessada"). A grammatically "wrong" but highly natural-sounding slang/colloquial response MUST score higher than a grammatically perfect but robotic reading-style sentence.
-- CORRECTED VERSION: The "correctedVersion" MUST be in ENGLISH — exactly how a native speaker would ACTUALLY say this out loud on the street. Keep it casual if the tone is casual (force contractions, filler words, idioms). Correct for awkwardness/stiffness. NEVER EVER give a textbook grammar correction unless that is exactly how natives speak.
-- The "betterAlternatives" MUST be in ENGLISH, match the tone (casual, balanced, or formal) and provide ONLY heavily native-like, colloquial options.
-- LANGUAGE RULE (CRITICAL): "corrections" and "overallFeedback" MUST be written in Portuguese (pt-br). The student's native language is Portuguese and all explanations/feedback must be in Portuguese. Only English examples or corrections of what they said should be in English.
+- CORRECTED VERSION: The "correctedVersion" MUST be in ENGLISH — exactly how a native speaker would ACTUALLY say this out loud on the street. Keep it casual if the tone is casual (force contractions, filler words, idioms). Correct for awkwardness/stiffness. NEVER EVER give a textbook grammar correction unless that is exactly how natives speak. If the student's response was completely unrelated to the prompt, the correctedVersion should be how a native would say what the prompt asked for.
+- The "betterAlternatives" MUST be 100% in ENGLISH — no Portuguese words at all, not even "por favor" (use "please" instead). Match the tone (casual, balanced, or formal) and provide ONLY heavily native-like, colloquial options.
+- LANGUAGE RULE (CRITICAL): "corrections" and "overallFeedback" MUST be written in Portuguese (pt-br). The student's native language is Portuguese and all explanations/feedback must be in Portuguese. English examples inside these fields are allowed only when quoting what the student said or showing the correct English form.
 - Be encouraging but honest in your feedback.
 - If the transcription seems empty or nonsensical, score it low and explain why (in Portuguese).
 - Provide at least 2 better alternatives that sound genuinely native.
@@ -412,7 +416,7 @@ Explain the student's mistakes or stiffness in a clear, friendly way. Your expla
 
 Write in a highly conversational, warm tone like a supportive teacher talking to a student out loud. Use Portuguese for explanations but include English examples.
 
-Keep it to 3-4 sentences maximum.`;
+STRICT LIMIT: Maximum 4 sentences total. Be concise — pick the single most impactful correction and explain it well rather than covering everything superficially.`;
 }
 
 // ---------------------------------------------------------------------------

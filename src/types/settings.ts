@@ -44,20 +44,20 @@ export interface UserContext {
 }
 
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
-  chatModel: 'gemini-2.5-flash',
+  chatModel: 'gemini-3.1-flash-lite-preview',
   chatProvider: 'gemini',
 
-  sttModel: 'gemini-2.5-flash',
+  sttModel: 'gemini-3.1-flash-lite-preview',
   sttProvider: 'gemini',
 
   ttsModel: 'gemini-2.5-flash-preview-tts',
   ttsVoice: 'Kore',
   ttsProvider: 'gemini',
 
-  imageModel: 'gemini-2.5-flash-image', // Nano Banana
+  imageModel: 'gemini-3.1-flash-image-preview', // Nano Banana 2
   imageProvider: 'gemini',
 
-  liveModel: 'gemini-2.5-flash-native-audio-preview-12-2025',
+  liveModel: 'gemini-3.1-flash-live-preview',
   liveVoice: 'Puck',
   liveProvider: 'gemini',
 };
@@ -65,11 +65,15 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
 // --- Option lists for the Settings UI ---
 
 export const CHAT_MODELS = [
-  // Gemini
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (latest)', provider: 'gemini' as const },
-  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro (smartest)', provider: 'gemini' as const },
+  // Gemini 3.1
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (smartest)', provider: 'gemini' as const },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', provider: 'gemini' as const },
+  // Gemini 3.0
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'gemini' as const },
+  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro', provider: 'gemini' as const },
+  // Gemini 2.x
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', provider: 'gemini' as const },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (cheapest)', provider: 'gemini' as const },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', provider: 'gemini' as const },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', provider: 'gemini' as const },
   { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'gemini' as const },
   // OpenAI
@@ -88,7 +92,9 @@ export const CHAT_MODELS = [
 
 export const STT_MODELS = [
   // Gemini (multimodal: audio sent inline, model transcribes)
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (latest)', provider: 'gemini' as const },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', provider: 'gemini' as const },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'gemini' as const },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'gemini' as const },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', provider: 'gemini' as const },
   { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'gemini' as const },
   // OpenAI
@@ -145,7 +151,9 @@ export const GROQ_TTS_VOICES = [
 ];
 
 export const IMAGE_MODELS = [
-  // === Nano Banana (Gemini Multimodal - requires Google Cloud billing) ===
+  // === Nano Banana 2 (Gemini 3.1 Multimodal) ===
+  { value: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Gemini 3.1 Flash)', provider: 'gemini' as const },
+  // === Nano Banana (Gemini Multimodal) ===
   { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash)', provider: 'gemini' as const },
   { value: 'gemini-3-pro-image', label: 'Nano Banana Pro (Gemini 3 Pro)', provider: 'gemini' as const },
 
@@ -163,6 +171,7 @@ export const IMAGE_MODELS = [
 
 export const LIVE_MODELS = [
   // Gemini Live
+  { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (latest)', provider: 'gemini' as const },
   { value: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Native Audio', provider: 'gemini' as const },
   // OpenAI Realtime
   { value: 'gpt-realtime', label: 'GPT Realtime', provider: 'openai' as const },

@@ -14,7 +14,7 @@ client = openai.OpenAI(
     base_url=os.environ.get("IMAGE_API_BASE_URL", "https://api.openai.com/v1"),
 )
 
-BASE_STYLE = "Warm, inviting illustration in a soft anime/cartoon style. Soft lighting, vibrant but not oversaturated colors. No text overlays, no detailed faces. Clean composition suitable as a UI card thumbnail"
+BASE_STYLE = "Warm, inviting illustration in a soft anime/cartoon style inspired by Studio Ghibli. Cozy atmosphere with soft natural lighting, warm but NOT amber or sepia-toned. Color palette includes wood browns, leafy greens, warm cream, soft pink, muted teal, and gentle orange accents. Maintain natural color variety -- each object should have its own distinct color. Gentle bokeh effects in the background. Visible but soft linework, no detailed faces on people. Clean composition suitable as a UI card thumbnail, no text overlays"
 
 THEMES = {
     "food": "a close-up of a beautifully plated meal on a restaurant table, warm lighting",

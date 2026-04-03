@@ -37,9 +37,9 @@ function SectionLabel({ children }: { children: ReactNode }) {
 
 function getSceneImagePrompt(brandName: string, location: string, aiRole: string, isSkill: boolean): string {
   const style = isSkill
-    ? 'Professional, clean, corporate illustration, well-lit modern office or professional setting.'
+    ? 'Professional, clean, well-lit modern office or professional setting.'
     : 'Cozy, warm, inviting interior.';
-  return `A ${style} illustration of ${brandName} in ${location}. The scene shows a ${aiRole} at work. Anime/cartoon style, soft lighting, vibrant colors, wide shot, no text overlays, suitable as a background for an app.`;
+  return `A ${style} illustration of ${brandName} in ${location}. The scene shows a ${aiRole} at work. Soft anime/cartoon style inspired by Studio Ghibli. Soft natural lighting, warm but NOT amber or sepia-toned. Color palette with wood browns, leafy greens, warm cream, soft pink, muted teal. Natural color variety, gentle bokeh, soft linework, no detailed faces, wide shot, no text overlays.`;
 }
 
 export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {

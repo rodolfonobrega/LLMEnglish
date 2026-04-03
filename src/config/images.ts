@@ -35,7 +35,7 @@ import { getModelConfig as getModelConfigImport } from '../services/storage';
 // ─── Image Configuration per Context ────────────────────────────────────────
 
 export const BASE_IMAGE_STYLE_PROMPT =
-  "A high-quality, modern 2D vector animation style. Vibrant yet warm colors, soft gradient lighting, and a clean, cozy, and inviting aesthetic. Similar to high-end modern game art or Studio Ghibli. No text overlays. ";
+  "Warm, inviting illustration in a soft anime/cartoon style inspired by Studio Ghibli. Cozy atmosphere with soft natural lighting, warm but NOT amber or sepia-toned. Color palette includes wood browns, leafy greens, warm cream, soft pink, muted teal, and gentle orange accents. Maintain natural color variety -- each object should have its own distinct color. Gentle bokeh effects in the background. Visible but soft linework, no detailed faces on people. Clean composition, no text overlays. ";
 
 export const IMAGE_CONFIG = {
   /**

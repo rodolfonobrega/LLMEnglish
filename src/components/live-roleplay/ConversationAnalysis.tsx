@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LiveScenario, ConversationTurn, LiveSession as LiveSessionData } from '../../types/scenario';
 import { chatCompletion, textToSpeech } from '../../services/openai';
-import { getModelConfig, saveLiveSession } from '../../services/storage';
+import { getModelConfig, saveLiveSession, getConversationTone } from '../../services/storage';
 import { getConversationAnalysisPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';
 import { addXP, createSessionReport } from '../../services/gamification';
 import { XP_PER_LIVE_SESSION } from '../../types/gamification';
+import type { ConversationTone } from '../../types/settings';
 import { recordSessionSnapshot } from '../../services/errorAnalysis';
 import { Loader2, Volume2, Play, Square, RotateCcw, CheckCircle2, AlertTriangle, Sparkles, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -56,6 +57,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tone] = useState<ConversationTone>(() => getConversationTone());
 
   // Audio state
   const [audioProgress, setAudioProgress] = useState<number>(0); // 0..totalLines for generation progress
@@ -74,7 +76,7 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
     setIsLoading(true);
     setError(null);
     try {
-      const prompt = getConversationAnalysisPrompt(turns);
+      const prompt = getConversationAnalysisPrompt(turns, tone);
       const response = await chatCompletion(
         'You analyze English conversations. Respond only with valid JSON.',
         prompt,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
@@ -15,11 +15,12 @@ import {
 } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
-import { addCard } from '../../services/storage';
+import { addCard, getConversationTone } from '../../services/storage';
 import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
 import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';
+import type { ConversationTone } from '../../types/settings';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { SkeletonText } from '../ui/Skeleton';
@@ -78,14 +79,15 @@ function getSystemPrompt(
   vocabArr: string[] | undefined,
   context: string | undefined,
   theme: string | null,
+  tone?: ConversationTone,
 ) {
   switch (type) {
     case 'phrase':
-      return getPhraseGenerationPrompt(vocabArr, context, theme || undefined);
+      return getPhraseGenerationPrompt(vocabArr, context, theme || undefined, tone);
     case 'text':
-      return getTextGenerationPrompt(vocabArr, context, theme || undefined);
+      return getTextGenerationPrompt(vocabArr, context, theme || undefined, tone);
     case 'roleplay':
-      return getRoleplayGenerationPrompt(context, theme || undefined, vocabArr);
+      return getRoleplayGenerationPrompt(context, theme || undefined, vocabArr, tone);
   }
 }
 
@@ -108,6 +110,11 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
   const [theme, setTheme] = useState<string | null>('random');
   const [targetVocab, setTargetVocab] = useState('');
   const [context, setContext] = useState('');
+  const [tone, setTone] = useState<ConversationTone>('balanced');
+
+  useEffect(() => {
+    setTone(getConversationTone());
+  }, []);
 
   const [setupStep, setSetupStep] = useState<'theme' | 'generate'>('theme');
 
@@ -145,6 +152,7 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
         vocabArr,
         context || undefined,
         theme !== 'random' ? theme : null,
+        tone,
       );
       const result = await chatCompletion(systemPrompt, getUserMessage(initialType));
       setPrompt(result.trim());
@@ -161,7 +169,7 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
     setUserAudioBase64(base64);
     try {
       const transcription = await speechToText(blob);
-      const evalPrompt = getEvaluationPrompt(prompt, transcription, config.evalType);
+      const evalPrompt = getEvaluationPrompt(prompt, transcription, config.evalType, tone);
       const evalResponse = await chatCompletion(
         'You are an expert English language evaluator. Respond only with valid JSON.',
         evalPrompt,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCardsDueForReview, updateCard } from '../../services/storage';
+import { getCardsDueForReview, updateCard, getConversationTone } from '../../services/storage';
 import { updateCardSchedule } from '../../services/spacedRepetition';
 import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
 import { extractErrorPatterns, recordErrorPatterns, recordSessionSnapshot } from '../../services/errorAnalysis';
@@ -11,6 +11,7 @@ import { getEvaluationPrompt, getTutorExplanationPrompt } from '../../utils/prom
 import { addXP } from '../../services/gamification';
 import { XP_PER_REVIEW } from '../../types/gamification';
 import type { Card, EvaluationResult } from '../../types/card';
+import type { ConversationTone } from '../../types/settings';
 import { Loader2, RotateCcw, ChevronRight, ChevronLeft, CheckCircle2, Compass, Trophy, Brain, Lightbulb, BookOpen, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
@@ -34,6 +35,11 @@ export function ReviewPage() {
   const [showTutor, setShowTutor] = useState(false);
   const [tutorExplanation, setTutorExplanation] = useState<string | null>(null);
   const [isGeneratingTutor, setIsGeneratingTutor] = useState(false);
+  const [tone, setTone] = useState<ConversationTone>('balanced');
+
+  useEffect(() => {
+    setTone(getConversationTone());
+  }, []);
 
   const loadDueCards = useCallback(async (mode: ReviewMode = reviewMode) => {
     setIsLoadingCards(true)
@@ -65,7 +71,7 @@ export function ReviewPage() {
     setTutorExplanation(null);
     try {
       const transcription = await speechToText(blob);
-      const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`);
+      const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`, tone);
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
       const evalResult: EvaluationResult = JSON.parse(evalResponse);
       evalResult.userTranscription = transcription;
@@ -102,7 +108,8 @@ export function ReviewPage() {
         currentCard.prompt,
         evaluation.userTranscription,
         evaluation.correctedVersion,
-        evaluation.corrections
+        evaluation.corrections,
+        tone
       );
       const explanation = await chatCompletion(
         'You are a patient, encouraging English tutor. Explain mistakes clearly and provide helpful examples.',

@@ -17,6 +17,7 @@ import {
   getRuntimeConversationTone,
   getRuntimeGamification,
   getRuntimeModelConfig,
+  setRuntimeCredentials,
 } from './runtimeState'
 
 import {
@@ -73,10 +74,11 @@ export function getConversationTone(): ConversationTone {
 
 // Named API key wrappers (D-10, D-11)
 export function getOpenAIKey(): string {
-  return getRuntimeApiKey('openai');
+  return getRuntimeApiKey('openai') || '';
 }
 
 export function setOpenAIKey(key: string): void {
+  setRuntimeCredentials({ openai: key });
   if (isDevMode()) {
     console.warn('setOpenAIKey: write ignored in dev mode');
     return;
@@ -85,22 +87,24 @@ export function setOpenAIKey(key: string): void {
 }
 
 export function getGeminiKey(): string {
-  return getRuntimeApiKey('gemini');
+  return getRuntimeApiKey('genai') || '';
 }
 
 export function setGeminiKey(key: string): void {
+  setRuntimeCredentials({ genai: key });
   if (isDevMode()) {
     console.warn('setGeminiKey: write ignored in dev mode');
     return;
   }
-  void supabaseSaveApiKey('gemini', key);
+  void supabaseSaveApiKey('genai', key);
 }
 
 export function getGroqKey(): string {
-  return getRuntimeApiKey('groq');
+  return getRuntimeApiKey('groq') || '';
 }
 
 export function setGroqKey(key: string): void {
+  setRuntimeCredentials({ groq: key });
   if (isDevMode()) {
     console.warn('setGroqKey: write ignored in dev mode');
     return;
@@ -263,20 +267,20 @@ export async function saveConversationTone(tone: ConversationTone): Promise<void
   return supabaseSaveConversationTone(tone);
 }
 
-export async function saveApiKey(provider: 'openai' | 'gemini' | 'groq', key: string): Promise<void> {
+export async function saveApiKey(source: string, key: string): Promise<void> {
   if (isDevMode()) {
     console.warn('saveApiKey: write ignored in dev mode');
     return;
   }
-  return supabaseSaveApiKey(provider, key);
+  return supabaseSaveApiKey(source, key);
 }
 
-export async function getApiKey(provider: 'openai' | 'gemini' | 'groq'): Promise<string> {
-  if (isDevMode()) return getRuntimeApiKey(provider);
-  return supabaseGetApiKey(provider);
+export async function getApiKey(source: string): Promise<string> {
+  if (isDevMode()) return getRuntimeApiKey(source as 'genai' | 'openai' | 'groq') || '';
+  return supabaseGetApiKey(source);
 }
 
-export async function saveApiKeys(keys: { openai?: string; gemini?: string; groq?: string }): Promise<void> {
+export async function saveApiKeys(keys: Record<string, string>): Promise<void> {
   if (isDevMode()) {
     console.warn('saveApiKeys: write ignored in dev mode');
     return;

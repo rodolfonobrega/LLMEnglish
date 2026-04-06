@@ -1,114 +1,172 @@
-export type Provider = 'openai' | 'gemini' | 'groq';
+export type Source = 'genai' | 'vertex' | 'openrouter' | 'openai' | 'groq';
 
 export type ConversationTone = 'casual' | 'balanced' | 'formal';
+
+/** Model option in the settings dropdowns. */
+export interface ModelOption {
+  value: string;
+  label: string;
+  source: Source;
+}
+
+/** Per-source credentials stored encrypted in Supabase. */
+export interface SourceCredentials {
+  genai?: string;
+  openai?: string;
+  groq?: string;
+  openrouter?: string;
+  vertex?: {
+    projectId: string;
+    region: string;
+  };
+}
 
 /** All configurable model slots in the app. */
 export interface ModelConfig {
   // --- Text generation (prompts, evaluation, scenario generation) ---
   chatModel: string;
-  chatProvider: Provider;
+  chatSource: Source;
 
   // --- Speech-to-text ---
   sttModel: string;
-  sttProvider: Provider;
+  sttSource: Source;
 
   // --- Text-to-speech ---
   ttsModel: string;
   ttsVoice: string;
-  ttsProvider: Provider;
+  ttsSource: Source;
 
-  // --- Image generation (no Groq support) ---
+  // --- Image generation ---
   imageModel: string;
-  imageProvider: 'openai' | 'gemini';
+  imageSource: 'genai' | 'openai' | 'openrouter';
 
-  // --- Live Roleplay (real-time audio, no Groq support) ---
+  // --- Live Roleplay (real-time audio) ---
   liveModel: string;
   liveVoice: string;
-  liveProvider: 'openai' | 'gemini';
+  liveSource: 'genai' | 'openai';
 
   // --- Fallbacks (optional -- undefined means no fallback) ---
   chatFallbackModel?: string;
-  chatFallbackProvider?: Provider;
+  chatFallbackSource?: Source;
   sttFallbackModel?: string;
-  sttFallbackProvider?: Provider;
+  sttFallbackSource?: Source;
   ttsFallbackModel?: string;
-  ttsFallbackProvider?: Provider;
+  ttsFallbackSource?: Source;
   ttsFallbackVoice?: string;
 }
 
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   chatModel: 'gemini-3.1-flash-lite-preview',
-  chatProvider: 'gemini',
+  chatSource: 'genai',
 
   sttModel: 'gemini-3.1-flash-lite-preview',
-  sttProvider: 'gemini',
+  sttSource: 'genai',
 
   ttsModel: 'gemini-2.5-flash-preview-tts',
   ttsVoice: 'Kore',
-  ttsProvider: 'gemini',
+  ttsSource: 'genai',
 
-  imageModel: 'gemini-3.1-flash-image-preview', // Nano Banana 2
-  imageProvider: 'gemini',
+  imageModel: 'gemini-3.1-flash-image-preview',
+  imageSource: 'genai',
 
   liveModel: 'gemini-3.1-flash-live-preview',
   liveVoice: 'Puck',
-  liveProvider: 'gemini',
+  liveSource: 'genai',
+};
+
+// --- Source display labels ---
+
+export const SOURCE_LABELS: Record<Source, string> = {
+  genai: 'Google AI Studio',
+  vertex: 'Vertex AI',
+  openai: 'OpenAI',
+  openrouter: 'OpenRouter',
+  groq: 'Groq',
 };
 
 // --- Option lists for the Settings UI ---
 
-export const CHAT_MODELS = [
-  // Gemini 3.1
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (smartest)', provider: 'gemini' as const },
-  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', provider: 'gemini' as const },
-  // Gemini 3.0
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'gemini' as const },
-  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro', provider: 'gemini' as const },
-  // Gemini 2.x
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', provider: 'gemini' as const },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', provider: 'gemini' as const },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', provider: 'gemini' as const },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'gemini' as const },
+export const CHAT_MODELS: ModelOption[] = [
+  // Google AI Studio
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (smartest)', source: 'genai' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
+  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro', source: 'genai' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', source: 'genai' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'genai' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', source: 'genai' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', source: 'genai' },
+  // Vertex AI
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', source: 'vertex' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'vertex' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'vertex' },
+  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro', source: 'vertex' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'vertex' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', source: 'vertex' },
+  // OpenRouter
+  { value: 'google/gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'openrouter' },
+  { value: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4', source: 'openrouter' },
+  { value: 'anthropic/claude-opus-4', label: 'Claude Opus 4', source: 'openrouter' },
+  { value: 'meta-llama/llama-4-maverick', label: 'Llama 4 Maverick', source: 'openrouter' },
+  { value: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', source: 'openrouter' },
+  { value: 'mistralai/mistral-large', label: 'Mistral Large', source: 'openrouter' },
+  { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1', source: 'openrouter' },
+  // OpenAI Direct
+  { value: 'gpt-5.4', label: 'GPT-5.4 (latest & best)', source: 'openai' },
+  { value: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', source: 'openai' },
+  { value: 'gpt-5.4-nano', label: 'GPT-5.4 Nano (cheapest)', source: 'openai' },
+  { value: 'gpt-5.2', label: 'GPT-5.2', source: 'openai' },
+  { value: 'gpt-5.1', label: 'GPT-5.1', source: 'openai' },
+  { value: 'gpt-5', label: 'GPT-5', source: 'openai' },
+  { value: 'gpt-5-mini', label: 'GPT-5 Mini (fast)', source: 'openai' },
+  { value: 'gpt-5-nano', label: 'GPT-5 Nano', source: 'openai' },
+  { value: 'gpt-4.1', label: 'GPT-4.1', source: 'openai' },
+  { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', source: 'openai' },
+  { value: 'gpt-4.1-nano', label: 'GPT-4.1 Nano', source: 'openai' },
+  // Groq Direct
+  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (fast & smart)', source: 'groq' },
+  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (fastest)', source: 'groq' },
+  { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick', source: 'groq' },
+  { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout', source: 'groq' },
+  { value: 'qwen/qwen3-32b', label: 'Qwen3 32B', source: 'groq' },
+  { value: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2', source: 'groq' },
+  { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B', source: 'groq' },
+  { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B', source: 'groq' },
+];
+
+export const STT_MODELS: ModelOption[] = [
+  // Google AI Studio
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', source: 'genai' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', source: 'genai' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', source: 'genai' },
+  // Vertex AI
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'vertex' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', source: 'vertex' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'vertex' },
   // OpenAI
-  { value: 'gpt-4.1-nano', label: 'GPT-4.1 Nano (cheapest)', provider: 'openai' as const },
-  { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai' as const },
-  { value: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai' as const },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' as const },
-  { value: 'gpt-4o', label: 'GPT-4o', provider: 'openai' as const },
-  { value: 'o4-mini', label: 'o4-mini (reasoning)', provider: 'openai' as const },
+  { value: 'whisper-1', label: 'Whisper v1', source: 'openai' },
+  { value: 'gpt-4o-mini-transcribe', label: 'GPT-4o Mini Transcribe', source: 'openai' },
+  { value: 'gpt-4o-transcribe', label: 'GPT-4o Transcribe', source: 'openai' },
   // Groq
-  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (fast & smart)', provider: 'groq' as const },
-  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (fastest)', provider: 'groq' as const },
-  { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick', provider: 'groq' as const },
-  { value: 'qwen/qwen3-32b', label: 'Qwen3 32B', provider: 'groq' as const },
+  { value: 'whisper-large-v3', label: 'Whisper Large V3 (Groq)', source: 'groq' },
+  { value: 'whisper-large-v3-turbo', label: 'Whisper Large V3 Turbo (Groq)', source: 'groq' },
 ];
 
-export const STT_MODELS = [
-  // Gemini (multimodal: audio sent inline, model transcribes)
-  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', provider: 'gemini' as const },
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'gemini' as const },
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'gemini' as const },
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', provider: 'gemini' as const },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'gemini' as const },
+export const TTS_MODELS: ModelOption[] = [
+  // Google AI Studio
+  { value: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash TTS', source: 'genai' },
+  { value: 'gemini-2.5-pro-preview-tts', label: 'Gemini 2.5 Pro TTS (quality)', source: 'genai' },
+  // Vertex AI
+  { value: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash TTS', source: 'vertex' },
+  { value: 'gemini-2.5-pro-preview-tts', label: 'Gemini 2.5 Pro TTS', source: 'vertex' },
   // OpenAI
-  { value: 'whisper-1', label: 'Whisper v1', provider: 'openai' as const },
-  { value: 'gpt-4o-mini-transcribe', label: 'GPT-4o Mini Transcribe', provider: 'openai' as const },
-  { value: 'gpt-4o-transcribe', label: 'GPT-4o Transcribe', provider: 'openai' as const },
-  // Groq (Whisper on Groq hardware -- very fast)
-  { value: 'whisper-large-v3', label: 'Whisper Large V3 (Groq)', provider: 'groq' as const },
-  { value: 'whisper-large-v3-turbo', label: 'Whisper Large V3 Turbo (Groq)', provider: 'groq' as const },
-];
-
-export const TTS_MODELS = [
-  // Gemini
-  { value: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash TTS', provider: 'gemini' as const },
-  { value: 'gemini-2.5-pro-preview-tts', label: 'Gemini 2.5 Pro TTS (quality)', provider: 'gemini' as const },
-  // OpenAI
-  { value: 'tts-1', label: 'TTS-1 (fast)', provider: 'openai' as const },
-  { value: 'tts-1-hd', label: 'TTS-1 HD (quality)', provider: 'openai' as const },
-  { value: 'gpt-4o-mini-tts', label: 'GPT-4o Mini TTS', provider: 'openai' as const },
-  // Groq (Orpheus -- max 200 chars per request, WAV only)
-  { value: 'canopylabs/orpheus-v1-english', label: 'Orpheus English (Groq)', provider: 'groq' as const },
+  { value: 'tts-1', label: 'TTS-1 (fast)', source: 'openai' },
+  { value: 'tts-1-hd', label: 'TTS-1 HD (quality)', source: 'openai' },
+  { value: 'gpt-4o-mini-tts', label: 'GPT-4o Mini TTS', source: 'openai' },
+  // Groq
+  { value: 'canopylabs/orpheus-v1-english', label: 'Orpheus English (Groq)', source: 'groq' },
 ];
 
 export const OPENAI_TTS_VOICES = [
@@ -143,33 +201,30 @@ export const GROQ_TTS_VOICES = [
   { value: 'troy', label: 'Troy (male)' },
 ];
 
-export const IMAGE_MODELS = [
-  // === Nano Banana 2 (Gemini 3.1 Multimodal) ===
-  { value: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Gemini 3.1 Flash)', provider: 'gemini' as const },
-  // === Nano Banana (Gemini Multimodal) ===
-  { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash)', provider: 'gemini' as const },
-  { value: 'gemini-3-pro-image', label: 'Nano Banana Pro (Gemini 3 Pro)', provider: 'gemini' as const },
-
-  // === Imagen (requires Google Cloud billing account) ===
-  // Dedicated image generation models via Vertex AI or Generative Language API
-  { value: 'imagen-4.0-ultra-generate-001', label: 'Imagen 4.0 Ultra (Best Quality)', provider: 'gemini' as const },
-  { value: 'imagen-4.0-generate-001', label: 'Imagen 4.0 (Balanced)', provider: 'gemini' as const },
-  { value: 'imagen-4.0-fast-generate-001', label: 'Imagen 4.0 Fast (Fastest)', provider: 'gemini' as const },
-
-  // === OpenAI GPT Image (works with API key - no billing required) ===
-  { value: 'gpt-image-1.5', label: 'GPT Image 1.5 (Best)', provider: 'openai' as const },
-  { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini (Fast & Affordable)', provider: 'openai' as const },
-  { value: 'gpt-image-1', label: 'GPT Image 1 (Balanced)', provider: 'openai' as const },
+export const IMAGE_MODELS: ModelOption[] = [
+  // Google AI Studio
+  { value: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Gemini 3.1 Flash)', source: 'genai' },
+  { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash)', source: 'genai' },
+  { value: 'gemini-3-pro-image', label: 'Nano Banana Pro (Gemini 3 Pro)', source: 'genai' },
+  // Vertex AI
+  { value: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Vertex)', source: 'vertex' },
+  { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Vertex)', source: 'vertex' },
+  // OpenAI
+  { value: 'gpt-image-1.5', label: 'GPT Image 1.5 (Best)', source: 'openai' },
+  { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini (Fast & Affordable)', source: 'openai' },
+  { value: 'gpt-image-1', label: 'GPT Image 1 (Balanced)', source: 'openai' },
 ];
 
-export const LIVE_MODELS = [
-  // Gemini Live
-  { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (latest)', provider: 'gemini' as const },
-  { value: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Native Audio', provider: 'gemini' as const },
+export const LIVE_MODELS: ModelOption[] = [
+  // Google AI Studio
+  { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (latest)', source: 'genai' },
+  { value: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Native Audio', source: 'genai' },
+  // Vertex AI
+  { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (Vertex)', source: 'vertex' },
   // OpenAI Realtime
-  { value: 'gpt-realtime', label: 'GPT Realtime', provider: 'openai' as const },
-  { value: 'gpt-realtime-1.5', label: 'GPT Realtime 1.5', provider: 'openai' as const },
-  { value: 'gpt-realtime-mini', label: 'GPT Realtime Mini', provider: 'openai' as const },
+  { value: 'gpt-realtime', label: 'GPT Realtime', source: 'openai' },
+  { value: 'gpt-realtime-1.5', label: 'GPT Realtime 1.5', source: 'openai' },
+  { value: 'gpt-realtime-mini', label: 'GPT Realtime Mini', source: 'openai' },
 ];
 
 export const OPENAI_LIVE_VOICES = [
@@ -217,3 +272,55 @@ export const GEMINI_LIVE_VOICES = [
   { value: 'Vindemiatrix', label: 'Vindemiatrix (gentle)' },
   { value: 'Sulafat', label: 'Sulafat (warm)' },
 ];
+
+/**
+ * Migrate old Provider-based config to Source-based config.
+ * Maps: 'gemini' -> 'genai', 'openai' -> 'openai', 'groq' -> 'groq'.
+ */
+export function migrateModelConfig(config: Record<string, unknown>): ModelConfig {
+  const providerToSource = (p: string): Source => {
+    if (p === 'gemini') return 'genai';
+    return p as Source;
+  };
+
+  const migrated = { ...DEFAULT_MODEL_CONFIG } as ModelConfig;
+
+  if (config.chatProvider && !config.chatSource) {
+    migrated.chatModel = (config.chatModel as string) || DEFAULT_MODEL_CONFIG.chatModel;
+    migrated.chatSource = providerToSource(config.chatProvider as string);
+  }
+  if (config.sttProvider && !config.sttSource) {
+    migrated.sttModel = (config.sttModel as string) || DEFAULT_MODEL_CONFIG.sttModel;
+    migrated.sttSource = providerToSource(config.sttProvider as string);
+  }
+  if (config.ttsProvider && !config.ttsSource) {
+    migrated.ttsModel = (config.ttsModel as string) || DEFAULT_MODEL_CONFIG.ttsModel;
+    migrated.ttsVoice = (config.ttsVoice as string) || DEFAULT_MODEL_CONFIG.ttsVoice;
+    migrated.ttsSource = providerToSource(config.ttsProvider as string);
+  }
+  if (config.imageProvider && !config.imageSource) {
+    migrated.imageModel = (config.imageModel as string) || DEFAULT_MODEL_CONFIG.imageModel;
+    migrated.imageSource = providerToSource(config.imageProvider as string) as 'genai' | 'openai' | 'openrouter';
+  }
+  if (config.liveProvider && !config.liveSource) {
+    migrated.liveModel = (config.liveModel as string) || DEFAULT_MODEL_CONFIG.liveModel;
+    migrated.liveVoice = (config.liveVoice as string) || DEFAULT_MODEL_CONFIG.liveVoice;
+    migrated.liveSource = providerToSource(config.liveProvider as string) as 'genai' | 'openai';
+  }
+  // Fallbacks
+  if (config.chatFallbackProvider && !config.chatFallbackSource) {
+    migrated.chatFallbackModel = config.chatFallbackModel as string | undefined;
+    migrated.chatFallbackSource = providerToSource(config.chatFallbackProvider as string);
+  }
+  if (config.sttFallbackProvider && !config.sttFallbackSource) {
+    migrated.sttFallbackModel = config.sttFallbackModel as string | undefined;
+    migrated.sttFallbackSource = providerToSource(config.sttFallbackProvider as string);
+  }
+  if (config.ttsFallbackProvider && !config.ttsFallbackSource) {
+    migrated.ttsFallbackModel = config.ttsFallbackModel as string | undefined;
+    migrated.ttsFallbackSource = providerToSource(config.ttsFallbackProvider as string);
+    migrated.ttsFallbackVoice = config.ttsFallbackVoice as string | undefined;
+  }
+
+  return migrated;
+}

@@ -9,7 +9,7 @@ import type { Card } from '../types/card'
 import type { ErrorPattern, SessionSnapshot } from '../types/errors'
 import type { GamificationState, SessionReport } from '../types/gamification'
 import type { LiveSession, PathProgress } from '../types/scenario'
-import type { ModelConfig, UserContext } from '../types/settings'
+import type { ModelConfig } from '../types/settings'
 import type {
   Badge as SupabaseBadge,
   CardReview,
@@ -34,7 +34,6 @@ const KEYS = {
   sessionReports: 'el_session_reports',
   pathProgress: 'el_path_progress',
   modelConfig: 'el_model_config',
-  userContext: 'el_user_context',
   conversationTone: 'el_conversation_tone',
   errorPatterns: 'el_error_patterns',
   errorSnapshots: 'el_session_snapshots',
@@ -72,10 +71,6 @@ export async function migrateToSupabase(
 
   if (localStorage.getItem(KEYS.modelConfig)) {
     stages.push({ name: 'Migrating settings...', fn: () => migrateModelConfig(userId) })
-  }
-
-  if (localStorage.getItem(KEYS.userContext)) {
-    stages.push({ name: 'Migrating profile...', fn: () => migrateUserContext(userId) })
   }
 
   if (localStorage.getItem(KEYS.conversationTone)) {
@@ -390,31 +385,6 @@ async function migrateModelConfig(userId: string): Promise<void> {
 
   if (error) {
     console.error('Error inserting model config:', error)
-  }
-}
-
-/**
- * Migrate user context
- */
-async function migrateUserContext(userId: string): Promise<void> {
-  const raw = localStorage.getItem(KEYS.userContext)
-  if (!raw) return
-
-  const context: UserContext = JSON.parse(raw)
-
-  // Update the user's profile with context data
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      profile: context.profile,
-      interests: context.interests,
-      goals: context.goals,
-      current_level: context.currentLevel,
-    })
-    .eq('id', userId)
-
-  if (error) {
-    console.error('Error updating profile with user context:', error)
   }
 }
 

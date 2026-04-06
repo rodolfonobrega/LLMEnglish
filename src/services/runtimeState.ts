@@ -1,11 +1,10 @@
-import { DEFAULT_MODEL_CONFIG, type ConversationTone, type ModelConfig, type UserContext } from '../types/settings'
+import { DEFAULT_MODEL_CONFIG, type ConversationTone, type ModelConfig } from '../types/settings'
 import type { GamificationState } from '../types/gamification'
 import {
   getApiKey,
   getConversationTone,
   getGamification,
   getModelConfig,
-  getUserContext,
 } from './supabase/storage'
 
 const DEFAULT_GAMIFICATION: GamificationState = {
@@ -19,17 +18,9 @@ const DEFAULT_GAMIFICATION: GamificationState = {
   badges: [],
 }
 
-const DEFAULT_USER_CONTEXT: UserContext = {
-  profile: '',
-  interests: '',
-  goals: '',
-  currentLevel: 'Intermediate',
-}
-
 type RuntimeState = {
   modelConfig: ModelConfig
   conversationTone: ConversationTone
-  userContext: UserContext
   gamification: GamificationState
   apiKeys: Record<'openai' | 'gemini' | 'groq', string>
 }
@@ -43,7 +34,6 @@ const envKeys = {
 let state: RuntimeState = {
   modelConfig: { ...DEFAULT_MODEL_CONFIG },
   conversationTone: 'balanced',
-  userContext: { ...DEFAULT_USER_CONTEXT },
   gamification: { ...DEFAULT_GAMIFICATION },
   apiKeys: { ...envKeys },
 }
@@ -61,10 +51,6 @@ export function getRuntimeModelConfig(): ModelConfig {
 
 export function getRuntimeConversationTone(): ConversationTone {
   return state.conversationTone
-}
-
-export function getRuntimeUserContext(): UserContext {
-  return state.userContext
 }
 
 export function getRuntimeGamification(): GamificationState {
@@ -85,11 +71,6 @@ export function setRuntimeConversationTone(tone: ConversationTone): void {
   emitRuntimeUpdate()
 }
 
-export function setRuntimeUserContext(userContext: UserContext): void {
-  state = { ...state, userContext }
-  emitRuntimeUpdate()
-}
-
 export function setRuntimeGamification(gamification: GamificationState): void {
   state = { ...state, gamification }
   emitRuntimeUpdate()
@@ -107,10 +88,9 @@ export function setRuntimeApiKeys(keys: Partial<Record<'openai' | 'gemini' | 'gr
 }
 
 export async function hydrateRuntimeState(): Promise<void> {
-  const [modelConfig, conversationTone, userContext, gamification, openaiKey, geminiKey, groqKey] = await Promise.all([
+  const [modelConfig, conversationTone, gamification, openaiKey, geminiKey, groqKey] = await Promise.all([
     getModelConfig().catch(() => ({ ...DEFAULT_MODEL_CONFIG })),
     getConversationTone().catch(() => 'balanced' as ConversationTone),
-    getUserContext().catch(() => ({ ...DEFAULT_USER_CONTEXT })),
     getGamification().catch(() => ({ ...DEFAULT_GAMIFICATION })),
     getApiKey('openai').catch(() => envKeys.openai),
     getApiKey('gemini').catch(() => envKeys.gemini),
@@ -120,7 +100,6 @@ export async function hydrateRuntimeState(): Promise<void> {
   state = {
     modelConfig,
     conversationTone,
-    userContext,
     gamification,
     apiKeys: {
       openai: openaiKey || envKeys.openai,
@@ -135,7 +114,6 @@ export function resetRuntimeState(): void {
   state = {
     modelConfig: { ...DEFAULT_MODEL_CONFIG },
     conversationTone: 'balanced',
-    userContext: { ...DEFAULT_USER_CONTEXT },
     gamification: { ...DEFAULT_GAMIFICATION },
     apiKeys: { ...envKeys },
   }

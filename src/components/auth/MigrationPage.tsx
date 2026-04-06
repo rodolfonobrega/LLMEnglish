@@ -30,7 +30,6 @@ interface MigrationData {
   sessionReportsCount: number
   hasPathProgress: boolean
   hasModelConfig: boolean
-  hasUserContext: boolean
   errorPatternsCount: number
   errorSnapshotsCount: number
 }
@@ -60,7 +59,6 @@ export function MigrationPage() {
       sessionReportsCount: 0,
       hasPathProgress: false,
       hasModelConfig: false,
-      hasUserContext: false,
       errorPatternsCount: 0,
       errorSnapshotsCount: 0,
     }
@@ -88,7 +86,6 @@ export function MigrationPage() {
 
       data.hasPathProgress = !!localStorage.getItem(LOCAL_STORAGE_KEYS.pathProgress)
       data.hasModelConfig = !!localStorage.getItem(LOCAL_STORAGE_KEYS.modelConfig)
-      data.hasUserContext = !!localStorage.getItem(LOCAL_STORAGE_KEYS.userContext)
 
       const errorPatterns = localStorage.getItem(LOCAL_STORAGE_KEYS.errorPatterns)
       if (errorPatterns) {
@@ -109,7 +106,6 @@ export function MigrationPage() {
         data.sessionReportsCount > 0 ||
         data.hasPathProgress ||
         data.hasModelConfig ||
-        data.hasUserContext ||
         data.errorPatternsCount > 0 ||
         data.errorSnapshotsCount > 0
     } catch (err) {
@@ -263,14 +259,6 @@ export function MigrationPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Model configuration
-                </li>
-              )}
-              {migrationData.hasUserContext && (
-                <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  User profile settings
                 </li>
               )}
               {migrationData.errorPatternsCount > 0 && (

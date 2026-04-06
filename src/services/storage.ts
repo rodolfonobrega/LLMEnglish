@@ -10,17 +10,13 @@
 import type { Card } from '../types/card';
 import type { GamificationState, SessionReport } from '../types/gamification';
 import type { LiveSession, PathProgress } from '../types/scenario';
-import type { ModelConfig, ConversationTone, UserContext } from '../types/settings';
-
-// Re-export UserContext from canonical source (per Pitfall 6 in RESEARCH.md)
-export type { UserContext } from '../types/settings';
+import type { ModelConfig, ConversationTone } from '../types/settings';
 
 import {
   getRuntimeApiKey,
   getRuntimeConversationTone,
   getRuntimeGamification,
   getRuntimeModelConfig,
-  getRuntimeUserContext,
 } from './runtimeState'
 
 import {
@@ -49,8 +45,6 @@ import {
   saveModelConfig as supabaseSaveModelConfig,
   getConversationTone as supabaseGetConversationTone,
   saveConversationTone as supabaseSaveConversationTone,
-  getUserContext as supabaseGetUserContext,
-  saveUserContext as supabaseSaveUserContext,
   saveApiKey as supabaseSaveApiKey,
   getApiKey as supabaseGetApiKey,
   saveApiKeys as supabaseSaveApiKeys,
@@ -75,10 +69,6 @@ export function getGamification(): GamificationState {
 
 export function getConversationTone(): ConversationTone {
   return getRuntimeConversationTone();
-}
-
-export function getUserContext(): UserContext {
-  return getRuntimeUserContext();
 }
 
 // Named API key wrappers (D-10, D-11)
@@ -271,14 +261,6 @@ export async function saveConversationTone(tone: ConversationTone): Promise<void
     return;
   }
   return supabaseSaveConversationTone(tone);
-}
-
-export async function saveUserContext(context: UserContext): Promise<void> {
-  if (isDevMode()) {
-    console.warn('saveUserContext: write ignored in dev mode');
-    return;
-  }
-  return supabaseSaveUserContext(context);
 }
 
 export async function saveApiKey(provider: 'openai' | 'gemini' | 'groq', key: string): Promise<void> {

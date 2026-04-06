@@ -3,18 +3,11 @@ import { jsPDF } from 'jspdf';
 import { Loader2, FileText, Download, Clapperboard } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { chatCompletion } from '../../services/openai';
-import { getConversationTone, getUserContext } from '../../services/storage';
+import { getConversationTone } from '../../services/storage';
 import { getCustomDialoguePrompt } from '../../utils/prompts';
-import type { ConversationTone, UserContext } from '../../types/settings';
+import type { ConversationTone } from '../../types/settings';
 
 export function PracticePage() {
-    const [context, setContext] = useState<UserContext>({
-        profile: '',
-        interests: '',
-        goals: '',
-        currentLevel: 'Intermediate',
-    });
-
     const [situation, setSituation] = useState('');
     const [generatedDialogue, setGeneratedDialogue] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -23,11 +16,7 @@ export function PracticePage() {
 
     useEffect(() => {
         void (async () => {
-            const [userContext, conversationTone] = await Promise.all([
-                getUserContext(),
-                getConversationTone(),
-            ]);
-            setContext(userContext);
+            const conversationTone = await getConversationTone();
             setTone(conversationTone);
         })();
     }, []);
@@ -45,10 +34,6 @@ export function PracticePage() {
         try {
             const prompt = getCustomDialoguePrompt(
                 situation,
-                context.profile,
-                context.interests,
-                context.goals,
-                context.currentLevel,
                 tone
             );
 

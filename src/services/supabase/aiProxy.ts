@@ -8,6 +8,7 @@
  */
 
 import { supabase } from './client'
+import type { Source } from '../../types/settings'
 
 const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`
 
@@ -28,8 +29,8 @@ async function getSessionToken(): Promise<string> {
  * Generic function to call the AI proxy
  */
 async function callAIProxy(request: {
-  action: 'chat' | 'tts' | 'stt' | 'image' | 'get_key'
-  provider?: string
+  action: 'chat' | 'tts' | 'stt' | 'image' | 'get_key' | 'get_vertex_live_token'
+  source?: string
   model?: string
   [key: string]: unknown
 }): Promise<unknown> {
@@ -60,7 +61,7 @@ export interface ChatCompletionOptions {
   systemPrompt: string
   userMessage: string
   model?: string
-  provider?: 'openai' | 'gemini' | 'groq'
+  source?: Source
   temperature?: number
 }
 
@@ -70,7 +71,7 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<st
     systemPrompt: options.systemPrompt,
     userMessage: options.userMessage,
     model: options.model,
-    provider: options.provider,
+    source: options.source,
     temperature: options.temperature ?? 0.8,
   }) as { content: string }
 
@@ -85,7 +86,7 @@ export interface ChatCompletionWithImageOptions {
   systemPrompt: string
   imageUrl: string
   model?: string
-  provider?: 'openai' | 'gemini'
+  source?: Source
 }
 
 export async function chatCompletionWithImage(options: ChatCompletionWithImageOptions): Promise<string> {
@@ -94,7 +95,7 @@ export async function chatCompletionWithImage(options: ChatCompletionWithImageOp
     systemPrompt: options.systemPrompt,
     imageUrl: options.imageUrl,
     model: options.model,
-    provider: options.provider,
+    source: options.source,
     imageMode: true,
   }) as { content: string }
 
@@ -109,7 +110,7 @@ export interface TextToSpeechOptions {
   text: string
   voice?: string
   model?: string
-  provider?: 'openai' | 'gemini' | 'groq'
+  source?: Source
 }
 
 export async function textToSpeech(options: TextToSpeechOptions): Promise<string> {
@@ -118,7 +119,7 @@ export async function textToSpeech(options: TextToSpeechOptions): Promise<string
     text: options.text,
     voice: options.voice,
     model: options.model,
-    provider: options.provider,
+    source: options.source,
   }) as { audio: string } // base64 audio
 
   return result.audio
@@ -131,7 +132,7 @@ export async function textToSpeech(options: TextToSpeechOptions): Promise<string
 export interface SpeechToTextOptions {
   audioBlob: Blob
   model?: string
-  provider?: 'openai' | 'gemini' | 'groq'
+  source?: Source
   language?: string
 }
 
@@ -149,7 +150,7 @@ export async function speechToText(options: SpeechToTextOptions): Promise<string
     audio: base64Audio,
     mimeType: options.audioBlob.type || 'audio/webm',
     model: options.model,
-    provider: options.provider,
+    source: options.source,
     language: options.language || 'en',
   }) as { text: string }
 
@@ -163,7 +164,7 @@ export async function speechToText(options: SpeechToTextOptions): Promise<string
 export interface ImageGenerationOptions {
   prompt: string
   model?: string
-  provider?: 'openai' | 'gemini'
+  source?: Source
   size?: string
   aspectRatio?: string
   numberOfImages?: number
@@ -174,7 +175,7 @@ export async function generateImage(options: ImageGenerationOptions): Promise<st
     action: 'image',
     prompt: options.prompt,
     model: options.model,
-    provider: options.provider,
+    source: options.source,
     size: options.size,
     aspectRatio: options.aspectRatio,
     numberOfImages: options.numberOfImages,
@@ -191,17 +192,32 @@ export async function generateImage(options: ImageGenerationOptions): Promise<st
 // ============================================================================
 
 /**
- * For Gemini Live, we need a direct connection since it uses WebSocket.
- * The Edge Function can provide the API key for the session.
+ * For Gemini Live via Google AI Studio, we need a direct connection since it uses WebSocket.
+ * The Edge Function provides the API key for the session.
  */
 
 export async function getGeminiKeyForLive(): Promise<string> {
   const result = await callAIProxy({
     action: 'get_key',
-    provider: 'gemini',
+    source: 'genai',
   }) as { key: string }
 
   return result.key
+}
+
+// ============================================================================
+// VERTEX AI LIVE AUDIO
+// ============================================================================
+
+/**
+ * For Gemini Live via Vertex AI, the Edge Function generates a short-lived token.
+ */
+export async function getVertexLiveToken(): Promise<string> {
+  const result = await callAIProxy({
+    action: 'get_vertex_live_token',
+  }) as { token: string }
+
+  return result.token
 }
 
 // ============================================================================

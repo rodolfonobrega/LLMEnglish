@@ -49,9 +49,9 @@ describe('openai service proxy dispatch', () => {
     proxyImageMock.mockReset();
   });
 
-  it('uses primary chat provider successfully', async () => {
-    config.chatProvider = 'openai';
-    config.chatModel = 'gpt-4o-mini';
+  it('uses primary chat source successfully', async () => {
+    config.chatSource = 'openai';
+    config.chatModel = 'gpt-5-nano';
     proxyChatMock.mockResolvedValue('ok from openai');
 
     const result = await chatCompletion('sys', 'hi');
@@ -59,17 +59,17 @@ describe('openai service proxy dispatch', () => {
     expect(result).toBe('ok from openai');
     expect(proxyChatMock).toHaveBeenCalledTimes(1);
     expect(proxyChatMock).toHaveBeenCalledWith({
-      provider: 'openai',
-      model: 'gpt-4o-mini',
+      source: 'openai',
+      model: 'gpt-5-nano',
       systemPrompt: 'sys',
       userMessage: 'hi',
     });
   });
 
   it('falls back on chat when primary fails', async () => {
-    config.chatProvider = 'openai';
+    config.chatSource = 'openai';
     config.chatModel = 'gpt-primary';
-    config.chatFallbackProvider = 'openai';
+    config.chatFallbackSource = 'openai';
     config.chatFallbackModel = 'gpt-fallback';
 
     proxyChatMock
@@ -83,9 +83,9 @@ describe('openai service proxy dispatch', () => {
   });
 
   it('falls back in TTS', async () => {
-    config.ttsProvider = 'openai';
+    config.ttsSource = 'openai';
     config.ttsModel = 'tts-primary';
-    config.ttsFallbackProvider = 'openai';
+    config.ttsFallbackSource = 'openai';
     config.ttsFallbackModel = 'tts-fallback';
     config.ttsVoice = 'nova';
 
@@ -100,23 +100,23 @@ describe('openai service proxy dispatch', () => {
   });
 
   it('generates image through proxy', async () => {
-    config.imageProvider = 'openai';
+    config.imageSource = 'openai';
     config.imageModel = 'gpt-image-1-mini';
     proxyImageMock.mockResolvedValue('data:image/png;base64,abc123');
 
     const image = await generateImage('a cat');
     expect(image).toBe('data:image/png;base64,abc123');
     expect(proxyImageMock).toHaveBeenCalledWith({
-      provider: 'openai',
+      source: 'openai',
       model: 'gpt-image-1-mini',
       prompt: 'a cat',
     });
   });
 
   it('falls back in speech-to-text', async () => {
-    config.sttProvider = 'openai';
+    config.sttSource = 'openai';
     config.sttModel = 'whisper-1';
-    config.sttFallbackProvider = 'groq';
+    config.sttFallbackSource = 'groq';
     config.sttFallbackModel = 'whisper-large-v3-turbo';
 
     proxySTTMock
@@ -130,8 +130,8 @@ describe('openai service proxy dispatch', () => {
   });
 
   it('throws when proxy fails with no fallback configured', async () => {
-    config.chatProvider = 'openai';
-    config.chatModel = 'gpt-4o-mini';
+    config.chatSource = 'openai';
+    config.chatModel = 'gpt-5-nano';
     // No fallback configured
     proxyChatMock.mockRejectedValue(new Error('Not authenticated'));
 
@@ -139,15 +139,43 @@ describe('openai service proxy dispatch', () => {
     expect(proxyChatMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses detectProvider for model overrides in chatCompletion', async () => {
+  it('uses detectSource for gemini model overrides in chatCompletion', async () => {
     proxyChatMock.mockResolvedValue('gemini response');
 
     const result = await chatCompletion('sys', 'hi', 'gemini-2.5-flash');
 
     expect(result).toBe('gemini response');
     expect(proxyChatMock).toHaveBeenCalledWith({
-      provider: 'gemini',
+      source: 'genai',
       model: 'gemini-2.5-flash',
+      systemPrompt: 'sys',
+      userMessage: 'hi',
+    });
+  });
+
+  it('uses detectSource for OpenRouter model overrides (IDs with /)', async () => {
+    proxyChatMock.mockResolvedValue('openrouter response');
+
+    const result = await chatCompletion('sys', 'hi', 'anthropic/claude-sonnet-4');
+
+    expect(result).toBe('openrouter response');
+    expect(proxyChatMock).toHaveBeenCalledWith({
+      source: 'openrouter',
+      model: 'anthropic/claude-sonnet-4',
+      systemPrompt: 'sys',
+      userMessage: 'hi',
+    });
+  });
+
+  it('uses detectSource for Groq model overrides with slash-based IDs', async () => {
+    proxyChatMock.mockResolvedValue('groq response');
+
+    const result = await chatCompletion('sys', 'hi', 'meta-llama/llama-4-maverick-17b-128e-instruct');
+
+    expect(result).toBe('groq response');
+    expect(proxyChatMock).toHaveBeenCalledWith({
+      source: 'groq',
+      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
       systemPrompt: 'sys',
       userMessage: 'hi',
     });

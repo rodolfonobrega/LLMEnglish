@@ -6,6 +6,7 @@ vi.mock('./runtimeState', () => ({
   getRuntimeGamification: vi.fn(() => ({ xp: 100, level: 2 })),
   getRuntimeConversationTone: vi.fn(() => 'balanced'),
   getRuntimeApiKey: vi.fn((provider: string) => `mock-${provider}-key`),
+  setRuntimeCredentials: vi.fn(),
 }));
 
 // Mock supabase/storage before importing storage
@@ -95,10 +96,10 @@ describe('Storage Facade', () => {
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getGeminiKey calls getRuntimeApiKey with gemini', () => {
+    it('getGeminiKey calls getRuntimeApiKey with genai', () => {
       const result = storage.getGeminiKey();
-      expect(getRuntimeApiKey).toHaveBeenCalledWith('gemini');
-      expect(result).toBe('mock-gemini-key');
+      expect(getRuntimeApiKey).toHaveBeenCalledWith('genai');
+      expect(result).toBe('mock-genai-key');
       expect(result).not.toBeInstanceOf(Promise);
     });
 
@@ -406,9 +407,9 @@ describe('Storage Facade', () => {
       expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('openai', 'test-key');
     });
 
-    it('setGeminiKey calls supabase saveApiKey with gemini', async () => {
+    it('setGeminiKey calls supabase saveApiKey with genai', async () => {
       await storage.setGeminiKey('test-key');
-      expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('gemini', 'test-key');
+      expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('genai', 'test-key');
     });
 
     it('setGroqKey calls supabase saveApiKey with groq', async () => {

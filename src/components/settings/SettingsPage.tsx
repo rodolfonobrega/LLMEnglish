@@ -10,9 +10,9 @@ import {
   setRuntimeConversationTone,
   setRuntimeModelConfig,
 } from '../../services/runtimeState';
-import type { ModelConfig, Provider, ConversationTone } from '../../types/settings';
+import type { ModelConfig, Source, ModelOption, ConversationTone } from '../../types/settings';
 import {
-  DEFAULT_MODEL_CONFIG,
+  DEFAULT_MODEL_CONFIG, SOURCE_LABELS,
   CHAT_MODELS, STT_MODELS, TTS_MODELS,
   OPENAI_TTS_VOICES, GEMINI_TTS_VOICES, GROQ_TTS_VOICES,
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
@@ -23,22 +23,36 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
 
-function providerLabel(provider: Provider | 'openai' | 'gemini'): string {
-  if (provider === 'groq') return 'Groq';
-  if (provider === 'gemini') return 'Google Gemini';
-  return 'OpenAI';
+function sourceLabel(source: Source): string {
+  return SOURCE_LABELS[source];
 }
 
-function ttsVoicesForProvider(provider: Provider) {
-  if (provider === 'gemini') return GEMINI_TTS_VOICES;
-  if (provider === 'groq') return GROQ_TTS_VOICES;
+function ttsVoicesForSource(source: Source) {
+  if (source === 'genai' || source === 'vertex') return GEMINI_TTS_VOICES;
+  if (source === 'groq') return GROQ_TTS_VOICES;
   return OPENAI_TTS_VOICES;
 }
 
-function defaultTtsVoice(provider: Provider): string {
-  if (provider === 'gemini') return 'Kore';
-  if (provider === 'groq') return 'hannah';
-  return 'nova';
+function defaultTtsVoice(source: Source): string {
+  if (source === 'genai' || source === 'vertex') return 'Kore';
+  if (source === 'groq') return 'hannah';
+  return 'alloy';
+}
+
+/** Parse composite "source:model" select value. */
+function parseComposite(composite: string): { source: Source; model: string } {
+  const [source, ...rest] = composite.split(':');
+  return { source: source as Source, model: rest.join(':') };
+}
+
+/** Build composite "source:model" select value. */
+function compositeValue(model: string, source: Source): string {
+  return `${source}:${model}`;
+}
+
+/** Transform ModelOption[] into flat { value, label } for the Select component. */
+function toSelectOptions(models: readonly ModelOption[]) {
+  return models.map(m => ({ value: compositeValue(m.value, m.source), label: m.label }));
 }
 
 const NONE_OPTION = { value: '', label: 'Nenhum (sem fallback)' };
@@ -49,6 +63,9 @@ export function SettingsPage() {
   const [openaiKey, setOpenaiKeyState] = useState('');
   const [geminiKey, setGeminiKeyState] = useState('');
   const [groqKey, setGroqKeyState] = useState('');
+  const [openrouterKey, setOpenrouterKeyState] = useState('');
+  const [vertexProjectId, setVertexProjectId] = useState('');
+  const [vertexRegion, setVertexRegion] = useState('us-central1');
   const [config, setConfig] = useState<ModelConfig>({ ...DEFAULT_MODEL_CONFIG });
   const [tone, setTone] = useState<ConversationTone>('balanced');
   const [saved, setSaved] = useState(false);
@@ -68,84 +85,82 @@ export function SettingsPage() {
     setConfig(prev => ({ ...prev, ...partial }));
   };
 
-  const handleChatModelChange = (model: string) => {
-    const entry = CHAT_MODELS.find(m => m.value === model);
-    updateConfig({ chatModel: model, chatProvider: entry?.provider || 'openai' });
+  const handleChatModelChange = (composite: string) => {
+    const { source, model } = parseComposite(composite);
+    updateConfig({ chatModel: model, chatSource: source });
   };
 
-  const handleSttModelChange = (model: string) => {
-    const entry = STT_MODELS.find(m => m.value === model);
-    updateConfig({ sttModel: model, sttProvider: entry?.provider || 'openai' });
+  const handleSttModelChange = (composite: string) => {
+    const { source, model } = parseComposite(composite);
+    updateConfig({ sttModel: model, sttSource: source });
   };
 
-  const handleTtsModelChange = (model: string) => {
-    const entry = TTS_MODELS.find(m => m.value === model);
-    const newProvider = entry?.provider || 'openai';
-    updateConfig({ ttsModel: model, ttsProvider: newProvider, ttsVoice: defaultTtsVoice(newProvider) });
+  const handleTtsModelChange = (composite: string) => {
+    const { source, model } = parseComposite(composite);
+    updateConfig({ ttsModel: model, ttsSource: source, ttsVoice: defaultTtsVoice(source) });
   };
 
-  const handleImageModelChange = (model: string) => {
-    const entry = IMAGE_MODELS.find(m => m.value === model);
-    updateConfig({ imageModel: model, imageProvider: entry?.provider || 'openai' });
+  const handleImageModelChange = (composite: string) => {
+    const { source, model } = parseComposite(composite);
+    updateConfig({ imageModel: model, imageSource: source as ModelConfig['imageSource'] });
   };
 
-  const handleLiveModelChange = (model: string) => {
-    const entry = LIVE_MODELS.find(m => m.value === model);
-    const newProvider = entry?.provider || 'gemini';
+  const handleLiveModelChange = (composite: string) => {
+    const { source, model } = parseComposite(composite);
     updateConfig({
       liveModel: model,
-      liveProvider: newProvider,
-      liveVoice: newProvider === 'openai' ? 'marin' : 'Aoede',
+      liveSource: source as ModelConfig['liveSource'],
+      liveVoice: source === 'openai' ? 'marin' : 'Aoede',
     });
   };
 
-  const handleChatFallbackChange = (model: string) => {
-    if (!model) {
-      updateConfig({ chatFallbackModel: undefined, chatFallbackProvider: undefined });
+  const handleChatFallbackChange = (composite: string) => {
+    if (!composite) {
+      updateConfig({ chatFallbackModel: undefined, chatFallbackSource: undefined });
       return;
     }
-    const entry = CHAT_MODELS.find(m => m.value === model);
-    updateConfig({ chatFallbackModel: model, chatFallbackProvider: entry?.provider || 'openai' });
+    const { source, model } = parseComposite(composite);
+    updateConfig({ chatFallbackModel: model, chatFallbackSource: source });
   };
 
-  const handleSttFallbackChange = (model: string) => {
-    if (!model) {
-      updateConfig({ sttFallbackModel: undefined, sttFallbackProvider: undefined });
+  const handleSttFallbackChange = (composite: string) => {
+    if (!composite) {
+      updateConfig({ sttFallbackModel: undefined, sttFallbackSource: undefined });
       return;
     }
-    const entry = STT_MODELS.find(m => m.value === model);
-    updateConfig({ sttFallbackModel: model, sttFallbackProvider: entry?.provider || 'openai' });
+    const { source, model } = parseComposite(composite);
+    updateConfig({ sttFallbackModel: model, sttFallbackSource: source });
   };
 
-  const handleTtsFallbackChange = (model: string) => {
-    if (!model) {
-      updateConfig({ ttsFallbackModel: undefined, ttsFallbackProvider: undefined, ttsFallbackVoice: undefined });
+  const handleTtsFallbackChange = (composite: string) => {
+    if (!composite) {
+      updateConfig({ ttsFallbackModel: undefined, ttsFallbackSource: undefined, ttsFallbackVoice: undefined });
       return;
     }
-    const entry = TTS_MODELS.find(m => m.value === model);
-    const newProvider = entry?.provider || 'openai';
+    const { source, model } = parseComposite(composite);
     updateConfig({
       ttsFallbackModel: model,
-      ttsFallbackProvider: newProvider,
-      ttsFallbackVoice: defaultTtsVoice(newProvider),
+      ttsFallbackSource: source,
+      ttsFallbackVoice: defaultTtsVoice(source),
     });
   };
 
-  const ttsVoiceOptions = ttsVoicesForProvider(config.ttsProvider);
-  const liveVoiceOptions = config.liveProvider === 'openai' ? OPENAI_LIVE_VOICES : GEMINI_LIVE_VOICES;
-  const ttsFallbackVoiceOptions = config.ttsFallbackProvider
-    ? ttsVoicesForProvider(config.ttsFallbackProvider)
+  const ttsVoiceOptions = ttsVoicesForSource(config.ttsSource);
+  const liveVoiceOptions = config.liveSource === 'openai' ? OPENAI_LIVE_VOICES : GEMINI_LIVE_VOICES;
+  const ttsFallbackVoiceOptions = config.ttsFallbackSource
+    ? ttsVoicesForSource(config.ttsFallbackSource)
     : [];
 
   const handleSave = async () => {
     if (isDevMode) return;
     try {
       // Save API keys to Supabase (encrypted via Edge Function)
-      if (openaiKey || geminiKey || groqKey) {
+      if (openaiKey || geminiKey || groqKey || openrouterKey) {
         await saveApiKeys({
           openai: openaiKey || undefined,
           gemini: geminiKey || undefined,
           groq: groqKey || undefined,
+          openrouter: openrouterKey || undefined,
         });
       }
       await saveModelConfig(config);
@@ -174,22 +189,22 @@ export function SettingsPage() {
     label,
     modelOptions,
     currentModel,
-    currentProvider,
+    currentSource,
     onModelChange,
     voiceOptions,
     currentVoice,
     onVoiceChange,
   }: {
     label: string;
-    modelOptions: { value: string; label: string; provider: Provider }[];
+    modelOptions: readonly ModelOption[];
     currentModel: string | undefined;
-    currentProvider: Provider | undefined;
-    onModelChange: (model: string) => void;
+    currentSource: Source | undefined;
+    onModelChange: (composite: string) => void;
     voiceOptions?: { value: string; label: string }[];
     currentVoice?: string;
     onVoiceChange?: (voice: string) => void;
   }) {
-    const options = [NONE_OPTION, ...modelOptions];
+    const selectOptions = [NONE_OPTION, ...toSelectOptions(modelOptions)];
     return (
       <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
         <div className="flex items-center gap-1.5">
@@ -199,10 +214,10 @@ export function SettingsPage() {
         <div className={cn('grid gap-3', voiceOptions && currentModel ? 'grid-cols-2' : 'grid-cols-1')}>
           <Select
             label="Modelo Fallback"
-            value={currentModel || ''}
-            options={options}
+            value={currentModel && currentSource ? compositeValue(currentModel, currentSource) : ''}
+            options={selectOptions}
             onChange={onModelChange}
-            hint={currentProvider ? `Provider: ${providerLabel(currentProvider)}` : undefined}
+            hint={currentSource ? `Source: ${sourceLabel(currentSource)}` : undefined}
           />
           {voiceOptions && currentModel && onVoiceChange && (
             <Select
@@ -311,6 +326,45 @@ export function SettingsPage() {
               ? 'Carregada do arquivo .env'
               : 'Obtenha em console.groq.com'}
           />
+          <Input
+            label="OpenRouter API Key"
+            type="password"
+            value={openrouterKey}
+            onChange={e => setOpenrouterKeyState(e.target.value)}
+            placeholder="sk-or-..."
+            disabled={isDevMode}
+            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
+            hint="Obtenha em openrouter.ai/keys"
+          />
+          <div className="pt-3 border-t border-border/50 space-y-3">
+            <p className="text-sm font-medium text-foreground">Vertex AI (Google Cloud)</p>
+            <p className="text-xs text-muted-foreground">No API key needed. Uses your Google Cloud project credentials.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Project ID"
+                type="text"
+                value={vertexProjectId}
+                onChange={e => setVertexProjectId(e.target.value)}
+                placeholder="my-gcp-project"
+                disabled={isDevMode}
+                className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
+                hint="Google Cloud project ID"
+              />
+              <Select
+                label="Region"
+                value={vertexRegion}
+                onChange={v => setVertexRegion(v)}
+                options={[
+                  { value: 'us-central1', label: 'us-central1 (Iowa)' },
+                  { value: 'us-east1', label: 'us-east1 (South Carolina)' },
+                  { value: 'europe-west1', label: 'europe-west1 (Belgium)' },
+                  { value: 'europe-west4', label: 'europe-west4 (Netherlands)' },
+                  { value: 'asia-east1', label: 'asia-east1 (Taiwan)' },
+                  { value: 'asia-southeast1', label: 'asia-southeast1 (Singapore)' },
+                ]}
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -406,13 +460,13 @@ export function SettingsPage() {
             desc: 'Gera prompts, avalia fala, cria cenários.',
             content: (
               <>
-                <Select label="Modelo" value={config.chatModel} options={CHAT_MODELS} onChange={handleChatModelChange}
-                  hint={`Provider: ${providerLabel(config.chatProvider)}`} />
+                <Select label="Modelo" value={compositeValue(config.chatModel, config.chatSource)} options={toSelectOptions(CHAT_MODELS)} onChange={handleChatModelChange}
+                  hint={`Source: ${sourceLabel(config.chatSource)}`} />
                 <FallbackSection
                   label="Fallback"
                   modelOptions={CHAT_MODELS}
                   currentModel={config.chatFallbackModel}
-                  currentProvider={config.chatFallbackProvider}
+                  currentSource={config.chatFallbackSource}
                   onModelChange={handleChatFallbackChange}
                 />
               </>
@@ -420,16 +474,16 @@ export function SettingsPage() {
           },
           {
             icon: Mic, color: 'coral' as const, title: 'Fala para Texto (STT)',
-            desc: `Transcreve seu áudio falado. Requer key do ${providerLabel(config.sttProvider)}.`,
+            desc: `Transcreve seu áudio falado. Requer key do ${sourceLabel(config.sttSource)}.`,
             content: (
               <>
-                <Select label="Modelo" value={config.sttModel} options={STT_MODELS} onChange={handleSttModelChange}
-                  hint={`Provider: ${providerLabel(config.sttProvider)}${config.sttProvider === 'gemini' ? ' (multimodal)' : ''}`} />
+                <Select label="Modelo" value={compositeValue(config.sttModel, config.sttSource)} options={toSelectOptions(STT_MODELS)} onChange={handleSttModelChange}
+                  hint={`Source: ${sourceLabel(config.sttSource)}${config.sttSource === 'genai' || config.sttSource === 'vertex' ? ' (multimodal)' : ''}`} />
                 <FallbackSection
                   label="Fallback"
                   modelOptions={STT_MODELS}
                   currentModel={config.sttFallbackModel}
-                  currentProvider={config.sttFallbackProvider}
+                  currentSource={config.sttFallbackSource}
                   onModelChange={handleSttFallbackChange}
                 />
               </>
@@ -437,19 +491,19 @@ export function SettingsPage() {
           },
           {
             icon: Volume2, color: 'leaf' as const, title: 'Texto para Fala (TTS)',
-            desc: `Áudio para frases e correções. Requer key do ${providerLabel(config.ttsProvider)}.`,
+            desc: `Áudio para frases e correções. Requer key do ${sourceLabel(config.ttsSource)}.`,
             content: (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <Select label="Modelo" value={config.ttsModel} options={TTS_MODELS} onChange={handleTtsModelChange}
-                    hint={`Provider: ${providerLabel(config.ttsProvider)}`} />
+                  <Select label="Modelo" value={compositeValue(config.ttsModel, config.ttsSource)} options={toSelectOptions(TTS_MODELS)} onChange={handleTtsModelChange}
+                    hint={`Source: ${sourceLabel(config.ttsSource)}`} />
                   <Select label="Voz" value={config.ttsVoice} options={ttsVoiceOptions} onChange={v => updateConfig({ ttsVoice: v })} />
                 </div>
                 <FallbackSection
                   label="Fallback"
                   modelOptions={TTS_MODELS}
                   currentModel={config.ttsFallbackModel}
-                  currentProvider={config.ttsFallbackProvider}
+                  currentSource={config.ttsFallbackSource}
                   onModelChange={handleTtsFallbackChange}
                   voiceOptions={ttsFallbackVoiceOptions}
                   currentVoice={config.ttsFallbackVoice}
@@ -462,17 +516,17 @@ export function SettingsPage() {
             icon: ImageIcon, color: 'amber' as const, title: 'Geração de Imagem',
             desc: 'Gera imagens para o modo de Desafio Visual.',
             content: (
-              <Select label="Modelo" value={config.imageModel} options={IMAGE_MODELS} onChange={handleImageModelChange}
-                hint={`Provider: ${providerLabel(config.imageProvider)}`} />
+              <Select label="Modelo" value={compositeValue(config.imageModel, config.imageSource)} options={toSelectOptions(IMAGE_MODELS)} onChange={handleImageModelChange}
+                hint={`Source: ${sourceLabel(config.imageSource)}`} />
             ),
           },
           {
             icon: Radio, color: 'coral' as const, title: 'Simulação ao Vivo',
-            desc: `Conversa de áudio em tempo real. Requer key do ${providerLabel(config.liveProvider)}.`,
+            desc: `Conversa de áudio em tempo real. Requer key do ${sourceLabel(config.liveSource)}.`,
             content: (
               <div className="grid grid-cols-2 gap-3">
-                <Select label="Modelo" value={config.liveModel} options={LIVE_MODELS} onChange={handleLiveModelChange}
-                  hint={`Provider: ${config.liveProvider === 'openai' ? 'OpenAI Realtime' : 'Gemini Live'}`} />
+                <Select label="Modelo" value={compositeValue(config.liveModel, config.liveSource)} options={toSelectOptions(LIVE_MODELS)} onChange={handleLiveModelChange}
+                  hint={`Source: ${config.liveSource === 'openai' ? 'OpenAI Realtime' : 'Gemini Live'}`} />
                 <Select label="Voz" value={config.liveVoice} options={liveVoiceOptions} onChange={v => updateConfig({ liveVoice: v })} />
               </div>
             ),

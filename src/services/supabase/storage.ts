@@ -10,7 +10,7 @@ import type { Card as SupabaseCard, CardReview, CardEvaluation, Badge, Conversat
 import type { Card } from '../../types/card'
 import type { GamificationState, SessionReport, Badge as LocalBadge } from '../../types/gamification'
 import type { LiveSession, PathProgress } from '../../types/scenario'
-import type { ModelConfig, UserContext, ConversationTone } from '../../types/settings'
+import type { ModelConfig, ConversationTone } from '../../types/settings'
 import { DEFAULT_MODEL_CONFIG } from '../../types/settings'
 import { getCurrentUser } from './auth'
 
@@ -811,52 +811,6 @@ export async function saveConversationTone(tone: ConversationTone): Promise<void
   await supabase
     .from('profiles')
     .update({ conversation_tone: tone })
-    .eq('id', userId)
-}
-
-// ============================================================================
-// USER CONTEXT
-// ============================================================================
-
-const DEFAULT_USER_CONTEXT: UserContext = {
-  profile: '',
-  interests: '',
-  goals: '',
-  currentLevel: 'Intermediate',
-}
-
-export async function getUserContext(): Promise<UserContext> {
-  const userId = getUserId()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('profile, interests, goals, current_level')
-    .eq('id', userId)
-    .single()
-
-  if (!profile) {
-    return { ...DEFAULT_USER_CONTEXT }
-  }
-
-  return {
-    profile: profile.profile || '',
-    interests: profile.interests || '',
-    goals: profile.goals || '',
-    currentLevel: profile.current_level || 'Intermediate',
-  }
-}
-
-export async function saveUserContext(context: UserContext): Promise<void> {
-  const userId = getUserId()
-
-  await supabase
-    .from('profiles')
-    .update({
-      profile: context.profile,
-      interests: context.interests,
-      goals: context.goals,
-      current_level: context.currentLevel,
-    })
     .eq('id', userId)
 }
 

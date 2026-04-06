@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   getModelConfig, saveModelConfig,
   getConversationTone, saveConversationTone,
-  getUserContext, saveUserContext,
   saveApiKeys,
 } from '../../services/storage';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,16 +9,15 @@ import {
   hydrateRuntimeState,
   setRuntimeConversationTone,
   setRuntimeModelConfig,
-  setRuntimeUserContext,
 } from '../../services/runtimeState';
-import type { ModelConfig, Provider, ConversationTone, UserContext } from '../../types/settings';
+import type { ModelConfig, Provider, ConversationTone } from '../../types/settings';
 import {
   DEFAULT_MODEL_CONFIG,
   CHAT_MODELS, STT_MODELS, TTS_MODELS,
   OPENAI_TTS_VOICES, GEMINI_TTS_VOICES, GROQ_TTS_VOICES,
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
 } from '../../types/settings';
-import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, User as UserIcon, LogOut } from 'lucide-react';
+import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -54,36 +52,20 @@ export function SettingsPage() {
   const [config, setConfig] = useState<ModelConfig>({ ...DEFAULT_MODEL_CONFIG });
   const [tone, setTone] = useState<ConversationTone>('balanced');
   const [saved, setSaved] = useState(false);
-  const [userCtx, setUserCtx] = useState<UserContext>({
-    profile: '',
-    interests: '',
-    goals: '',
-    currentLevel: 'Intermediate',
-  });
 
   useEffect(() => {
     // Load data from Supabase
     Promise.all([
       getModelConfig(),
       getConversationTone(),
-      getUserContext(),
-    ]).then(([modelConfig, conversationTone, userContext]) => {
+    ]).then(([modelConfig, conversationTone]) => {
       setConfig(modelConfig);
       setTone(conversationTone);
-      setUserCtx(userContext);
     });
   }, []);
 
   const updateConfig = (partial: Partial<ModelConfig>) => {
     setConfig(prev => ({ ...prev, ...partial }));
-  };
-
-  const handleUserCtxChange = (field: keyof UserContext, value: string) => {
-    setUserCtx((prev: UserContext) => {
-      const next = { ...prev, [field]: value };
-      void saveUserContext(next);
-      return next;
-    });
   };
 
   const handleChatModelChange = (model: string) => {
@@ -168,10 +150,8 @@ export function SettingsPage() {
       }
       await saveModelConfig(config);
       await saveConversationTone(tone);
-      await saveUserContext(userCtx);
       setRuntimeModelConfig(config);
       setRuntimeConversationTone(tone);
-      setRuntimeUserContext(userCtx);
       await hydrateRuntimeState();
       await refreshProfile(); // Update profile in auth context
       setSaved(true);
@@ -277,52 +257,6 @@ export function SettingsPage() {
           </p>
         </div>
       </div>
-
-      {/* User Profile */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
-            <UserIcon size={14} className="text-primary" />
-          </div>
-          <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Seu Perfil</h3>
-        </div>
-        <p className="text-xs text-muted-foreground text-pretty">
-          Este contexto é salvo automaticamente e usado para personalizar seus exercícios e scripts.
-        </p>
-
-        <div className="bg-card rounded-2xl p-5 border border-border space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Nível Atual</label>
-            <select
-              value={userCtx.currentLevel}
-              onChange={(e) => handleUserCtxChange('currentLevel', e.target.value)}
-              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none"
-            >
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-            </select>
-          </div>
-          <Input
-            label="Perfil / Background"
-            value={userCtx.profile}
-            onChange={e => handleUserCtxChange('profile', e.target.value)}
-            placeholder="ex: Engenheiro de Software buscando vagas no Canadá"
-          />
-          <Input
-            label="Interesses"
-            value={userCtx.interests}
-            onChange={e => handleUserCtxChange('interests', e.target.value)}
-            placeholder="ex: Tecnologia, Games, Culinária, Viagem"
-          />
-          <Input
-            label="Objetivos de Aprendizado"
-            value={userCtx.goals}
-            onChange={e => handleUserCtxChange('goals', e.target.value)}
-            placeholder="ex: Falar com mais fluência em reuniões, passar em entrevistas"
-          />
-        </div>
-      </section>
 
       {/* API Keys */}
       <section className="space-y-4">

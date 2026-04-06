@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { chatCompletion, generateImage } from '../../services/openai';
 import { getImageConfigAuto } from '../../config/images';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
-import { getUserContext, getConversationTone } from '../../services/storage';
-import type { UserContext, ConversationTone } from '../../types/settings';
-import { Sparkles, Briefcase, Coffee, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getConversationTone } from '../../services/storage';
+import type { ConversationTone } from '../../types/settings';
+import { Sparkles, Briefcase, Coffee, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { ThemeSelector } from '../shared/ThemeSelector';
@@ -53,16 +53,11 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   const [customDescription, setCustomDescription] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userContext, setUserContext] = useState<UserContext | null>(null);
   const [tone, setTone] = useState<ConversationTone>('balanced');
 
   useEffect(() => {
     void (async () => {
-      const [ctx, conversationTone] = await Promise.all([
-        getUserContext(),
-        getConversationTone(),
-      ]);
-      setUserContext(ctx);
+      const conversationTone = await getConversationTone();
       setTone(conversationTone);
     })();
   }, [mode]);
@@ -119,9 +114,6 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         activeTheme = 'custom';
         prompt = getSkillScenarioPrompt(
           customDescription.trim(),
-          userContext?.profile || '',
-          userContext?.currentLevel || 'Intermediate',
-          userContext?.goals || '',
           tone
         );
       }
@@ -258,17 +250,11 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
 
           {mode === 'skill' && (
             <div className="space-y-3">
-              <div className="bg-primary-soft border border-primary/20 rounded-xl p-4 flex gap-3 text-sm text-foreground">
-                <UserIcon size={20} className="shrink-0 text-primary" />
-                <p>
-                  <strong>Simulador Profissional</strong> vai usar seu Perfil salvo (Nível: {userContext?.currentLevel || 'Intermediate'}) para gerar uma entrevista realista. Atualize em <Link to="/settings" className="underline font-bold">Configurações</Link>.
-                </p>
-              </div>
               <SectionLabel>Descreva a Entrevista / Cenário Profissional</SectionLabel>
               <textarea
                 value={customDescription}
                 onChange={e => setCustomDescription(e.target.value)}
-                placeholder="ex: Entrevista técnica com um recrutador do Google para vaga de Front-End."
+                placeholder="Descreva o cenário. Inclua seu cargo e área para um treino mais realista. Ex: Entrevista técnica para Senior Front-End, tenho 5 anos com React e TypeScript."
                 rows={3}
                 className={cn(
                   'w-full px-4 py-3 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground/60 resize-none',

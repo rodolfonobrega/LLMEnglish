@@ -36,13 +36,6 @@ export interface ModelConfig {
   ttsFallbackVoice?: string;
 }
 
-export interface UserContext {
-  profile: string;
-  interests: string;
-  goals: string;
-  currentLevel: string;
-}
-
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   chatModel: 'gemini-3.1-flash-lite-preview',
   chatProvider: 'gemini',

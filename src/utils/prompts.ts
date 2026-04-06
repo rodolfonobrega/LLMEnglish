@@ -308,9 +308,6 @@ Respond ONLY with the JSON, nothing else.`;
 
 export function getSkillScenarioPrompt(
   customDescription: string,
-  userProfile: string,
-  userLevel: string,
-  userGoals: string,
   tone?: ConversationTone
 ): string {
   return `Generate a vivid, highly realistic Skill Training / Interview scenario for an English language learner.
@@ -318,13 +315,8 @@ export function getSkillScenarioPrompt(
 CRITICAL FOCUS: PROFESSIONAL, REALISTIC, AND FOCUSED ON THE USER'S CONTEXT.
 - This is NOT a crazy or adventurous roleplay. This is a serious simulation (e.g., job interview, technical screening, performance review, client pitch).
 
-USER'S CONTEXT:
-- English Level: ${userLevel}
-- Background/Profile: ${userProfile || 'Not specified'}
-- Learning Goals: ${userGoals || 'Not specified'}
-
 SCENARIO REQUEST: "${customDescription}"
-(Adapt this idea into a fully fleshed-out professional scenario based on the User's Context).
+(Adapt this idea into a fully fleshed-out professional scenario. Infer the user's professional context and English level from the description above).
 
 ${getToneInstruction(tone)}
 
@@ -425,21 +417,11 @@ STRICT LIMIT: Maximum 4 sentences total. Be concise — pick the single most imp
 
 export function getCustomDialoguePrompt(
   situation: string,
-  profile: string,
-  interests: string,
-  goals: string,
-  currentLevel: string,
   tone?: ConversationTone
 ): string {
   return `You are an expert English script writer creating acting scripts for English speaking practice.
 
 ${getToneInstruction(tone)}
-
-USER CONTEXT:
-- English Level: ${currentLevel}
-- Profile/Background: ${profile || 'Not specified'}
-- Interests: ${interests || 'Not specified'}
-- Learning Goals: ${goals || 'Not specified'}
 
 SCENE: "${situation}"
 

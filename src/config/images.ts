@@ -135,21 +135,22 @@ export type ImagenImageOptions = {
 export type ImageOptions = OpenAIImageOptions & ImagenImageOptions;
 
 /**
- * Get image configuration for a specific context and provider.
+ * Get image configuration for a specific context and source.
  *
  * @param context - The context (imageMode, exerciseMode, scenarioThumbnail)
- * @param provider - The provider ('openai' or 'gemini')
+ * @param source - The source ('genai'/'vertex' for Gemini, or 'openai'/'openrouter' for OpenAI)
  *
  * @example
  * getImageConfig('imageMode', 'openai')     // Returns OpenAI config
- * getImageConfig('scenarioThumbnail', 'gemini')  // Returns Imagen config
+ * getImageConfig('scenarioThumbnail', 'genai')  // Returns Imagen config
  */
 export function getImageConfig(
   context: ImageContext,
-  provider: 'openai' | 'gemini'
+  source: 'genai' | 'vertex' | 'openai' | 'openrouter'
 ): ImageOptions {
   const config = IMAGE_CONFIG[context];
-  return provider === 'openai' ? { ...config.openai } : { ...config.gemini };
+  const isGemini = source === 'genai' || source === 'vertex';
+  return isGemini ? { ...config.gemini } : { ...config.openai };
 }
 
 /**
@@ -163,6 +164,5 @@ export function getImageConfig(
  */
 export function getImageConfigAuto(context: ImageContext): ImageOptions {
   const config = getModelConfigImport();
-  const provider = config.imageProvider === 'gemini' ? 'gemini' : 'openai';
-  return getImageConfig(context, provider);
+  return getImageConfig(context, config.imageSource);
 }

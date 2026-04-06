@@ -12,7 +12,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Provider = 'openai' | 'gemini' | 'groq'
+export type Source = 'genai' | 'vertex' | 'openrouter' | 'openai' | 'groq'
 export type ConversationTone = 'casual' | 'balanced' | 'formal'
 export type CardType = 'phrase' | 'text' | 'roleplay' | 'image'
 export type ScenarioIntensity = 'normal' | 'adventurous' | 'wild' | 'skill'
@@ -301,23 +301,23 @@ export interface ModelConfig {
   id: string
   user_id: string
   chat_model: string
-  chat_provider: Provider
+  chat_provider: Source
   stt_model: string
-  stt_provider: Provider
+  stt_provider: Source
   tts_model: string
   tts_voice: string
-  tts_provider: Provider
+  tts_provider: Source
   image_model: string
-  image_provider: 'openai' | 'gemini'
+  image_provider: 'genai' | 'openai' | 'openrouter'
   live_model: string
   live_voice: string
-  live_provider: 'openai' | 'gemini'
+  live_provider: 'genai' | 'openai'
   chat_fallback_model: string | null
-  chat_fallback_provider: Provider | null
+  chat_fallback_provider: Source | null
   stt_fallback_model: string | null
-  stt_fallback_provider: Provider | null
+  stt_fallback_provider: Source | null
   tts_fallback_model: string | null
-  tts_fallback_provider: Provider | null
+  tts_fallback_provider: Source | null
   tts_fallback_voice: string | null
 }
 

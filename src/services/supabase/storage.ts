@@ -11,7 +11,7 @@ import type { Card } from '../../types/card'
 import type { GamificationState, SessionReport, Badge as LocalBadge } from '../../types/gamification'
 import type { LiveSession, PathProgress } from '../../types/scenario'
 import type { ModelConfig, ConversationTone } from '../../types/settings'
-import { DEFAULT_MODEL_CONFIG } from '../../types/settings'
+import { DEFAULT_MODEL_CONFIG, migrateModelConfig } from '../../types/settings'
 import { getCurrentUser } from './auth'
 
 // ============================================================================
@@ -715,27 +715,38 @@ export async function getModelConfig(): Promise<ModelConfig> {
     return { ...DEFAULT_MODEL_CONFIG }
   }
 
-  return {
+  // DB columns may use old _provider suffix or new _source suffix
+  const raw = {
     chatModel: config.chat_model,
     chatProvider: config.chat_provider,
+    chatSource: config.chat_source,
     sttModel: config.stt_model,
     sttProvider: config.stt_provider,
+    sttSource: config.stt_source,
     ttsModel: config.tts_model,
     ttsVoice: config.tts_voice,
     ttsProvider: config.tts_provider,
+    ttsSource: config.tts_source,
     imageModel: config.image_model,
     imageProvider: config.image_provider,
+    imageSource: config.image_source,
     liveModel: config.live_model,
     liveVoice: config.live_voice,
     liveProvider: config.live_provider,
+    liveSource: config.live_source,
     chatFallbackModel: config.chat_fallback_model || undefined,
     chatFallbackProvider: config.chat_fallback_provider || undefined,
+    chatFallbackSource: config.chat_fallback_source || undefined,
     sttFallbackModel: config.stt_fallback_model || undefined,
     sttFallbackProvider: config.stt_fallback_provider || undefined,
+    sttFallbackSource: config.stt_fallback_source || undefined,
     ttsFallbackModel: config.tts_fallback_model || undefined,
     ttsFallbackProvider: config.tts_fallback_provider || undefined,
+    ttsFallbackSource: config.tts_fallback_source || undefined,
     ttsFallbackVoice: config.tts_fallback_voice || undefined,
   }
+
+  return migrateModelConfig(raw as Record<string, unknown>)
 }
 
 export async function saveModelConfig(config: ModelConfig): Promise<void> {
@@ -751,23 +762,23 @@ export async function saveModelConfig(config: ModelConfig): Promise<void> {
   const configData = {
     user_id: userId,
     chat_model: config.chatModel,
-    chat_provider: config.chatProvider,
+    chat_source: config.chatSource,
     stt_model: config.sttModel,
-    stt_provider: config.sttProvider,
+    stt_source: config.sttSource,
     tts_model: config.ttsModel,
     tts_voice: config.ttsVoice,
-    tts_provider: config.ttsProvider,
+    tts_source: config.ttsSource,
     image_model: config.imageModel,
-    image_provider: config.imageProvider,
+    image_source: config.imageSource,
     live_model: config.liveModel,
     live_voice: config.liveVoice,
-    live_provider: config.liveProvider,
+    live_source: config.liveSource,
     chat_fallback_model: config.chatFallbackModel || null,
-    chat_fallback_provider: config.chatFallbackProvider || null,
+    chat_fallback_source: config.chatFallbackSource || null,
     stt_fallback_model: config.sttFallbackModel || null,
-    stt_fallback_provider: config.sttFallbackProvider || null,
+    stt_fallback_source: config.sttFallbackSource || null,
     tts_fallback_model: config.ttsFallbackModel || null,
-    tts_fallback_provider: config.ttsFallbackProvider || null,
+    tts_fallback_source: config.ttsFallbackSource || null,
     tts_fallback_voice: config.ttsFallbackVoice || null,
   }
 
@@ -819,10 +830,26 @@ export async function saveConversationTone(tone: ConversationTone): Promise<void
 // ============================================================================
 
 /**
+ * Map source name to DB provider column name.
+ * The DB still uses 'gemini' in column names; 'genai' source maps to 'gemini' key.
+ * Only sources with existing DB columns are mapped; others are ignored.
+ */
+function sourceToDbProvider(source: string): string | null {
+  const mapping: Record<string, string> = {
+    genai: 'gemini',
+    openai: 'openai',
+    groq: 'groq',
+  }
+  return mapping[source] ?? null
+}
+
+/**
  * Save an API key (encrypted via Edge Function)
  */
-export async function saveApiKey(provider: 'openai' | 'gemini' | 'groq', key: string): Promise<void> {
-  // This will call the Edge Function which handles encryption
+export async function saveApiKey(source: string, key: string): Promise<void> {
+  const provider = sourceToDbProvider(source)
+  if (!provider) return // no DB column for this source yet
+
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
     throw new Error('Not authenticated')
@@ -852,7 +879,10 @@ export async function saveApiKey(provider: 'openai' | 'gemini' | 'groq', key: st
 /**
  * Get an API key (decrypted via Edge Function)
  */
-export async function getApiKey(provider: 'openai' | 'gemini' | 'groq'): Promise<string> {
+export async function getApiKey(source: string): Promise<string> {
+  const provider = sourceToDbProvider(source)
+  if (!provider) return '' // no DB column for this source yet
+
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
     throw new Error('Not authenticated')
@@ -884,15 +914,22 @@ export async function getApiKey(provider: 'openai' | 'gemini' | 'groq'): Promise
 /**
  * Save all API keys at once
  */
-export async function saveApiKeys(keys: {
-  openai?: string
-  gemini?: string
-  groq?: string
-}): Promise<void> {
+export async function saveApiKeys(keys: Record<string, string>): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
     throw new Error('Not authenticated')
   }
+
+  // Map source names to DB provider names, skip unmapped sources
+  const mapped: Record<string, string> = {}
+  for (const [source, key] of Object.entries(keys)) {
+    const provider = sourceToDbProvider(source)
+    if (provider) {
+      mapped[provider] = key
+    }
+  }
+
+  if (Object.keys(mapped).length === 0) return
 
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`,
@@ -904,7 +941,7 @@ export async function saveApiKeys(keys: {
       },
       body: JSON.stringify({
         action: 'save_keys',
-        keys,
+        keys: mapped,
       }),
     }
   )

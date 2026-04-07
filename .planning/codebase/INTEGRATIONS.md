@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** 2026-04-01
+**Analysis Date:** 2026-04-05
 
 ## APIs & External Services
 
@@ -13,12 +13,12 @@ The app supports three AI providers with fallback capability. Users bring their 
 - Used for: Chat completions, TTS, STT, image generation, Live Audio (real-time WebSocket)
 - API base: `https://generativelanguage.googleapis.com/v1beta`
 - Auth: User-provided API key (stored encrypted via Edge Function or env var `VITE_GEMINI_API_KEY`)
-- Default models: `gemini-2.5-flash` (chat), `gemini-2.5-flash-preview-tts` (TTS), `gemini-2.5-flash-image` (image), `gemini-2.5-flash-native-audio-preview-12-2025` (live audio)
+- Default models: `gemini-3.1-flash-lite-preview` (chat, STT), `gemini-2.5-flash-preview-tts` (TTS), `gemini-3.1-flash-image-preview` (image), `gemini-3.1-flash-live-preview` (live audio)
 - Live Audio uses WebSocket via `@google/genai` SDK's `ai.live.connect()` method in `src/services/geminiLive.ts`
 - Gemini Live: bidirectional audio at 16kHz input / 24kHz output, PCM16 encoding
 
 **OpenAI:**
-- Direct REST API calls in `src/services/openai.ts`
+- Proxied via Supabase Edge Function `ai-proxy`
 - Used for: Chat completions, TTS, STT, image generation, Realtime API (WebSocket)
 - API base: `https://api.openai.com/v1`
 - Auth: User-provided API key (stored encrypted or env var `VITE_OPENAI_API_KEY`)
@@ -27,16 +27,17 @@ The app supports three AI providers with fallback capability. Users bring their 
 
 **Groq:**
 - Proxied via Vite dev server (`/api/groq` -> `https://api.groq.com/openai/v1`) in development
-- Direct API calls in `src/services/openai.ts` using proxy path
-- Used for: Chat completions (Llama, Qwen models), TTS (Orpheus, 200 char limit), STT (Whisper)
+- Also supported through Supabase Edge Function proxy in production
+- Used for: Chat completions (Llama, Qwen, Kimi K2, GPT OSS models), TTS (Orpheus, 200 char limit), STT (Whisper)
 - Auth: User-provided API key (stored encrypted or env var `VITE_GROQ_API_KEY`)
 
 ### AI Proxy Architecture
 
-Two paths for AI API calls:
-1. **Edge Function path** (`src/services/supabase/aiProxy.ts`) - Calls Supabase Edge Function `ai-proxy` which decrypts user's stored API keys server-side and proxies the request. This is the production path.
-2. **Direct API path** (`src/services/openai.ts`) - Calls AI providers directly using API keys from runtime state. Used in dev mode or when Edge Function is unavailable.
-3. **Fallback mechanism** (`withFallback()` in `src/services/supabase/aiProxy.ts`) - Tries Edge Function first, falls back to direct API.
+All AI calls route through the Supabase Edge Function proxy. API keys are never exposed client-side.
+
+1. **Edge Function path** (`src/services/supabase/aiProxy.ts`) - Calls Supabase Edge Function `ai-proxy` which decrypts user's stored API keys server-side and proxies the request. This is the primary path for all AI operations.
+2. **Fallback mechanism** (`withFallback()` in `src/services/supabase/aiProxy.ts`) - Exists for future direct-call fallback, but currently the underscore-prefixed `_fallbackCall` parameter is unused. All calls go through the proxy.
+3. **Service-layer fallback** (`src/services/openai.ts`) - If the primary model fails, the service retries with the configured `chatFallbackModel`/`sttFallbackProvider`/`ttsFallbackProvider` from `ModelConfig`, also via the proxy.
 
 ### Supabase Edge Function: `ai-proxy`
 
@@ -53,6 +54,16 @@ Two paths for AI API calls:
 **Encryption:** AES-256-GCM for API keys stored in `encrypted_api_keys` table
 **Env vars required:** `ENCRYPTION_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
+### Image Generation
+
+**Configuration:** `src/config/images.ts`
+**Unified style:** All image contexts use a Ghibli-inspired style prompt defined as `BASE_IMAGE_STYLE_PROMPT` - "Warm, inviting illustration in a soft anime/cartoon style inspired by Studio Ghibli..."
+**Contexts:**
+- `imageMode` - Discovery page image challenges (square, medium quality)
+- `exerciseMode` - Exercise mode image type (square, medium quality)
+- `scenarioThumbnail` - Live roleplay scenario thumbnails (landscape/16:9, low quality for speed)
+**Provider-specific parameters:** OpenAI GPT Image (size, quality, format, compression, background, moderation) and Google Imagen (aspectRatio, imageSize, personGeneration, numberOfImages) auto-selected based on user's provider setting.
+
 ## Data Storage
 
 ### Database: Supabase (PostgreSQL 17)
@@ -66,7 +77,7 @@ Two paths for AI API calls:
 **Schema location:** `supabase/migrations/20260324221155_initial_schema.sql`
 
 **Tables (from storage operations in `src/services/supabase/storage.ts`):**
-- `profiles` - User profile data (level, interests, goals, conversation tone)
+- `profiles` - User profile data (conversation tone)
 - `cards` - Flashcards with SM-2 spaced repetition data
 - `card_reviews` - Review history per card
 - `card_evaluations` - Latest evaluation per card (score, corrections, feedback)
@@ -114,12 +125,16 @@ Two paths for AI API calls:
 2. Supabase redirects to provider, then back to site URL
 3. `onAuthStateChange` listener in `AuthProvider` catches `SIGNED_IN` event
 4. Profile auto-created via `getOrCreateProfile()` if not exists
-5. `hydrateRuntimeState()` loads model config, API keys, gamification from Supabase
+5. `hydrateRuntimeState()` loads model config, API keys, conversation tone, gamification from Supabase
 6. Session token stored for key derivation via `src/utils/encryption.ts`
 
 **Dev Mode Bypass:**
 - When `import.meta.env.DEV` and no Supabase env vars set, auth is completely skipped
 - `ProtectedApp` renders `DiscoveryPage` directly without checking user state
+
+### Error Boundary
+- `react-error-boundary` v6.1 wraps the entire app in `src/App.tsx`
+- `ErrorBoundary` with `FallbackComponent={AppErrorFallback}` catches unhandled React errors
 
 ## Monitoring & Observability
 
@@ -193,14 +208,14 @@ The app maintains two storage implementations:
 Both expose identical function signatures. The Supabase services are async; the localStorage services are sync. Components import from the appropriate module.
 
 ### Runtime State Hydration
-On login, `hydrateRuntimeState()` in `src/services/runtimeState.ts` fetches all user data from Supabase in parallel (model config, API keys, conversation tone, gamification, user context) and stores it in a singleton. This avoids repeated async fetches during the session.
+On login, `hydrateRuntimeState()` in `src/services/runtimeState.ts` fetches all user data from Supabase in parallel (model config, API keys, conversation tone, gamification) and stores it in a singleton. This avoids repeated async fetches during the session. Note: UserContext (profile, interests, goals, level) was removed from runtime state; these fields no longer exist in the state shape.
 
 ### Multi-Provider AI Dispatch
 Each AI capability (chat, TTS, STT, image) follows a dispatch pattern:
 1. Read `ModelConfig` from runtime state
 2. Determine provider (openai/gemini/groq) and model
-3. Call provider-specific function
-4. If primary fails, try fallback provider/model if configured
+3. Call provider-specific function via Edge Function proxy (`src/services/supabase/aiProxy.ts`)
+4. If primary fails, try fallback provider/model if configured (also via proxy)
 
 ### Live Audio Sessions
 Two implementations of `ILiveSession` interface (`src/services/liveSession.ts`):
@@ -208,6 +223,9 @@ Two implementations of `ILiveSession` interface (`src/services/liveSession.ts`):
 - `OpenAIRealtimeLiveSession` - Uses raw WebSocket to OpenAI Realtime API
 Both handle microphone input (PCM16 encoding) and audio playback (scheduled AudioBuffer sources).
 
+### Image Generation Configuration
+All image contexts share a unified Ghibli-style prompt (`BASE_IMAGE_STYLE_PROMPT` in `src/config/images.ts`). Provider-specific parameters (OpenAI GPT Image vs Google Imagen) are auto-selected based on user's `imageProvider` setting. The `getImageConfigAuto()` helper reads the current provider from runtime config.
+
 ---
 
-*Integration audit: 2026-04-01*
+*Integration audit: 2026-04-05*

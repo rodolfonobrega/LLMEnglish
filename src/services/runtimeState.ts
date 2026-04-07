@@ -29,6 +29,7 @@ const envCredentials: SourceCredentials = {
   genai: import.meta.env.VITE_GEMINI_API_KEY || '',
   openai: import.meta.env.VITE_OPENAI_API_KEY || '',
   groq: import.meta.env.VITE_GROQ_API_KEY || '',
+  openrouter: import.meta.env.VITE_OPENROUTER_API_KEY || '',
 }
 
 let state: RuntimeState = {

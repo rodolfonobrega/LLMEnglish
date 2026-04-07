@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Analysis Date:** 2026-04-01
+**Analysis Date:** 2026-04-05
 
 ## Languages
 
@@ -49,6 +49,9 @@
 **PDF:**
 - `jspdf` 4.2 - PDF generation in `src/components/practice/PracticePage.tsx`
 
+**Error Handling:**
+- `react-error-boundary` 6.1 - Top-level React Error Boundary in `src/App.tsx` wrapping the entire app
+
 ## State Management
 
 **Primary Pattern:**
@@ -57,7 +60,7 @@
 
 **Runtime State:**
 - Custom singleton in `src/services/runtimeState.ts` - In-memory state hydrated from Supabase on login
-- Stores model config, API keys, conversation tone, user context, gamification
+- Stores model config, API keys, conversation tone, gamification
 - Dispatches custom DOM events (`runtime-state-update`, `gamification-update`) for reactive updates
 - API key priority: runtime state (from Supabase encrypted storage) > env vars (`VITE_*_API_KEY`)
 
@@ -104,6 +107,9 @@
 **Testing:**
 - Vitest 4.0 - Test runner, configured in `vite.config.ts`
 - `jsdom` 28 - DOM environment for tests
+- `@testing-library/react` 16.3 - React component testing utilities
+- `@testing-library/jest-dom` 6.9 - DOM assertion matchers
+- `@testing-library/user-event` 14.6 - User interaction simulation
 - `@vitest/coverage-v8` - Code coverage
 - Test setup: `src/test/setup.ts`
 
@@ -116,6 +122,7 @@
 | `react` | 19.2 | UI framework |
 | `react-dom` | 19.2 | React DOM renderer |
 | `react-router-dom` | 7.13 | Client-side routing |
+| `react-error-boundary` | 6.1 | Top-level React Error Boundary |
 | `@supabase/supabase-js` | 2.99 | Supabase client (auth, DB, storage) |
 | `@google/genai` | 1.0 | Google Gemini SDK (Live API, chat, TTS) |
 | `tailwindcss` | 4.1 | Utility-first CSS framework |
@@ -145,7 +152,22 @@
 | `eslint.config.js` | ESLint flat config |
 | `package.json` | Dependencies and scripts |
 | `src/index.css` | Tailwind imports, CSS custom properties (theming) |
+| `src/config/images.ts` | Image generation parameters per context and provider |
 | `supabase/config.toml` | Supabase local config (auth, DB, API ports) |
+
+## Default AI Models
+
+Configured in `src/types/settings.ts` as `DEFAULT_MODEL_CONFIG`:
+
+| Slot | Default Model | Provider |
+|------|--------------|----------|
+| Chat | `gemini-3.1-flash-lite-preview` | Gemini |
+| STT | `gemini-3.1-flash-lite-preview` | Gemini |
+| TTS | `gemini-2.5-flash-preview-tts` (voice: `Kore`) | Gemini |
+| Image | `gemini-3.1-flash-image-preview` | Gemini |
+| Live | `gemini-3.1-flash-live-preview` (voice: `Puck`) | Gemini |
+
+Available model options span Gemini 3.1/3.0/2.x, OpenAI GPT-5.x/4.1, and Groq (Llama 3.3/4, Qwen3, Kimi K2, GPT OSS). All configured via `src/types/settings.ts` constant arrays (`CHAT_MODELS`, `STT_MODELS`, `TTS_MODELS`, `IMAGE_MODELS`, `LIVE_MODELS`).
 
 ## Platform Requirements
 
@@ -164,4 +186,4 @@
 
 ---
 
-*Stack analysis: 2026-04-01*
+*Stack analysis: 2026-04-05*

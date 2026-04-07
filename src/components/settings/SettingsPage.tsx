@@ -16,16 +16,13 @@ import {
   CHAT_MODELS, STT_MODELS, TTS_MODELS,
   OPENAI_TTS_VOICES, GEMINI_TTS_VOICES, GROQ_TTS_VOICES,
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
+  sourcesFromModels,
 } from '../../types/settings';
 import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-
-function sourceLabel(source: Source): string {
-  return SOURCE_LABELS[source];
-}
 
 function ttsVoicesForSource(source: Source) {
   if (source === 'genai' || source === 'vertex') return GEMINI_TTS_VOICES;
@@ -39,23 +36,52 @@ function defaultTtsVoice(source: Source): string {
   return 'alloy';
 }
 
-/** Parse composite "source:model" select value. */
-function parseComposite(composite: string): { source: Source; model: string } {
-  const [source, ...rest] = composite.split(':');
-  return { source: source as Source, model: rest.join(':') };
+function firstModelForSource(models: readonly ModelOption[], source: Source): string {
+  return models.find(m => m.source === source)?.value ?? models[0].value;
 }
 
-/** Build composite "source:model" select value. */
-function compositeValue(model: string, source: Source): string {
-  return `${source}:${model}`;
+/** Two-dropdown model selector: Provider → Model (filtered by provider). */
+function ModelSelect({
+  sources,
+  models,
+  currentSource,
+  currentModel,
+  onSourceChange,
+  onModelChange,
+  label,
+}: {
+  sources: readonly Source[];
+  models: readonly ModelOption[];
+  currentSource: Source;
+  currentModel: string;
+  onSourceChange: (source: Source) => void;
+  onModelChange: (source: Source, model: string) => void;
+  label: string;
+}) {
+  const filteredModels = models.filter(m => m.source === currentSource);
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <Select
+        label={`${label} - Provedor`}
+        value={currentSource}
+        options={sources.map(s => ({ value: s, label: SOURCE_LABELS[s] }))}
+        onChange={v => onSourceChange(v as Source)}
+      />
+      <Select
+        label={`${label} - Modelo`}
+        value={currentModel}
+        options={filteredModels.map(m => ({ value: m.value, label: m.label }))}
+        onChange={v => onModelChange(currentSource, v)}
+      />
+    </div>
+  );
 }
 
-/** Transform ModelOption[] into flat { value, label } for the Select component. */
-function toSelectOptions(models: readonly ModelOption[]) {
-  return models.map(m => ({ value: compositeValue(m.value, m.source), label: m.label }));
-}
-
-const NONE_OPTION = { value: '', label: 'Nenhum (sem fallback)' };
+const CHAT_SOURCES = sourcesFromModels(CHAT_MODELS);
+const STT_SOURCES = sourcesFromModels(STT_MODELS);
+const TTS_SOURCES = sourcesFromModels(TTS_MODELS);
+const IMAGE_SOURCES = sourcesFromModels(IMAGE_MODELS);
+const LIVE_SOURCES = sourcesFromModels(LIVE_MODELS);
 
 export function SettingsPage() {
   const { user, profile, signOut: authSignOut, refreshProfile } = useAuth();
@@ -71,7 +97,6 @@ export function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    // Load data from Supabase
     Promise.all([
       getModelConfig(),
       getConversationTone(),
@@ -85,64 +110,89 @@ export function SettingsPage() {
     setConfig(prev => ({ ...prev, ...partial }));
   };
 
-  const handleChatModelChange = (composite: string) => {
-    const { source, model } = parseComposite(composite);
-    updateConfig({ chatModel: model, chatSource: source });
+  // --- Chat handlers ---
+  const handleChatSourceChange = (newSource: Source) => {
+    updateConfig({ chatSource: newSource, chatModel: firstModelForSource(CHAT_MODELS, newSource) });
+  };
+  const handleChatModelChange = (source: Source, model: string) => {
+    updateConfig({ chatSource: source, chatModel: model });
   };
 
-  const handleSttModelChange = (composite: string) => {
-    const { source, model } = parseComposite(composite);
-    updateConfig({ sttModel: model, sttSource: source });
+  // --- STT handlers ---
+  const handleSttSourceChange = (newSource: Source) => {
+    updateConfig({ sttSource: newSource, sttModel: firstModelForSource(STT_MODELS, newSource) });
+  };
+  const handleSttModelChange = (source: Source, model: string) => {
+    updateConfig({ sttSource: source, sttModel: model });
   };
 
-  const handleTtsModelChange = (composite: string) => {
-    const { source, model } = parseComposite(composite);
-    updateConfig({ ttsModel: model, ttsSource: source, ttsVoice: defaultTtsVoice(source) });
+  // --- TTS handlers ---
+  const handleTtsSourceChange = (newSource: Source) => {
+    updateConfig({ ttsSource: newSource, ttsModel: firstModelForSource(TTS_MODELS, newSource), ttsVoice: defaultTtsVoice(newSource) });
+  };
+  const handleTtsModelChange = (source: Source, model: string) => {
+    updateConfig({ ttsSource: source, ttsModel: model });
   };
 
-  const handleImageModelChange = (composite: string) => {
-    const { source, model } = parseComposite(composite);
-    updateConfig({ imageModel: model, imageSource: source as ModelConfig['imageSource'] });
+  // --- Image handlers ---
+  const handleImageSourceChange = (newSource: Source) => {
+    updateConfig({ imageSource: newSource as ModelConfig['imageSource'], imageModel: firstModelForSource(IMAGE_MODELS, newSource) });
+  };
+  const handleImageModelChange = (source: Source, model: string) => {
+    updateConfig({ imageSource: source as ModelConfig['imageSource'], imageModel: model });
   };
 
-  const handleLiveModelChange = (composite: string) => {
-    const { source, model } = parseComposite(composite);
+  // --- Live handlers ---
+  const handleLiveSourceChange = (newSource: Source) => {
     updateConfig({
-      liveModel: model,
-      liveSource: source as ModelConfig['liveSource'],
-      liveVoice: source === 'openai' ? 'marin' : 'Aoede',
+      liveSource: newSource as ModelConfig['liveSource'],
+      liveModel: firstModelForSource(LIVE_MODELS, newSource),
+      liveVoice: newSource === 'openai' ? 'marin' : 'Aoede',
     });
   };
-
-  const handleChatFallbackChange = (composite: string) => {
-    if (!composite) {
-      updateConfig({ chatFallbackModel: undefined, chatFallbackSource: undefined });
-      return;
-    }
-    const { source, model } = parseComposite(composite);
-    updateConfig({ chatFallbackModel: model, chatFallbackSource: source });
+  const handleLiveModelChange = (source: Source, model: string) => {
+    updateConfig({ liveSource: source as ModelConfig['liveSource'], liveModel: model });
   };
 
-  const handleSttFallbackChange = (composite: string) => {
-    if (!composite) {
-      updateConfig({ sttFallbackModel: undefined, sttFallbackSource: undefined });
+  // --- Fallback handlers ---
+  const handleFallbackSourceChange = (
+    field: 'chat' | 'stt' | 'tts',
+    newSource: Source | '',
+  ) => {
+    if (!newSource) {
+      const clears: Record<string, Partial<ModelConfig>> = {
+        chat: { chatFallbackModel: undefined, chatFallbackSource: undefined },
+        stt: { sttFallbackModel: undefined, sttFallbackSource: undefined },
+        tts: { ttsFallbackModel: undefined, ttsFallbackSource: undefined, ttsFallbackVoice: undefined },
+      };
+      updateConfig(clears[field]);
       return;
     }
-    const { source, model } = parseComposite(composite);
-    updateConfig({ sttFallbackModel: model, sttFallbackSource: source });
+    const modelLists: Record<string, readonly ModelOption[]> = {
+      chat: CHAT_MODELS,
+      stt: STT_MODELS,
+      tts: TTS_MODELS,
+    };
+    const model = firstModelForSource(modelLists[field], newSource);
+    const updates: Record<string, Partial<ModelConfig>> = {
+      chat: { chatFallbackSource: newSource, chatFallbackModel: model },
+      stt: { sttFallbackSource: newSource, sttFallbackModel: model },
+      tts: { ttsFallbackSource: newSource, ttsFallbackModel: model, ttsFallbackVoice: defaultTtsVoice(newSource) },
+    };
+    updateConfig(updates[field]);
   };
 
-  const handleTtsFallbackChange = (composite: string) => {
-    if (!composite) {
-      updateConfig({ ttsFallbackModel: undefined, ttsFallbackSource: undefined, ttsFallbackVoice: undefined });
-      return;
-    }
-    const { source, model } = parseComposite(composite);
-    updateConfig({
-      ttsFallbackModel: model,
-      ttsFallbackSource: source,
-      ttsFallbackVoice: defaultTtsVoice(source),
-    });
+  const handleFallbackModelChange = (
+    field: 'chat' | 'stt' | 'tts',
+    source: Source,
+    model: string,
+  ) => {
+    const updates: Record<string, Partial<ModelConfig>> = {
+      chat: { chatFallbackSource: source, chatFallbackModel: model },
+      stt: { sttFallbackSource: source, sttFallbackModel: model },
+      tts: { ttsFallbackSource: source, ttsFallbackModel: model },
+    };
+    updateConfig(updates[field]);
   };
 
   const ttsVoiceOptions = ttsVoicesForSource(config.ttsSource);
@@ -154,7 +204,6 @@ export function SettingsPage() {
   const handleSave = async () => {
     if (isDevMode) return;
     try {
-      // Save API keys to Supabase (encrypted via Edge Function)
       if (openaiKey || geminiKey || groqKey || openrouterKey) {
         await saveApiKeys({
           openai: openaiKey || undefined,
@@ -168,12 +217,11 @@ export function SettingsPage() {
       setRuntimeModelConfig(config);
       setRuntimeConversationTone(tone);
       await hydrateRuntimeState();
-      await refreshProfile(); // Update profile in auth context
+      await refreshProfile();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       console.error('Error saving settings:', error);
-      // Show error to user
       alert('Erro ao salvar configurações. Tente novamente.');
     }
   };
@@ -187,47 +235,62 @@ export function SettingsPage() {
 
   function FallbackSection({
     label,
+    modelSources,
     modelOptions,
     currentModel,
     currentSource,
+    onSourceChange,
     onModelChange,
     voiceOptions,
     currentVoice,
     onVoiceChange,
   }: {
     label: string;
+    modelSources: readonly Source[];
     modelOptions: readonly ModelOption[];
     currentModel: string | undefined;
     currentSource: Source | undefined;
-    onModelChange: (composite: string) => void;
+    onSourceChange: (source: Source | '') => void;
+    onModelChange: (source: Source, model: string) => void;
     voiceOptions?: { value: string; label: string }[];
     currentVoice?: string;
     onVoiceChange?: (voice: string) => void;
   }) {
-    const selectOptions = [NONE_OPTION, ...toSelectOptions(modelOptions)];
+    const filteredModels = currentSource
+      ? modelOptions.filter(m => m.source === currentSource)
+      : [];
     return (
       <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
         <div className="flex items-center gap-1.5">
           <ShieldAlert size={12} className="text-muted-foreground" />
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
         </div>
-        <div className={cn('grid gap-3', voiceOptions && currentModel ? 'grid-cols-2' : 'grid-cols-1')}>
+        <div className="grid grid-cols-2 gap-3">
           <Select
-            label="Modelo Fallback"
-            value={currentModel && currentSource ? compositeValue(currentModel, currentSource) : ''}
-            options={selectOptions}
-            onChange={onModelChange}
-            hint={currentSource ? `Source: ${sourceLabel(currentSource)}` : undefined}
+            label="Fallback - Provedor"
+            value={currentSource ?? ''}
+            options={[
+              { value: '', label: 'Nenhum (sem fallback)' },
+              ...modelSources.map(s => ({ value: s, label: SOURCE_LABELS[s] })),
+            ]}
+            onChange={v => onSourceChange(v as Source | '')}
           />
-          {voiceOptions && currentModel && onVoiceChange && (
-            <Select
-              label="Voz Fallback"
-              value={currentVoice || ''}
-              options={voiceOptions}
-              onChange={onVoiceChange}
-            />
-          )}
+          <Select
+            label="Fallback - Modelo"
+            value={currentModel ?? ''}
+            options={filteredModels.map(m => ({ value: m.value, label: m.label }))}
+            onChange={v => currentSource && onModelChange(currentSource, v)}
+            disabled={!currentSource}
+          />
         </div>
+        {voiceOptions && currentModel && onVoiceChange && (
+          <Select
+            label="Voz Fallback"
+            value={currentVoice || ''}
+            options={voiceOptions}
+            onChange={onVoiceChange}
+          />
+        )}
       </div>
     );
   }
@@ -334,7 +397,9 @@ export function SettingsPage() {
             placeholder="sk-or-..."
             disabled={isDevMode}
             className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
-            hint="Obtenha em openrouter.ai/keys"
+            hint={import.meta.env.VITE_OPENROUTER_API_KEY && !localStorage.getItem('el_openrouter_key')
+              ? 'Carregada do arquivo .env'
+              : 'Obtenha em openrouter.ai/keys'}
           />
           <div className="pt-3 border-t border-border/50 space-y-3">
             <p className="text-sm font-medium text-foreground">Vertex AI (Google Cloud)</p>
@@ -460,51 +525,76 @@ export function SettingsPage() {
             desc: 'Gera prompts, avalia fala, cria cenários.',
             content: (
               <>
-                <Select label="Modelo" value={compositeValue(config.chatModel, config.chatSource)} options={toSelectOptions(CHAT_MODELS)} onChange={handleChatModelChange}
-                  hint={`Source: ${sourceLabel(config.chatSource)}`} />
+                <ModelSelect
+                  label="Chat"
+                  sources={CHAT_SOURCES}
+                  models={CHAT_MODELS}
+                  currentSource={config.chatSource}
+                  currentModel={config.chatModel}
+                  onSourceChange={handleChatSourceChange}
+                  onModelChange={handleChatModelChange}
+                />
                 <FallbackSection
                   label="Fallback"
+                  modelSources={CHAT_SOURCES}
                   modelOptions={CHAT_MODELS}
                   currentModel={config.chatFallbackModel}
                   currentSource={config.chatFallbackSource}
-                  onModelChange={handleChatFallbackChange}
+                  onSourceChange={s => handleFallbackSourceChange('chat', s)}
+                  onModelChange={(s, m) => handleFallbackModelChange('chat', s, m)}
                 />
               </>
             ),
           },
           {
             icon: Mic, color: 'coral' as const, title: 'Fala para Texto (STT)',
-            desc: `Transcreve seu áudio falado. Requer key do ${sourceLabel(config.sttSource)}.`,
+            desc: `Transcreve seu áudio falado. Requer key do ${SOURCE_LABELS[config.sttSource]}.`,
             content: (
               <>
-                <Select label="Modelo" value={compositeValue(config.sttModel, config.sttSource)} options={toSelectOptions(STT_MODELS)} onChange={handleSttModelChange}
-                  hint={`Source: ${sourceLabel(config.sttSource)}${config.sttSource === 'genai' || config.sttSource === 'vertex' ? ' (multimodal)' : ''}`} />
+                <ModelSelect
+                  label="STT"
+                  sources={STT_SOURCES}
+                  models={STT_MODELS}
+                  currentSource={config.sttSource}
+                  currentModel={config.sttModel}
+                  onSourceChange={handleSttSourceChange}
+                  onModelChange={handleSttModelChange}
+                />
                 <FallbackSection
                   label="Fallback"
+                  modelSources={STT_SOURCES}
                   modelOptions={STT_MODELS}
                   currentModel={config.sttFallbackModel}
                   currentSource={config.sttFallbackSource}
-                  onModelChange={handleSttFallbackChange}
+                  onSourceChange={s => handleFallbackSourceChange('stt', s)}
+                  onModelChange={(s, m) => handleFallbackModelChange('stt', s, m)}
                 />
               </>
             ),
           },
           {
             icon: Volume2, color: 'leaf' as const, title: 'Texto para Fala (TTS)',
-            desc: `Áudio para frases e correções. Requer key do ${sourceLabel(config.ttsSource)}.`,
+            desc: `Áudio para frases e correções. Requer key do ${SOURCE_LABELS[config.ttsSource]}.`,
             content: (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <Select label="Modelo" value={compositeValue(config.ttsModel, config.ttsSource)} options={toSelectOptions(TTS_MODELS)} onChange={handleTtsModelChange}
-                    hint={`Source: ${sourceLabel(config.ttsSource)}`} />
-                  <Select label="Voz" value={config.ttsVoice} options={ttsVoiceOptions} onChange={v => updateConfig({ ttsVoice: v })} />
-                </div>
+                <ModelSelect
+                  label="TTS"
+                  sources={TTS_SOURCES}
+                  models={TTS_MODELS}
+                  currentSource={config.ttsSource}
+                  currentModel={config.ttsModel}
+                  onSourceChange={handleTtsSourceChange}
+                  onModelChange={handleTtsModelChange}
+                />
+                <Select label="Voz" value={config.ttsVoice} options={ttsVoiceOptions} onChange={v => updateConfig({ ttsVoice: v })} />
                 <FallbackSection
                   label="Fallback"
+                  modelSources={TTS_SOURCES}
                   modelOptions={TTS_MODELS}
                   currentModel={config.ttsFallbackModel}
                   currentSource={config.ttsFallbackSource}
-                  onModelChange={handleTtsFallbackChange}
+                  onSourceChange={s => handleFallbackSourceChange('tts', s)}
+                  onModelChange={(s, m) => handleFallbackModelChange('tts', s, m)}
                   voiceOptions={ttsFallbackVoiceOptions}
                   currentVoice={config.ttsFallbackVoice}
                   onVoiceChange={v => updateConfig({ ttsFallbackVoice: v })}
@@ -516,19 +606,33 @@ export function SettingsPage() {
             icon: ImageIcon, color: 'amber' as const, title: 'Geração de Imagem',
             desc: 'Gera imagens para o modo de Desafio Visual.',
             content: (
-              <Select label="Modelo" value={compositeValue(config.imageModel, config.imageSource)} options={toSelectOptions(IMAGE_MODELS)} onChange={handleImageModelChange}
-                hint={`Source: ${sourceLabel(config.imageSource)}`} />
+              <ModelSelect
+                label="Imagem"
+                sources={IMAGE_SOURCES}
+                models={IMAGE_MODELS}
+                currentSource={config.imageSource}
+                currentModel={config.imageModel}
+                onSourceChange={handleImageSourceChange}
+                onModelChange={handleImageModelChange}
+              />
             ),
           },
           {
             icon: Radio, color: 'coral' as const, title: 'Simulação ao Vivo',
-            desc: `Conversa de áudio em tempo real. Requer key do ${sourceLabel(config.liveSource)}.`,
+            desc: `Conversa de áudio em tempo real. Requer key do ${SOURCE_LABELS[config.liveSource]}.`,
             content: (
-              <div className="grid grid-cols-2 gap-3">
-                <Select label="Modelo" value={compositeValue(config.liveModel, config.liveSource)} options={toSelectOptions(LIVE_MODELS)} onChange={handleLiveModelChange}
-                  hint={`Source: ${config.liveSource === 'openai' ? 'OpenAI Realtime' : 'Gemini Live'}`} />
+              <>
+                <ModelSelect
+                  label="Live"
+                  sources={LIVE_SOURCES}
+                  models={LIVE_MODELS}
+                  currentSource={config.liveSource}
+                  currentModel={config.liveModel}
+                  onSourceChange={handleLiveSourceChange}
+                  onModelChange={handleLiveModelChange}
+                />
                 <Select label="Voz" value={config.liveVoice} options={liveVoiceOptions} onChange={v => updateConfig({ liveVoice: v })} />
-              </div>
+              </>
             ),
           },
         ].map(section => {

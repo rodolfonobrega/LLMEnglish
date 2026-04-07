@@ -94,6 +94,20 @@ None - no external service configuration required.
 - All dead code from v1.0 audit target list removed
 - Build and tests stable
 
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/07-dead-code-facade-cleanup/07-01-SUMMARY.md
+- CONFIRMED DELETED: src/components/errors/ChunkErrorFallback.tsx
+- CONFIRMED DELETED: src/components/errors/__tests__/ChunkErrorFallback.test.tsx
+- CONFIRMED DELETED: src/services/openaiRealtimeLive.ts
+- CONFIRMED DELETED: src/services/openaiRealtimeLive.test.ts
+- FOUND: src/services/supabase/aiProxy.ts (edited, orphaned exports removed)
+- FOUND: src/services/supabase/index.ts (edited, stale re-exports removed)
+- FOUND: d138026 (Task 1 commit)
+- FOUND: 4b61544 (Task 2 commit)
+- FOUND: 0ea81a9 (Task 3 commit)
+- FOUND: 91cda8b (docs commit)
+
 ---
 *Phase: 07-dead-code-facade-cleanup*
 *Completed: 2026-04-07*

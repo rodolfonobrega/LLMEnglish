@@ -1,11 +1,10 @@
-import { DEFAULT_MODEL_CONFIG, type ConversationTone, type ModelConfig, type UserContext } from '../types/settings'
+import { DEFAULT_MODEL_CONFIG, migrateModelConfig, type ConversationTone, type ModelConfig, type SourceCredentials } from '../types/settings'
 import type { GamificationState } from '../types/gamification'
 import {
   getApiKey,
   getConversationTone,
   getGamification,
   getModelConfig,
-  getUserContext,
 } from './supabase/storage'
 
 const DEFAULT_GAMIFICATION: GamificationState = {
@@ -19,33 +18,25 @@ const DEFAULT_GAMIFICATION: GamificationState = {
   badges: [],
 }
 
-const DEFAULT_USER_CONTEXT: UserContext = {
-  profile: '',
-  interests: '',
-  goals: '',
-  currentLevel: 'Intermediate',
-}
-
 type RuntimeState = {
   modelConfig: ModelConfig
   conversationTone: ConversationTone
-  userContext: UserContext
   gamification: GamificationState
-  apiKeys: Record<'openai' | 'gemini' | 'groq', string>
+  credentials: SourceCredentials
 }
 
-const envKeys = {
+const envCredentials: SourceCredentials = {
+  genai: import.meta.env.VITE_GEMINI_API_KEY || '',
   openai: import.meta.env.VITE_OPENAI_API_KEY || '',
-  gemini: import.meta.env.VITE_GEMINI_API_KEY || '',
   groq: import.meta.env.VITE_GROQ_API_KEY || '',
+  openrouter: import.meta.env.VITE_OPENROUTER_API_KEY || '',
 }
 
 let state: RuntimeState = {
   modelConfig: { ...DEFAULT_MODEL_CONFIG },
   conversationTone: 'balanced',
-  userContext: { ...DEFAULT_USER_CONTEXT },
   gamification: { ...DEFAULT_GAMIFICATION },
-  apiKeys: { ...envKeys },
+  credentials: { ...envCredentials },
 }
 
 function emitRuntimeUpdate(): void {
@@ -63,16 +54,14 @@ export function getRuntimeConversationTone(): ConversationTone {
   return state.conversationTone
 }
 
-export function getRuntimeUserContext(): UserContext {
-  return state.userContext
-}
-
 export function getRuntimeGamification(): GamificationState {
   return state.gamification
 }
 
-export function getRuntimeApiKey(provider: 'openai' | 'gemini' | 'groq'): string {
-  return state.apiKeys[provider]
+export function getRuntimeApiKey(source: keyof SourceCredentials): string | undefined {
+  const cred = state.credentials[source]
+  if (source === 'vertex') return undefined // vertex uses project-based auth
+  return typeof cred === 'string' ? cred : undefined
 }
 
 export function setRuntimeModelConfig(config: ModelConfig): void {
@@ -85,47 +74,40 @@ export function setRuntimeConversationTone(tone: ConversationTone): void {
   emitRuntimeUpdate()
 }
 
-export function setRuntimeUserContext(userContext: UserContext): void {
-  state = { ...state, userContext }
-  emitRuntimeUpdate()
-}
-
 export function setRuntimeGamification(gamification: GamificationState): void {
   state = { ...state, gamification }
   emitRuntimeUpdate()
 }
 
-export function setRuntimeApiKeys(keys: Partial<Record<'openai' | 'gemini' | 'groq', string>>): void {
+export function setRuntimeCredentials(creds: Partial<SourceCredentials>): void {
   state = {
     ...state,
-    apiKeys: {
-      ...state.apiKeys,
-      ...keys,
+    credentials: {
+      ...state.credentials,
+      ...creds,
     },
   }
   emitRuntimeUpdate()
 }
 
 export async function hydrateRuntimeState(): Promise<void> {
-  const [modelConfig, conversationTone, userContext, gamification, openaiKey, geminiKey, groqKey] = await Promise.all([
+  const [rawModelConfig, conversationTone, gamification, openaiKey, genaiKey, groqKey] = await Promise.all([
     getModelConfig().catch(() => ({ ...DEFAULT_MODEL_CONFIG })),
     getConversationTone().catch(() => 'balanced' as ConversationTone),
-    getUserContext().catch(() => ({ ...DEFAULT_USER_CONTEXT })),
     getGamification().catch(() => ({ ...DEFAULT_GAMIFICATION })),
-    getApiKey('openai').catch(() => envKeys.openai),
-    getApiKey('gemini').catch(() => envKeys.gemini),
-    getApiKey('groq').catch(() => envKeys.groq),
+    getApiKey('openai').catch(() => envCredentials.openai || ''),
+    getApiKey('genai').catch(() => envCredentials.genai || ''),
+    getApiKey('groq').catch(() => envCredentials.groq || ''),
   ])
 
   state = {
-    modelConfig,
+    modelConfig: migrateModelConfig(rawModelConfig as Record<string, unknown>),
     conversationTone,
-    userContext,
     gamification,
-    apiKeys: {
-      openai: openaiKey || envKeys.openai,
-      gemini: geminiKey || envKeys.gemini,
-      groq: groqKey || envKeys.groq,
+    credentials: {
+      genai: genaiKey || envCredentials.genai || '',
+      openai: openaiKey || envCredentials.openai || '',
+      groq: groqKey || envCredentials.groq || '',
     },
   }
   emitRuntimeUpdate()
@@ -135,9 +117,8 @@ export function resetRuntimeState(): void {
   state = {
     modelConfig: { ...DEFAULT_MODEL_CONFIG },
     conversationTone: 'balanced',
-    userContext: { ...DEFAULT_USER_CONTEXT },
     gamification: { ...DEFAULT_GAMIFICATION },
-    apiKeys: { ...envKeys },
+    credentials: { ...envCredentials },
   }
   emitRuntimeUpdate()
 }

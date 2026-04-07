@@ -138,6 +138,7 @@ describe('OpenAIRealtimeLiveSession', () => {
 
     expect(onConnectionChange).toHaveBeenCalledWith(true);
     expect(ws.sent.some(msg => msg.includes('session.update'))).toBe(true);
+    expect(ws.sent.some(msg => msg.includes('"output_modalities":["audio"]'))).toBe(true);
 
     ws.onmessage?.({
       data: JSON.stringify({ type: 'response.output_audio_transcript.delta', delta: 'Hello' }),

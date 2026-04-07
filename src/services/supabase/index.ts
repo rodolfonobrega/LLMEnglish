@@ -63,10 +63,6 @@ export {
   getModelConfig,
   saveModelConfig,
 
-  // User Context
-  getUserContext,
-  saveUserContext,
-
   // Conversation Tone
   getConversationTone,
   saveConversationTone,

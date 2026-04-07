@@ -5,8 +5,8 @@ vi.mock('./runtimeState', () => ({
   getRuntimeModelConfig: vi.fn(() => ({ chatModel: 'test-model', chatProvider: 'openai' })),
   getRuntimeGamification: vi.fn(() => ({ xp: 100, level: 2 })),
   getRuntimeConversationTone: vi.fn(() => 'balanced'),
-  getRuntimeUserContext: vi.fn(() => ({ profile: 'test', interests: '', goals: '', currentLevel: 'Intermediate' })),
   getRuntimeApiKey: vi.fn((provider: string) => `mock-${provider}-key`),
+  setRuntimeCredentials: vi.fn(),
 }));
 
 // Mock supabase/storage before importing storage
@@ -36,8 +36,6 @@ vi.mock('./supabase/storage', () => ({
   saveModelConfig: vi.fn(() => Promise.resolve()),
   getConversationTone: vi.fn(() => Promise.resolve('formal')),
   saveConversationTone: vi.fn(() => Promise.resolve()),
-  getUserContext: vi.fn(() => Promise.resolve({ profile: 'supabase' })),
-  saveUserContext: vi.fn(() => Promise.resolve()),
   saveApiKey: vi.fn(() => Promise.resolve()),
   getApiKey: vi.fn(() => Promise.resolve('supabase-key')),
   saveApiKeys: vi.fn(() => Promise.resolve()),
@@ -45,7 +43,7 @@ vi.mock('./supabase/storage', () => ({
 
 // Import the module under test (after mocks)
 import * as storage from './storage';
-import { getRuntimeModelConfig, getRuntimeGamification, getRuntimeConversationTone, getRuntimeUserContext, getRuntimeApiKey } from './runtimeState';
+import { getRuntimeModelConfig, getRuntimeGamification, getRuntimeConversationTone, getRuntimeApiKey } from './runtimeState';
 import * as supabaseStorage from './supabase/storage';
 
 describe('Storage Facade', () => {
@@ -82,10 +80,10 @@ describe('Storage Facade', () => {
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getUserContext delegates to getRuntimeUserContext', () => {
-      const result = storage.getUserContext();
-      expect(getRuntimeUserContext).toHaveBeenCalledOnce();
-      expect(result).toEqual({ profile: 'test', interests: '', goals: '', currentLevel: 'Intermediate' });
+    it('getConversationTone delegates to getRuntimeConversationTone', () => {
+      const result = storage.getConversationTone();
+      expect(getRuntimeConversationTone).toHaveBeenCalledOnce();
+      expect(result).toBe('balanced');
       expect(result).not.toBeInstanceOf(Promise);
     });
   });
@@ -98,10 +96,10 @@ describe('Storage Facade', () => {
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getGeminiKey calls getRuntimeApiKey with gemini', () => {
+    it('getGeminiKey calls getRuntimeApiKey with genai', () => {
       const result = storage.getGeminiKey();
-      expect(getRuntimeApiKey).toHaveBeenCalledWith('gemini');
-      expect(result).toBe('mock-gemini-key');
+      expect(getRuntimeApiKey).toHaveBeenCalledWith('genai');
+      expect(result).toBe('mock-genai-key');
       expect(result).not.toBeInstanceOf(Promise);
     });
 
@@ -231,11 +229,6 @@ describe('Storage Facade', () => {
       expect(supabaseStorage.saveConversationTone).toHaveBeenCalledWith('casual');
     });
 
-    it('saveUserContext delegates to supabase saveUserContext', async () => {
-      await storage.saveUserContext({ profile: 'new' } as any);
-      expect(supabaseStorage.saveUserContext).toHaveBeenCalledWith({ profile: 'new' });
-    });
-
     it('saveApiKey delegates to supabase saveApiKey', async () => {
       await storage.saveApiKey('openai', 'key123');
       expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('openai', 'key123');
@@ -362,14 +355,6 @@ describe('Storage Facade', () => {
       warnSpy.mockRestore();
     });
 
-    it('dev mode write: saveUserContext logs warning', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      await storage.saveUserContext({} as any);
-      expect(supabaseStorage.saveUserContext).not.toHaveBeenCalled();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('dev mode'));
-      warnSpy.mockRestore();
-    });
-
     it('dev mode write: saveApiKey logs warning', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       await storage.saveApiKey('openai', 'k');
@@ -412,19 +397,6 @@ describe('Storage Facade', () => {
   // TYPE RE-EXPORT
   // ============================================================
 
-  describe('type re-exports', () => {
-    it('UserContext type is re-exported from types/settings, not locally defined', () => {
-      // TypeScript types are erased at runtime, so we can't check UserContext as a value.
-      // Instead, verify: getUserContext returns a UserContext-shaped object,
-      // AND the source file re-exports UserContext from types/settings (verified by tsc --noEmit).
-      const ctx = storage.getUserContext();
-      expect(ctx).toHaveProperty('profile');
-      expect(ctx).toHaveProperty('interests');
-      expect(ctx).toHaveProperty('goals');
-      expect(ctx).toHaveProperty('currentLevel');
-    });
-  });
-
   // ============================================================
   // SETTER KEY WRAPPERS (sync writes via async supabase)
   // ============================================================
@@ -435,9 +407,9 @@ describe('Storage Facade', () => {
       expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('openai', 'test-key');
     });
 
-    it('setGeminiKey calls supabase saveApiKey with gemini', async () => {
+    it('setGeminiKey calls supabase saveApiKey with genai', async () => {
       await storage.setGeminiKey('test-key');
-      expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('gemini', 'test-key');
+      expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('genai', 'test-key');
     });
 
     it('setGroqKey calls supabase saveApiKey with groq', async () => {

@@ -21,7 +21,7 @@
 
 ### 📋 v1.1 Gap Closure (Planned)
 
-- [ ] Phase 7: Dead Code & Facade Cleanup (0/2 plans)
+- [ ] Phase 7: Dead Code & Facade Cleanup (1/2 plans)
 - [ ] Phase 8: Nyquist Validation (0/0 plans)
 
 ## Progress
@@ -34,7 +34,7 @@
 | 4. Secure Storage | v1.0 | 2/2 | Complete | 2026-04-02 |
 | 5. Storage Consolidation | v1.0 | 2/2 | Complete | 2026-04-02 |
 | 6. Praticar Redesign | v1.0 | 1/1 | Complete | 2026-04-02 |
-| 7. Dead Code & Facade Cleanup | v1.1 | 0/2 | Pending | — |
+| 7. Dead Code & Facade Cleanup | v1.1 | 1/2 | In Progress | 2026-04-07 |
 | 8. Nyquist Validation | v1.1 | 0/0 | Pending | — |
 
 ---
@@ -47,7 +47,7 @@
 **Plans:** 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Delete orphaned ChunkErrorFallback, OpenAIRealtimeLiveSession, and aiProxy dead exports
+- [x] 07-01-PLAN.md — Delete orphaned ChunkErrorFallback, OpenAIRealtimeLiveSession, and aiProxy dead exports
 - [ ] 07-02-PLAN.md — Route SettingsPage through storage facade exclusively via async passthrough functions
 
 ### Phase 8: Nyquist Validation

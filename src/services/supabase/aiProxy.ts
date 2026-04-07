@@ -48,7 +48,7 @@ async function getFreshSessionToken(forceRefresh = false): Promise<string> {
  * Generic function to call the AI proxy
  */
 async function callAIProxy(request: {
-  action: 'chat' | 'tts' | 'stt' | 'image' | 'get_key' | 'get_vertex_live_token'
+  action: 'chat' | 'tts' | 'stt' | 'image'
   source?: string
   model?: string
   [key: string]: unknown
@@ -211,55 +211,3 @@ export async function generateImage(options: ImageGenerationOptions): Promise<st
   return result.imageData
 }
 
-// ============================================================================
-// GEMINI LIVE AUDIO
-// ============================================================================
-
-/**
- * For Gemini Live via Google AI Studio, we need a direct connection since it uses WebSocket.
- * The Edge Function provides the API key for the session.
- */
-
-export async function getGeminiKeyForLive(): Promise<string> {
-  const result = await callAIProxy({
-    action: 'get_key',
-    source: 'genai',
-  }) as { key: string }
-
-  return result.key
-}
-
-// ============================================================================
-// VERTEX AI LIVE AUDIO
-// ============================================================================
-
-/**
- * For Gemini Live via Vertex AI, the Edge Function generates a short-lived token.
- */
-export async function getVertexLiveToken(): Promise<string> {
-  const result = await callAIProxy({
-    action: 'get_vertex_live_token',
-  }) as { token: string }
-
-  return result.token
-}
-
-// ============================================================================
-// FALLBACK HANDLING
-// ============================================================================
-
-/**
- * Try the Edge Function first, fall back to direct API call if it fails
- * This is useful during development when the Edge Function isn't set up yet
- */
-
-export async function withFallback<T>(
-  proxyCall: () => Promise<T>,
-  _fallbackCall: () => Promise<T>,
-  useFallback: boolean = false
-): Promise<T> {
-  // SEC-04: Always use proxy. Direct browser-to-provider calls are eliminated.
-  // Fallback call parameter is kept for API compatibility but never executed.
-  void useFallback
-  return proxyCall()
-}

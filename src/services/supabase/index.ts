@@ -80,8 +80,6 @@ export {
   textToSpeech,
   speechToText,
   generateImage,
-  getGeminiKeyForLive,
-  withFallback,
   type ChatCompletionOptions,
   type ChatCompletionWithImageOptions,
   type TextToSpeechOptions,

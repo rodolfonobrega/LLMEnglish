@@ -99,6 +99,22 @@ describe('openai service proxy dispatch', () => {
     expect(proxyTTSMock).toHaveBeenCalledTimes(2);
   });
 
+  it('normalizes invalid OpenAI TTS voices before calling the proxy', async () => {
+    config.ttsSource = 'openai';
+    config.ttsModel = 'tts-1';
+    config.ttsVoice = 'ballad';
+    proxyTTSMock.mockResolvedValue('audio-base64');
+
+    await textToSpeech('short text');
+
+    expect(proxyTTSMock).toHaveBeenCalledWith({
+      source: 'openai',
+      model: 'tts-1',
+      voice: 'alloy',
+      text: 'short text',
+    });
+  });
+
   it('generates image through proxy', async () => {
     config.imageSource = 'openai';
     config.imageModel = 'gpt-image-1-mini';

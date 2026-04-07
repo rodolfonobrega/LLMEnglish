@@ -9,6 +9,11 @@ export interface ModelOption {
   source: Source;
 }
 
+export interface VoiceOption {
+  value: string;
+  label: string;
+}
+
 /** Per-source credentials stored encrypted in Supabase. */
 export interface SourceCredentials {
   genai?: string;
@@ -186,7 +191,7 @@ export const TTS_MODELS: ModelOption[] = [
   { value: 'canopylabs/orpheus-v1-english', label: 'Orpheus English (Groq)', source: 'groq' },
 ];
 
-export const OPENAI_TTS_VOICES = [
+export const OPENAI_TTS_VOICES: VoiceOption[] = [
   { value: 'alloy', label: 'Alloy' },
   { value: 'ash', label: 'Ash' },
   { value: 'ballad', label: 'Ballad' },
@@ -197,19 +202,65 @@ export const OPENAI_TTS_VOICES = [
   { value: 'onyx', label: 'Onyx' },
   { value: 'sage', label: 'Sage' },
   { value: 'shimmer', label: 'Shimmer' },
+  { value: 'verse', label: 'Verse' },
+  { value: 'marin', label: 'Marin' },
+  { value: 'cedar', label: 'Cedar' },
 ];
 
-export const GEMINI_TTS_VOICES = [
-  { value: 'Aoede', label: 'Aoede (clear, professional)' },
-  { value: 'Charon', label: 'Charon (deep, authoritative)' },
-  { value: 'Fenrir', label: 'Fenrir (energetic)' },
-  { value: 'Kore', label: 'Kore (warm, friendly)' },
-  { value: 'Leda', label: 'Leda (soft, calming)' },
-  { value: 'Orus', label: 'Orus (rich, resonant)' },
-  { value: 'Puck', label: 'Puck (neutral, versatile)' },
+const OPENAI_LEGACY_TTS_VOICE_IDS = [
+  'alloy',
+  'ash',
+  'coral',
+  'echo',
+  'fable',
+  'onyx',
+  'nova',
+  'sage',
+  'shimmer',
+] as const;
+
+const OPENAI_TTS_MODEL_VOICE_IDS: Record<string, readonly string[]> = {
+  'tts-1': OPENAI_LEGACY_TTS_VOICE_IDS,
+  'tts-1-hd': OPENAI_LEGACY_TTS_VOICE_IDS,
+  'gpt-4o-mini-tts': OPENAI_TTS_VOICES.map(voice => voice.value),
+};
+
+const GEMINI_VOICES: VoiceOption[] = [
+  { value: 'Zephyr', label: 'Zephyr (bright)' },
+  { value: 'Kore', label: 'Kore (firm)' },
+  { value: 'Orus', label: 'Orus (firm)' },
+  { value: 'Autonoe', label: 'Autonoe (bright)' },
+  { value: 'Umbriel', label: 'Umbriel (easy-going)' },
+  { value: 'Erinome', label: 'Erinome (clear)' },
+  { value: 'Laomedeia', label: 'Laomedeia (upbeat)' },
+  { value: 'Schedar', label: 'Schedar (even)' },
+  { value: 'Achird', label: 'Achird (friendly)' },
+  { value: 'Sadachbia', label: 'Sadachbia (lively)' },
+  { value: 'Puck', label: 'Puck (upbeat)' },
+  { value: 'Fenrir', label: 'Fenrir (excitable)' },
+  { value: 'Aoede', label: 'Aoede (breezy)' },
+  { value: 'Enceladus', label: 'Enceladus (breathy)' },
+  { value: 'Algieba', label: 'Algieba (smooth)' },
+  { value: 'Algenib', label: 'Algenib (gravelly)' },
+  { value: 'Achernar', label: 'Achernar (soft)' },
+  { value: 'Gacrux', label: 'Gacrux (mature)' },
+  { value: 'Zubenelgenubi', label: 'Zubenelgenubi (casual)' },
+  { value: 'Sadaltager', label: 'Sadaltager (knowledgeable)' },
+  { value: 'Charon', label: 'Charon (informative)' },
+  { value: 'Leda', label: 'Leda (youthful)' },
+  { value: 'Callirrhoe', label: 'Callirrhoe (easy-going)' },
+  { value: 'Iapetus', label: 'Iapetus (clear)' },
+  { value: 'Despina', label: 'Despina (smooth)' },
+  { value: 'Rasalgethi', label: 'Rasalgethi (informative)' },
+  { value: 'Alnilam', label: 'Alnilam (firm)' },
+  { value: 'Pulcherrima', label: 'Pulcherrima (forward)' },
+  { value: 'Vindemiatrix', label: 'Vindemiatrix (gentle)' },
+  { value: 'Sulafat', label: 'Sulafat (warm)' },
 ];
 
-export const GROQ_TTS_VOICES = [
+export const GEMINI_TTS_VOICES: VoiceOption[] = GEMINI_VOICES;
+
+export const GROQ_TTS_VOICES: VoiceOption[] = [
   { value: 'autumn', label: 'Autumn (female)' },
   { value: 'diana', label: 'Diana (female)' },
   { value: 'hannah', label: 'Hannah (female)' },
@@ -251,7 +302,7 @@ export const LIVE_MODELS: ModelOption[] = [
   { value: 'gpt-realtime-mini', label: 'GPT Realtime Mini', source: 'openai' },
 ];
 
-export const OPENAI_LIVE_VOICES = [
+export const OPENAI_LIVE_VOICES: VoiceOption[] = [
   { value: 'alloy', label: 'Alloy' },
   { value: 'ash', label: 'Ash' },
   { value: 'ballad', label: 'Ballad' },
@@ -264,38 +315,41 @@ export const OPENAI_LIVE_VOICES = [
   { value: 'verse', label: 'Verse' },
 ];
 
-export const GEMINI_LIVE_VOICES = [
-  { value: 'Zephyr', label: 'Zephyr (bright)' },
-  { value: 'Kore', label: 'Kore (firm)' },
-  { value: 'Orus', label: 'Orus (firm)' },
-  { value: 'Autonoe', label: 'Autonoe (bright)' },
-  { value: 'Umbriel', label: 'Umbriel (easy-going)' },
-  { value: 'Erinome', label: 'Erinome (clear)' },
-  { value: 'Laomedeia', label: 'Laomedeia (upbeat)' },
-  { value: 'Schedar', label: 'Schedar (even)' },
-  { value: 'Achird', label: 'Achird (friendly)' },
-  { value: 'Sadachbia', label: 'Sadachbia (lively)' },
-  { value: 'Puck', label: 'Puck (upbeat)' },
-  { value: 'Fenrir', label: 'Fenrir (excitable)' },
-  { value: 'Aoede', label: 'Aoede (breezy)' },
-  { value: 'Enceladus', label: 'Enceladus (breathy)' },
-  { value: 'Algieba', label: 'Algieba (smooth)' },
-  { value: 'Algenib', label: 'Algenib (gravelly)' },
-  { value: 'Achernar', label: 'Achernar (soft)' },
-  { value: 'Gacrux', label: 'Gacrux (mature)' },
-  { value: 'Zubenelgenubi', label: 'Zubenelgenubi (casual)' },
-  { value: 'Sadaltager', label: 'Sadaltager (knowledgeable)' },
-  { value: 'Charon', label: 'Charon (informative)' },
-  { value: 'Leda', label: 'Leda (youthful)' },
-  { value: 'Callirrhoe', label: 'Callirrhoe (easy-going)' },
-  { value: 'Iapetus', label: 'Iapetus (clear)' },
-  { value: 'Despina', label: 'Despina (smooth)' },
-  { value: 'Rasalgethi', label: 'Rasalgethi (informative)' },
-  { value: 'Alnilam', label: 'Alnilam (firm)' },
-  { value: 'Pulcherrima', label: 'Pulcherrima (forward)' },
-  { value: 'Vindemiatrix', label: 'Vindemiatrix (gentle)' },
-  { value: 'Sulafat', label: 'Sulafat (warm)' },
-];
+export const GEMINI_LIVE_VOICES: VoiceOption[] = GEMINI_VOICES;
+
+function voicesById(
+  voices: readonly VoiceOption[],
+  allowedIds?: readonly string[],
+): VoiceOption[] {
+  if (!allowedIds) return [...voices];
+
+  const allowed = new Set(allowedIds);
+  return voices.filter(voice => allowed.has(voice.value));
+}
+
+export function ttsVoicesForSource(source: Source, model?: string): VoiceOption[] {
+  if (source === 'genai' || source === 'vertex') return GEMINI_TTS_VOICES;
+  if (source === 'groq') return GROQ_TTS_VOICES;
+  if (source === 'openai') return voicesById(OPENAI_TTS_VOICES, model ? OPENAI_TTS_MODEL_VOICE_IDS[model] : undefined);
+  return OPENAI_TTS_VOICES;
+}
+
+export function defaultTtsVoice(source: Source, model?: string): string {
+  if (source === 'genai' || source === 'vertex') return 'Kore';
+  if (source === 'groq') return 'hannah';
+
+  const supportedVoices = ttsVoicesForSource(source, model);
+  const preferred = model === 'gpt-4o-mini-tts' ? 'marin' : 'alloy';
+  return supportedVoices.some(voice => voice.value === preferred)
+    ? preferred
+    : (supportedVoices[0]?.value ?? 'alloy');
+}
+
+export function normalizeTtsVoice(source: Source, model: string | undefined, voice?: string): string {
+  const supportedVoices = ttsVoicesForSource(source, model);
+  if (voice && supportedVoices.some(option => option.value === voice)) return voice;
+  return defaultTtsVoice(source, model);
+}
 
 /** Extract unique sources from a model list, preserving insertion order. */
 export function sourcesFromModels(models: readonly ModelOption[]): Source[] {

@@ -14,7 +14,7 @@ import type { ModelConfig, Source, ModelOption, ConversationTone } from '../../t
 import {
   DEFAULT_MODEL_CONFIG, SOURCE_LABELS,
   CHAT_MODELS, STT_MODELS, TTS_MODELS,
-  OPENAI_TTS_VOICES, GEMINI_TTS_VOICES, GROQ_TTS_VOICES,
+  defaultTtsVoice, normalizeTtsVoice, ttsVoicesForSource,
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
   sourcesFromModels,
 } from '../../types/settings';
@@ -23,18 +23,6 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-
-function ttsVoicesForSource(source: Source) {
-  if (source === 'genai' || source === 'vertex') return GEMINI_TTS_VOICES;
-  if (source === 'groq') return GROQ_TTS_VOICES;
-  return OPENAI_TTS_VOICES;
-}
-
-function defaultTtsVoice(source: Source): string {
-  if (source === 'genai' || source === 'vertex') return 'Kore';
-  if (source === 'groq') return 'hannah';
-  return 'alloy';
-}
 
 function firstModelForSource(models: readonly ModelOption[], source: Source): string {
   return models.find(m => m.source === source)?.value ?? models[0].value;
@@ -101,7 +89,13 @@ export function SettingsPage() {
       getModelConfig(),
       getConversationTone(),
     ]).then(([modelConfig, conversationTone]) => {
-      setConfig(modelConfig);
+      setConfig({
+        ...modelConfig,
+        ttsVoice: normalizeTtsVoice(modelConfig.ttsSource, modelConfig.ttsModel, modelConfig.ttsVoice),
+        ttsFallbackVoice: modelConfig.ttsFallbackSource && modelConfig.ttsFallbackModel
+          ? normalizeTtsVoice(modelConfig.ttsFallbackSource, modelConfig.ttsFallbackModel, modelConfig.ttsFallbackVoice)
+          : undefined,
+      });
       setTone(conversationTone);
     });
   }, []);
@@ -128,10 +122,15 @@ export function SettingsPage() {
 
   // --- TTS handlers ---
   const handleTtsSourceChange = (newSource: Source) => {
-    updateConfig({ ttsSource: newSource, ttsModel: firstModelForSource(TTS_MODELS, newSource), ttsVoice: defaultTtsVoice(newSource) });
+    const model = firstModelForSource(TTS_MODELS, newSource);
+    updateConfig({ ttsSource: newSource, ttsModel: model, ttsVoice: defaultTtsVoice(newSource, model) });
   };
   const handleTtsModelChange = (source: Source, model: string) => {
-    updateConfig({ ttsSource: source, ttsModel: model });
+    updateConfig({
+      ttsSource: source,
+      ttsModel: model,
+      ttsVoice: normalizeTtsVoice(source, model, config.ttsVoice),
+    });
   };
 
   // --- Image handlers ---
@@ -177,7 +176,11 @@ export function SettingsPage() {
     const updates: Record<string, Partial<ModelConfig>> = {
       chat: { chatFallbackSource: newSource, chatFallbackModel: model },
       stt: { sttFallbackSource: newSource, sttFallbackModel: model },
-      tts: { ttsFallbackSource: newSource, ttsFallbackModel: model, ttsFallbackVoice: defaultTtsVoice(newSource) },
+      tts: {
+        ttsFallbackSource: newSource,
+        ttsFallbackModel: model,
+        ttsFallbackVoice: defaultTtsVoice(newSource, model),
+      },
     };
     updateConfig(updates[field]);
   };
@@ -190,15 +193,19 @@ export function SettingsPage() {
     const updates: Record<string, Partial<ModelConfig>> = {
       chat: { chatFallbackSource: source, chatFallbackModel: model },
       stt: { sttFallbackSource: source, sttFallbackModel: model },
-      tts: { ttsFallbackSource: source, ttsFallbackModel: model },
+      tts: {
+        ttsFallbackSource: source,
+        ttsFallbackModel: model,
+        ttsFallbackVoice: normalizeTtsVoice(source, model, config.ttsFallbackVoice),
+      },
     };
     updateConfig(updates[field]);
   };
 
-  const ttsVoiceOptions = ttsVoicesForSource(config.ttsSource);
+  const ttsVoiceOptions = ttsVoicesForSource(config.ttsSource, config.ttsModel);
   const liveVoiceOptions = config.liveSource === 'openai' ? OPENAI_LIVE_VOICES : GEMINI_LIVE_VOICES;
   const ttsFallbackVoiceOptions = config.ttsFallbackSource
-    ? ttsVoicesForSource(config.ttsFallbackSource)
+    ? ttsVoicesForSource(config.ttsFallbackSource, config.ttsFallbackModel)
     : [];
 
   const handleSave = async () => {

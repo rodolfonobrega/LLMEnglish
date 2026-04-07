@@ -6,7 +6,7 @@
  * In dev mode (no Supabase), these calls will fail with a descriptive error.
  */
 
-import type { Source } from '../types/settings';
+import { normalizeTtsVoice, type Source } from '../types/settings';
 import {
   chatCompletion as proxyChat,
   chatCompletionWithImage as proxyChatWithImage,
@@ -95,7 +95,7 @@ export async function textToSpeech(
   const config = getRuntimeModelConfig();
   const source = config.ttsSource;
   const model = config.ttsModel;
-  const voice = voiceOverride || config.ttsVoice || 'alloy';
+  const voice = normalizeTtsVoice(source, model, voiceOverride || config.ttsVoice);
 
   try {
     return await proxyTTS({ source, model, voice, text });
@@ -103,7 +103,11 @@ export async function textToSpeech(
     if (config.ttsFallbackModel && config.ttsFallbackSource) {
       console.warn('Primary TTS failed, trying fallback:', primaryError);
       try {
-        const fallbackVoice = config.ttsFallbackVoice || voice;
+        const fallbackVoice = normalizeTtsVoice(
+          config.ttsFallbackSource,
+          config.ttsFallbackModel,
+          config.ttsFallbackVoice || voice,
+        );
         return await proxyTTS({
           source: config.ttsFallbackSource,
           model: config.ttsFallbackModel,

@@ -48,7 +48,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
+- [x] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
 
 ### Phase 9: Model Catalog
 **Goal**: Model-to-source resolution uses an explicit catalog instead of fragile prefix heuristics, with graceful handling of unknown models

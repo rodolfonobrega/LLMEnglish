@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Dead Code & Facade Cleanup
-status: Milestone complete — archived
-last_updated: "2026-04-07T20:15:00.000Z"
+milestone: v1.2
+milestone_name: Audio & Proxy Cleanup
+status: Defining requirements
+last_updated: "2026-04-07T21:00:00.000Z"
 last_activity: 2026-04-07
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Planning next milestone
+**Current focus:** v1.2 Audio & Proxy Cleanup
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone v1.1 complete and archived
-Last activity: 2026-04-07
+Status: Defining requirements
+Last activity: 2026-04-07 — Milestone v1.2 started
 
-Progress: [██████████] 100%
+Progress: [          ] 0%
 
 ## Performance Metrics
 

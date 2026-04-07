@@ -33,7 +33,11 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 
 ### Active
 
-(None — awaiting v1.1 requirements definition)
+- Audio cache migration (localStorage → IndexedDB)
+- Gemini Live ScriptProcessorNode → AudioWorkletNode migration
+- Remove dead Groq proxy from vite.config.ts
+- Refactor Edge Function ai-proxy into modular structure
+- Replace fragile detectSource() with explicit model catalog
 
 ### Out of Scope
 
@@ -64,6 +68,17 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - Sequential N+1 database writes in saveCards
 - Gemini Live WebSocket requires client-side API key (accepted risk)
 - v2 requirements deferred (RELI-05/06, PERF-04/05, SEC-05, STOR-03/04, VIS-04/05)
+
+## Current Milestone: v1.2 Audio & Proxy Cleanup
+
+**Goal:** Fix audio infrastructure (cache, deprecated API) and clean up proxy/AI layer — more robust app with no dead code.
+
+**Target features:**
+- Migrate audio cache from localStorage to IndexedDB (eliminates 5MB limit, native Blob support)
+- Migrate ScriptProcessorNode → AudioWorkletNode in Gemini Live (off-main-thread, no glitches)
+- Remove dead Groq proxy from vite.config.ts
+- Refactor Edge Function ai-proxy (1364 → modular: crypto, api-keys, providers)
+- Replace fragile detectSource() prefix matching with explicit model catalog
 
 ## Constraints
 
@@ -105,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after v1.1 milestone completion*
+*Last updated: 2026-04-07 — v1.2 milestone started*

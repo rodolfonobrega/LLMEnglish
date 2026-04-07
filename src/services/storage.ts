@@ -46,6 +46,8 @@ import {
   saveApiKey as supabaseSaveApiKey,
   getApiKey as supabaseGetApiKey,
   saveApiKeys as supabaseSaveApiKeys,
+  getModelConfig as supabaseGetModelConfig,
+  getConversationTone as supabaseGetConversationTone,
 } from './supabase/storage'
 
 // --- Dev mode detection (consistent with AuthContext.tsx:90, SettingsPage.tsx:50) ---
@@ -283,4 +285,18 @@ export async function saveApiKeys(keys: Record<string, string>): Promise<void> {
     return;
   }
   return supabaseSaveApiKeys(keys);
+}
+
+// ============================================================
+// ASYNC FETCH FUNCTIONS — fresh server reads via supabase/storage
+// ============================================================
+
+export async function fetchModelConfig(): Promise<ModelConfig> {
+  if (isDevMode()) return getRuntimeModelConfig();
+  return supabaseGetModelConfig();
+}
+
+export async function fetchConversationTone(): Promise<ConversationTone> {
+  if (isDevMode()) return getRuntimeConversationTone();
+  return supabaseGetConversationTone();
 }

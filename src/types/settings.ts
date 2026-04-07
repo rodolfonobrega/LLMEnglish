@@ -89,15 +89,15 @@ export const SOURCE_LABELS: Record<Source, string> = {
 export const CHAT_MODELS: ModelOption[] = [
   // Google AI Studio
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview, smartest)', source: 'genai' },
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
   { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', source: 'genai' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', source: 'genai' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'genai' },
   // Vertex AI
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview)', source: 'vertex' },
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'vertex' },
   { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'vertex' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'vertex' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', source: 'vertex' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'vertex' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'vertex' },
@@ -144,16 +144,16 @@ export const CHAT_MODELS: ModelOption[] = [
 
 export const STT_MODELS: ModelOption[] = [
   // Google AI Studio
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview)', source: 'genai' },
   { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', source: 'genai' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', source: 'genai' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'genai' },
   // Vertex AI
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'vertex' },
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview)', source: 'vertex' },
   { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'vertex' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'vertex' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', source: 'vertex' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'vertex' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'vertex' },

@@ -520,24 +520,28 @@ async function openrouterTTS(apiKey: string, text: string, voice: string, model:
 }
 
 /**
- * OpenRouter STT — passes through to OpenAI-compatible transcription endpoint.
- * Most OpenRouter models don't support STT; only use with compatible models.
+ * OpenRouter STT — uses chat completions with input_audio content.
+ * Models like openai/gpt-audio support audio via chat completions, not transcription endpoint.
  */
 async function openrouterSTT(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
-  const audioData = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))
-  const blob = new Blob([audioData], { type: mimeType })
-
-  const formData = new FormData()
-  formData.append('file', blob, 'audio.webm')
-  formData.append('model', model)
-  formData.append('language', 'en')
-
-  const response = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://speaklab.app',
+      'X-Title': 'SpeakLab',
     },
-    body: formData,
+    body: JSON.stringify({
+      model,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Transcribe exactly what was said in English. Output ONLY the transcription text, nothing else.' },
+          { type: 'input_audio', input_audio: { data: audioBase64, format: mimeType.includes('webm') ? 'webm' : 'wav' } },
+        ],
+      }],
+    }),
   })
 
   if (!response.ok) {
@@ -546,25 +550,27 @@ async function openrouterSTT(apiKey: string, audioBase64: string, mimeType: stri
   }
 
   const data = await response.json()
-  return data.text
+  return data.choices?.[0]?.message?.content || ''
 }
 
 /**
- * OpenRouter Image Generation — passes through to OpenAI-compatible endpoint.
+ * OpenRouter Image Generation — uses chat completions with image modality.
+ * OpenRouter doesn't support /images/generations; image models use chat completions.
  */
-async function openrouterImage(apiKey: string, prompt: string, model: string, options: Record<string, unknown>): Promise<string> {
-  const body: Record<string, unknown> = { model, prompt, n: 1 }
-
-  if (options.size) body.size = options.size
-  if (options.quality) body.quality = options.quality
-
-  const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
+async function openrouterImage(apiKey: string, prompt: string, model: string): Promise<string> {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://speaklab.app',
+      'X-Title': 'SpeakLab',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      modalities: ['image'],
+    }),
   })
 
   if (!response.ok) {
@@ -573,13 +579,23 @@ async function openrouterImage(apiKey: string, prompt: string, model: string, op
   }
 
   const data = await response.json()
+  const msg = data.choices?.[0]?.message
 
-  if (data.data && data.data[0]) {
-    if (data.data[0].url) return data.data[0].url
-    if (data.data[0].b64_json) return `data:image/png;base64,${data.data[0].b64_json}`
+  // Check for images in response (OpenRouter format)
+  if (msg?.images?.length) {
+    const imageUrl = msg.images[0]?.image_url?.url
+    if (imageUrl) {
+      // data:image/png;base64,... or regular URL
+      return imageUrl.startsWith('data:') ? imageUrl : imageUrl
+    }
   }
 
-  throw new Error(`OpenRouter response missing image: ${JSON.stringify(data)}`)
+  // Check for inline content
+  if (msg?.content && typeof msg.content === 'string') {
+    throw new Error(`OpenRouter returned text instead of image: ${msg.content.slice(0, 200)}`)
+  }
+
+  throw new Error(`OpenRouter response missing image: ${JSON.stringify(data).slice(0, 500)}`)
 }
 
 // ============================================================================
@@ -1305,7 +1321,7 @@ serve(async (req) => {
         } else if (source === 'openrouter') {
           const apiKey = await getApiKey(userId, source)
           if (!apiKey) throw new Error('No OpenRouter API key configured')
-          result = await openrouterImage(apiKey, body.prompt, model, options)
+          result = await openrouterImage(apiKey, body.prompt, model)
         } else if (source === 'openai') {
           const apiKey = await getApiKey(userId, source)
           if (!apiKey) throw new Error('No OpenAI API key configured')

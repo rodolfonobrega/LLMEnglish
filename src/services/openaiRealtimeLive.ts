@@ -50,7 +50,9 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
           type: 'session.update',
           session: {
             instructions: systemInstruction,
-            output_modalities: ['audio', 'text'],
+            // We render the model's audio transcript from output_audio_transcript events,
+            // so requesting a separate text response is redundant and can increase cost.
+            output_modalities: ['audio'],
             audio: {
               input: {
                 format: { type: 'audio/pcm', rate: 24000 },

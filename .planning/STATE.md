@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Audio & Proxy Cleanup
-status: Defining requirements
-last_updated: "2026-04-07T21:00:00.000Z"
+status: Roadmap defined
+last_updated: "2026-04-07T21:30:00.000Z"
 last_activity: 2026-04-07
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 8 (Dead Code & Config Cleanup)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-07 — Milestone v1.2 started
+Status: Roadmap defined, ready for planning
+Last activity: 2026-04-07 — Roadmap created for v1.2
 
 Progress: [          ] 0%
 
@@ -69,9 +69,12 @@ None.
 ### Blockers/Concerns
 
 - Gemini Live WebSocket constraint: API key must be exposed client-side for direct WebSocket connection. Accepted risk that needs user-facing documentation.
+- Edge Function modularization: Must verify Supabase CLI bundling with multi-file functions during Phase 10.
+- AudioWorklet: Production MIME type for `.js` worklet file needs verification against nginx config during Phase 11.
+- IndexedDB: Safari has stricter quotas — may need Safari-specific testing during Phase 12.
 
 ## Session Continuity
 
 Last session: 2026-04-07
-Status: Milestone v1.1 complete
-Next: /gsd:new-milestone to start next milestone
+Status: v1.2 roadmap created (5 phases, 23 requirements)
+Next: `/gsd-plan-phase 8` to plan first phase

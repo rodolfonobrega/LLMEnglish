@@ -63,29 +63,29 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| AC-01 | TBD | Pending |
-| AC-02 | TBD | Pending |
-| AC-03 | TBD | Pending |
-| AC-04 | TBD | Pending |
-| AC-05 | TBD | Pending |
-| AC-06 | TBD | Pending |
-| AW-01 | TBD | Pending |
-| AW-02 | TBD | Pending |
-| AW-03 | TBD | Pending |
-| AW-04 | TBD | Pending |
-| AW-05 | TBD | Pending |
-| AW-06 | TBD | Pending |
-| MC-01 | TBD | Pending |
-| MC-02 | TBD | Pending |
-| MC-03 | TBD | Pending |
-| MC-04 | TBD | Pending |
-| EF-01 | TBD | Pending |
-| EF-02 | TBD | Pending |
-| EF-03 | TBD | Pending |
-| EF-04 | TBD | Pending |
-| EF-05 | TBD | Pending |
-| DC-01 | TBD | Pending |
-| DC-02 | TBD | Pending |
+| AC-01 | Phase 12 | Pending |
+| AC-02 | Phase 12 | Pending |
+| AC-03 | Phase 12 | Pending |
+| AC-04 | Phase 12 | Pending |
+| AC-05 | Phase 12 | Pending |
+| AC-06 | Phase 12 | Pending |
+| AW-01 | Phase 11 | Pending |
+| AW-02 | Phase 11 | Pending |
+| AW-03 | Phase 11 | Pending |
+| AW-04 | Phase 11 | Pending |
+| AW-05 | Phase 11 | Pending |
+| AW-06 | Phase 11 | Pending |
+| MC-01 | Phase 9 | Pending |
+| MC-02 | Phase 9 | Pending |
+| MC-03 | Phase 9 | Pending |
+| MC-04 | Phase 9 | Pending |
+| EF-01 | Phase 10 | Pending |
+| EF-02 | Phase 10 | Pending |
+| EF-03 | Phase 10 | Pending |
+| EF-04 | Phase 10 | Pending |
+| EF-05 | Phase 10 | Pending |
+| DC-01 | Phase 8 | Pending |
+| DC-02 | Phase 8 | Pending |
 
 ---
 

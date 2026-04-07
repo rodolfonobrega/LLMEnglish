@@ -21,7 +21,7 @@
 
 ### 📋 v1.1 (Planned)
 
-- [ ] Phase 7+: To be defined via `/gsd:new-milestone`
+- [ ] Phase 7: Dead Code & Facade Cleanup (2/2 plans)
 
 ## Progress
 
@@ -33,6 +33,7 @@
 | 4. Secure Storage | v1.0 | 2/2 | Complete | 2026-04-02 |
 | 5. Storage Consolidation | v1.0 | 2/2 | Complete | 2026-04-02 |
 | 6. Praticar Redesign | v1.0 | 1/1 | Complete | 2026-04-02 |
+| 7. Dead Code & Facade Cleanup | v1.1 | 2/2 | In Progress | 2026-04-07 |
 
 ---
 

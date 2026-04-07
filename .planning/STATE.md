@@ -1,44 +1,44 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Hardening & Praticar Redesign
-status: milestone_complete
-stopped_at: v1.0 milestone archived and tagged
-last_updated: "2026-04-02T23:50:00.000Z"
-last_activity: 2026-04-02
+milestone: v1.1
+milestone_name: Gap Closure & Dead Code Cleanup
+status: in_progress
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-04-07T16:06:00.000Z"
+last_activity: 2026-04-07
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 6
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_plans: 10
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-02)
+See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Planning next milestone
+**Current focus:** Phase 07 - Dead code and facade cleanup
 
 ## Current Position
 
-Phase: None (milestone complete)
-Plan: None
-Status: v1.0 milestone complete — all 6 phases shipped
-Last activity: 2026-04-02
+Phase: 07-dead-code-facade-cleanup
+Plan: 02 (complete)
+Status: Phase 07 plan 02 executed — facade async fetch passthrough added
+Last activity: 2026-04-07
 
-Progress: [██████████] 100%
+Progress: [█████████-] 90%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: ~5min
-- Total execution time: ~43min across 8 plans
+- Total execution time: ~46min across 9 plans
 
 **By Phase:**
 
@@ -50,10 +50,11 @@ Progress: [██████████] 100%
 | 04 | 2 | 6min | 3min |
 | 05 | 2 | 10min | 5min |
 | 06 | 1 | 4min | 4min |
+| 07 | 2 | 6min | 3min |
 
 **Recent Trend:**
 
-- Last 8 plans: avg ~5min each
+- Last 9 plans: avg ~5min each
 - Trend: Consistent velocity
 
 ## Accumulated Context
@@ -72,6 +73,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-02
-Stopped at: v1.0 milestone archived
-Resume file: None
+Last session: 2026-04-07
+Stopped at: Completed 07-02-PLAN.md
+Resume file: .planning/phases/07-dead-code-facade-cleanup/07-02-SUMMARY.md

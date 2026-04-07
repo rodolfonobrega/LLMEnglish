@@ -46,7 +46,7 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 
 ## Context
 
-**Brownfield codebase** — React 19 SPA with Vite, Tailwind CSS, Supabase BaaS, Radix UI primitives. ~15,277 LOC TypeScript.
+**Brownfield codebase** — React 19 SPA with Vite, Tailwind CSS, Supabase BaaS, Radix UI primitives. ~15,746 LOC TypeScript.
 
 **v1.0 shipped with:**
 - Error boundaries at app, route, and chunk-load levels with Portuguese fallback UI
@@ -54,6 +54,11 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - PBKDF2 encryption (600K iterations) for API keys with Edge Function proxy
 - Unified storage facade replacing dual localStorage/Supabase imports
 - Redesigned Praticar page with image-banner cards and 2-section layout
+
+**v1.1 shipped with:**
+- Removed 541 lines of dead code (ChunkErrorFallback, OpenAIRealtimeLiveSession + tests)
+- Cleaned 3 orphaned exports from aiProxy.ts
+- Migrated SettingsPage to async facade-only imports (resolved STOR-01 dual-import gap)
 
 **Known technical debt:**
 - Sequential N+1 database writes in saveCards
@@ -78,6 +83,9 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 | New PracticeModeCard vs modifying ModeCard | Safer — no risk to other ModeCard consumers | ✓ Good — clean separation |
 | Dev mode mock user injection in AuthContext | Enables local testing of all hardening work | ✓ Good — full Layout accessible |
 | Gemini Live WebSocket needs client-side API key | Technical constraint of the API | ⚠️ Accepted risk — needs documentation |
+| Dead code removed (ChunkErrorFallback, OpenAIRealtimeLiveSession) | Superseded by ErrorFallback and GeminiLiveSession respectively | ✓ Good — 541 lines removed, zero regressions |
+| Async fetch passthrough for SettingsPage | Resolves v1.0 STOR-01 dual-import gap | ✓ Good — fresh server reads, no stale cache |
+| Removed orphaned exports from aiProxy | getGeminiKeyForLive, getVertexLiveToken, withFallback had zero consumers | ✓ Good — cleaner API surface |
 
 ## Evolution
 
@@ -97,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after Phase 07 dead-code-facade-cleanup completion*
+*Last updated: 2026-04-07 after v1.1 milestone completion*

@@ -45,7 +45,10 @@
   1. `vite.config.ts` contains no `/api/groq` proxy block — grep confirms zero hits
   2. Coverage config references no deleted files — `vitest run --coverage` succeeds without warnings about missing files
   3. All existing routes and features work identically after removal
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
 
 ### Phase 9: Model Catalog
 **Goal**: Model-to-source resolution uses an explicit catalog instead of fragile prefix heuristics, with graceful handling of unknown models
@@ -56,7 +59,10 @@
   2. Model IDs not in the catalog still work via heuristic fallback — no regression for user-saved custom models
   3. Settings UI shows a warning badge when a selected model+source combination is not in the catalog
   4. Existing chat, TTS, and STT call chains produce identical results for all known models
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
 
 ### Phase 10: Edge Function Modularization
 **Goal**: The ai-proxy Edge Function is maintainable — thin router delegating to focused provider modules with structured logging
@@ -67,7 +73,10 @@
   2. All provider logic lives in dedicated modules (crypto.ts, api-keys.ts, providers/openai.ts, providers/gemini.ts, providers/groq.ts, providers/openrouter.ts, providers/vertex.ts, utils.ts)
   3. Local testing via `supabase functions serve` passes for all action types (chat, TTS, STT, image) with identical request/response shapes
   4. Every request logs a structured entry with request ID, provider, action, and outcome
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
 
 ### Phase 11: AudioWorklet Migration
 **Goal**: Gemini Live microphone input uses AudioWorkletNode — off-main-thread processing with no deprecated API usage
@@ -78,7 +87,10 @@
   2. A live roleplay session sends and receives audio without glitches or WebSocket message flooding
   3. The PCM processor file exists at `public/worklets/pcm-processor.js` as plain JS with no imports/exports
   4. Audio output path (AudioBufferSourceNode scheduling) remains completely unchanged
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
 
 ### Phase 12: IndexedDB Audio Cache
 **Goal**: TTS responses are cached locally — repeated text produces instant audio without network round-trips
@@ -90,7 +102,10 @@
   3. When cache exceeds 50MB, oldest entries are evicted automatically with no user-facing error
   4. The cache module lives in `src/services/audioCache.ts` with no modifications to storage.ts or supabase/storage.ts
   5. A write failure (quota exceeded, IndexedDB unavailable) logs a warning and continues — TTS still works
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
 
 ## Progress
 

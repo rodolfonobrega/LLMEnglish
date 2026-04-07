@@ -28,7 +28,6 @@ import {
   deleteCard as supabaseDeleteCard,
   getCardById as supabaseGetCardById,
   getCardsDueForReview as supabaseGetCardsDueForReview,
-  getGamification as supabaseGetGamification,
   saveGamification as supabaseSaveGamification,
   getLiveSessions as supabaseGetLiveSessions,
   saveLiveSession as supabaseSaveLiveSession,
@@ -42,9 +41,7 @@ import {
   saveSessionReport as supabaseSaveSessionReport,
   getSessionReportsByDateRange as supabaseGetSessionReportsByDateRange,
   getLatestSessionReports as supabaseGetLatestSessionReports,
-  getModelConfig as supabaseGetModelConfig,
   saveModelConfig as supabaseSaveModelConfig,
-  getConversationTone as supabaseGetConversationTone,
   saveConversationTone as supabaseSaveConversationTone,
   saveApiKey as supabaseSaveApiKey,
   getApiKey as supabaseGetApiKey,
@@ -276,7 +273,7 @@ export async function saveApiKey(source: string, key: string): Promise<void> {
 }
 
 export async function getApiKey(source: string): Promise<string> {
-  if (isDevMode()) return getRuntimeApiKey(source as 'genai' | 'openai' | 'groq') || '';
+  if (isDevMode()) return getRuntimeApiKey(source as 'genai' | 'openai' | 'groq' | 'openrouter') || '';
   return supabaseGetApiKey(source);
 }
 

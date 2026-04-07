@@ -48,7 +48,7 @@ export interface ModelConfig {
   // --- Live Roleplay (real-time audio) ---
   liveModel: string;
   liveVoice: string;
-  liveSource: 'genai' | 'openai';
+  liveSource: 'genai' | 'vertex' | 'openai';
 
   // --- Fallbacks (optional -- undefined means no fallback) ---
   chatFallbackModel?: string;
@@ -283,8 +283,8 @@ export const IMAGE_MODELS: ModelOption[] = [
   { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini (Fast & Affordable)', source: 'openai' },
   { value: 'gpt-image-1', label: 'GPT Image 1 (Balanced)', source: 'openai' },
   // OpenRouter (image generation via chat completions with modalities)
-  { value: 'google/gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image', source: 'openrouter' },
-  { value: 'google/gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image', source: 'openrouter' },
+  { value: 'google/gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Gemini 3.1 Flash)', source: 'openrouter' },
+  { value: 'google/gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash)', source: 'openrouter' },
   { value: 'bytedance-seed/seedream-4.5', label: 'Seedream 4.5', source: 'openrouter' },
   { value: 'openai/gpt-5-image-mini', label: 'GPT 5 Image Mini (cheapest)', source: 'openrouter' },
   { value: 'openai/gpt-5-image', label: 'GPT 5 Image', source: 'openrouter' },
@@ -395,7 +395,7 @@ export function migrateModelConfig(config: Record<string, unknown>): ModelConfig
   if (config.liveProvider && !config.liveSource) {
     migrated.liveModel = (config.liveModel as string) || DEFAULT_MODEL_CONFIG.liveModel;
     migrated.liveVoice = (config.liveVoice as string) || DEFAULT_MODEL_CONFIG.liveVoice;
-    migrated.liveSource = providerToSource(config.liveProvider as string) as 'genai' | 'openai';
+    migrated.liveSource = providerToSource(config.liveProvider as string) as 'genai' | 'vertex' | 'openai';
   }
   // Fallbacks
   if (config.chatFallbackProvider && !config.chatFallbackSource) {

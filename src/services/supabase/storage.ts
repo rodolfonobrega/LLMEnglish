@@ -164,7 +164,7 @@ export async function updateCard(updated: Card): Promise<void> {
       .from('card_evaluations')
       .select('id')
       .eq('card_id', updated.id)
-      .single()
+      .maybeSingle()
 
     const evalData = {
       card_id: updated.id,
@@ -251,16 +251,25 @@ export async function getGamification(): Promise<GamificationState> {
 
   const { data: gami, error } = await supabase
     .from('gamification')
-    .select('*, badges(*)')
+    .select('*')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No gamification record yet
-      return { ...DEFAULT_GAMIFICATION }
-    }
     throw new Error(`Failed to get gamification: ${error.message}`)
+  }
+
+  if (!gami) {
+    return { ...DEFAULT_GAMIFICATION }
+  }
+
+  const { data: badges, error: badgesError } = await supabase
+    .from('badges')
+    .select('*')
+    .eq('user_id', userId)
+
+  if (badgesError) {
+    throw new Error(`Failed to get badges: ${badgesError.message}`)
   }
 
   return {
@@ -271,7 +280,7 @@ export async function getGamification(): Promise<GamificationState> {
     lastPracticeDate: gami.last_practice_date,
     totalSessions: gami.total_sessions,
     totalCards: gami.total_cards,
-    badges: (gami.badges || []).map((b: Badge) => ({
+    badges: (badges || []).map((b: Badge) => ({
       id: b.badge_id,
       name: b.name,
       description: b.description || '',
@@ -289,7 +298,7 @@ export async function saveGamification(state: GamificationState): Promise<void> 
     .from('gamification')
     .select('id')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   const gamiData = {
     user_id: userId,
@@ -394,7 +403,7 @@ export async function saveLiveSession(session: LiveSession): Promise<void> {
     .from('live_sessions')
     .select('id')
     .eq('id', session.id)
-    .single()
+    .maybeSingle()
 
   const sessionData = {
     user_id: userId,
@@ -534,7 +543,7 @@ export async function markStepComplete(trailId: string, stepId: string): Promise
     .eq('user_id', userId)
     .eq('trail_id', trailId)
     .eq('step_id', stepId)
-    .single()
+    .maybeSingle()
 
   if (!existing) {
     await supabase
@@ -556,7 +565,7 @@ export async function isStepComplete(trailId: string, stepId: string): Promise<b
     .eq('user_id', userId)
     .eq('trail_id', trailId)
     .eq('step_id', stepId)
-    .single()
+    .maybeSingle()
 
   return !!data
 }
@@ -709,7 +718,7 @@ export async function getModelConfig(): Promise<ModelConfig> {
     .from('model_config')
     .select('*')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (error || !config) {
     return { ...DEFAULT_MODEL_CONFIG }
@@ -757,7 +766,7 @@ export async function saveModelConfig(config: ModelConfig): Promise<void> {
     .from('model_config')
     .select('id')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   const configData = {
     user_id: userId,
@@ -805,7 +814,7 @@ export async function getConversationTone(): Promise<ConversationTone> {
     .from('profiles')
     .select('conversation_tone')
     .eq('id', userId)
-    .single()
+    .maybeSingle()
 
   if (!profile) return 'balanced'
 
@@ -836,11 +845,61 @@ export async function saveConversationTone(tone: ConversationTone): Promise<void
  */
 function sourceToDbProvider(source: string): string | null {
   const mapping: Record<string, string> = {
+    gemini: 'gemini',
     genai: 'gemini',
     openai: 'openai',
     groq: 'groq',
+    openrouter: 'openrouter',
   }
   return mapping[source] ?? null
+}
+
+function edgeFunctionHeaders(accessToken: string): HeadersInit {
+  return {
+    'Authorization': `Bearer ${accessToken}`,
+    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    'x-client-info': 'llmenglish-web',
+  }
+}
+
+async function getAccessToken(forceRefresh = false): Promise<string> {
+  const sessionResult = forceRefresh
+    ? await supabase.auth.refreshSession()
+    : await supabase.auth.getSession()
+
+  const session = sessionResult.data.session
+  if (!session) {
+    throw new Error('Not authenticated')
+  }
+
+  return session.access_token
+}
+
+async function edgeFunctionFetch(body: unknown): Promise<Response> {
+  let accessToken = await getAccessToken()
+  let response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`,
+    {
+      method: 'POST',
+      headers: edgeFunctionHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  )
+
+  if (response.status === 401) {
+    accessToken = await getAccessToken(true)
+    response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`,
+      {
+        method: 'POST',
+        headers: edgeFunctionHeaders(accessToken),
+        body: JSON.stringify(body),
+      }
+    )
+  }
+
+  return response
 }
 
 /**
@@ -850,26 +909,11 @@ export async function saveApiKey(source: string, key: string): Promise<void> {
   const provider = sourceToDbProvider(source)
   if (!provider) return // no DB column for this source yet
 
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
-    throw new Error('Not authenticated')
-  }
-
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'save_key',
-        provider,
-        key,
-      }),
-    }
-  )
+  const response = await edgeFunctionFetch({
+    action: 'save_key',
+    provider,
+    key,
+  })
 
   if (!response.ok) {
     throw new Error('Failed to save API key')
@@ -883,25 +927,10 @@ export async function getApiKey(source: string): Promise<string> {
   const provider = sourceToDbProvider(source)
   if (!provider) return '' // no DB column for this source yet
 
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
-    throw new Error('Not authenticated')
-  }
-
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'get_key',
-        provider,
-      }),
-    }
-  )
+  const response = await edgeFunctionFetch({
+    action: 'get_key',
+    provider,
+  })
 
   if (!response.ok) {
     throw new Error('Failed to get API key')
@@ -915,14 +944,10 @@ export async function getApiKey(source: string): Promise<string> {
  * Save all API keys at once
  */
 export async function saveApiKeys(keys: Record<string, string>): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
-    throw new Error('Not authenticated')
-  }
-
   // Map source names to DB provider names, skip unmapped sources
   const mapped: Record<string, string> = {}
   for (const [source, key] of Object.entries(keys)) {
+    if (!key) continue
     const provider = sourceToDbProvider(source)
     if (provider) {
       mapped[provider] = key
@@ -931,20 +956,10 @@ export async function saveApiKeys(keys: Record<string, string>): Promise<void> {
 
   if (Object.keys(mapped).length === 0) return
 
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'save_keys',
-        keys: mapped,
-      }),
-    }
-  )
+  const response = await edgeFunctionFetch({
+    action: 'save_keys',
+    keys: mapped,
+  })
 
   if (!response.ok) {
     throw new Error('Failed to save API keys')

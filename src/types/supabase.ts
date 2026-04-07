@@ -302,22 +302,30 @@ export interface ModelConfig {
   user_id: string
   chat_model: string
   chat_provider: Source
+  chat_source: Source | null
   stt_model: string
   stt_provider: Source
+  stt_source: Source | null
   tts_model: string
   tts_voice: string
   tts_provider: Source
+  tts_source: Source | null
   image_model: string
-  image_provider: 'genai' | 'openai' | 'openrouter'
+  image_provider: 'genai' | 'vertex' | 'openai' | 'openrouter'
+  image_source: 'genai' | 'vertex' | 'openai' | 'openrouter' | null
   live_model: string
   live_voice: string
-  live_provider: 'genai' | 'openai'
+  live_provider: 'genai' | 'vertex' | 'openai'
+  live_source: 'genai' | 'vertex' | 'openai' | null
   chat_fallback_model: string | null
   chat_fallback_provider: Source | null
+  chat_fallback_source: Source | null
   stt_fallback_model: string | null
   stt_fallback_provider: Source | null
+  stt_fallback_source: Source | null
   tts_fallback_model: string | null
   tts_fallback_provider: Source | null
+  tts_fallback_source: Source | null
   tts_fallback_voice: string | null
 }
 
@@ -334,9 +342,11 @@ export interface EncryptedApiKeys {
   openai_key: string | null
   gemini_key: string | null
   groq_key: string | null
+  openrouter_key: string | null
   openai_key_updated_at: string | null
   gemini_key_updated_at: string | null
   groq_key_updated_at: string | null
+  openrouter_key_updated_at: string | null
   created_at: string
   updated_at: string
 }

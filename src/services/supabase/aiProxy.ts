@@ -25,6 +25,25 @@ async function getSessionToken(): Promise<string> {
   return session.access_token
 }
 
+function edgeFunctionHeaders(accessToken: string): HeadersInit {
+  return {
+    'Authorization': `Bearer ${accessToken}`,
+    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    'x-client-info': 'llmenglish-web',
+  }
+}
+
+async function getFreshSessionToken(forceRefresh = false): Promise<string> {
+  if (forceRefresh) {
+    const { data: { session }, error } = await supabase.auth.refreshSession()
+    if (error || !session) throw new Error('Not authenticated')
+    return session.access_token
+  }
+
+  return getSessionToken()
+}
+
 /**
  * Generic function to call the AI proxy
  */
@@ -34,16 +53,21 @@ async function callAIProxy(request: {
   model?: string
   [key: string]: unknown
 }): Promise<unknown> {
-  const token = await getSessionToken()
-
-  const response = await fetch(EDGE_FUNCTION_URL, {
+  let token = await getFreshSessionToken()
+  let response = await fetch(EDGE_FUNCTION_URL, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
+    headers: edgeFunctionHeaders(token),
     body: JSON.stringify(request),
   })
+
+  if (response.status === 401) {
+    token = await getFreshSessionToken(true)
+    response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: edgeFunctionHeaders(token),
+      body: JSON.stringify(request),
+    })
+  }
 
   if (!response.ok) {
     const error = await response.text()
@@ -232,9 +256,10 @@ export async function getVertexLiveToken(): Promise<string> {
 export async function withFallback<T>(
   proxyCall: () => Promise<T>,
   _fallbackCall: () => Promise<T>,
-  _useFallback: boolean = false
+  useFallback: boolean = false
 ): Promise<T> {
   // SEC-04: Always use proxy. Direct browser-to-provider calls are eliminated.
   // Fallback call parameter is kept for API compatibility but never executed.
+  void useFallback
   return proxyCall()
 }

@@ -18,7 +18,7 @@ import {
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
   sourcesFromModels,
 } from '../../types/settings';
-import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, LogOut } from 'lucide-react';
+import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -83,6 +83,8 @@ export function SettingsPage() {
   const [config, setConfig] = useState<ModelConfig>({ ...DEFAULT_MODEL_CONFIG });
   const [tone, setTone] = useState<ConversationTone>('balanced');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -210,11 +212,13 @@ export function SettingsPage() {
 
   const handleSave = async () => {
     if (isDevMode) return;
+    setSaving(true);
+    setSaveError(null);
     try {
       if (openaiKey || geminiKey || groqKey || openrouterKey) {
         await saveApiKeys({
           openai: openaiKey || undefined,
-          gemini: geminiKey || undefined,
+          genai: geminiKey || undefined,
           groq: groqKey || undefined,
           openrouter: openrouterKey || undefined,
         });
@@ -226,10 +230,12 @@ export function SettingsPage() {
       await hydrateRuntimeState();
       await refreshProfile();
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 4000);
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Erro ao salvar configurações. Tente novamente.');
+      setSaveError('Erro ao salvar configuracoes. Tente novamente.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -666,15 +672,28 @@ export function SettingsPage() {
       </section>
 
       {/* Save */}
-      <Button
-        variant={saved ? 'primary' : 'coral'}
-        size="lg"
-        onClick={handleSave}
-        className={cn('w-full text-lg font-bold py-4 rounded-2xl cursor-pointer', saved && 'bg-leaf hover:bg-leaf')}
-      >
-        {saved ? <Check size={20} /> : <Save size={20} />}
-        {saved ? 'Salvo!' : 'Salvar Configurações'}
-      </Button>
+      <div className="space-y-3">
+        <Button
+          variant={saved ? 'primary' : 'coral'}
+          size="lg"
+          onClick={handleSave}
+          disabled={saving}
+          className={cn('w-full text-lg font-bold py-4 rounded-2xl cursor-pointer', saved && 'bg-leaf hover:bg-leaf')}
+        >
+          {saving ? <Loader2 size={20} className="animate-spin" /> : saved ? <Check size={20} /> : <Save size={20} />}
+          {saving ? 'Salvando...' : saved ? 'Salvo!' : 'Salvar Configurações'}
+        </Button>
+        {saved && !saving && (
+          <div className="rounded-xl border border-leaf/30 bg-leaf-soft px-4 py-3 text-sm font-medium text-leaf">
+            Configurações salvas com sucesso.
+          </div>
+        )}
+        {saveError && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            {saveError}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

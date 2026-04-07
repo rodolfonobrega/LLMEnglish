@@ -25,12 +25,17 @@ type RuntimeState = {
   credentials: SourceCredentials
 }
 
-const envCredentials: SourceCredentials = {
-  genai: import.meta.env.VITE_GEMINI_API_KEY || '',
-  openai: import.meta.env.VITE_OPENAI_API_KEY || '',
-  groq: import.meta.env.VITE_GROQ_API_KEY || '',
-  openrouter: import.meta.env.VITE_OPENROUTER_API_KEY || '',
-}
+const useEnvCredentials =
+  !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY
+
+const envCredentials: SourceCredentials = useEnvCredentials
+  ? {
+      genai: import.meta.env.VITE_GEMINI_API_KEY || '',
+      openai: import.meta.env.VITE_OPENAI_API_KEY || '',
+      groq: import.meta.env.VITE_GROQ_API_KEY || '',
+      openrouter: import.meta.env.VITE_OPENROUTER_API_KEY || '',
+    }
+  : {}
 
 let state: RuntimeState = {
   modelConfig: { ...DEFAULT_MODEL_CONFIG },
@@ -91,13 +96,14 @@ export function setRuntimeCredentials(creds: Partial<SourceCredentials>): void {
 }
 
 export async function hydrateRuntimeState(): Promise<void> {
-  const [rawModelConfig, conversationTone, gamification, openaiKey, genaiKey, groqKey] = await Promise.all([
+  const [rawModelConfig, conversationTone, gamification, openaiKey, genaiKey, groqKey, openrouterKey] = await Promise.all([
     getModelConfig().catch(() => ({ ...DEFAULT_MODEL_CONFIG })),
     getConversationTone().catch(() => 'balanced' as ConversationTone),
     getGamification().catch(() => ({ ...DEFAULT_GAMIFICATION })),
-    getApiKey('openai').catch(() => envCredentials.openai || ''),
-    getApiKey('genai').catch(() => envCredentials.genai || ''),
-    getApiKey('groq').catch(() => envCredentials.groq || ''),
+    getApiKey('openai').catch(() => ''),
+    getApiKey('genai').catch(() => ''),
+    getApiKey('groq').catch(() => ''),
+    getApiKey('openrouter').catch(() => ''),
   ])
 
   state = {
@@ -108,6 +114,7 @@ export async function hydrateRuntimeState(): Promise<void> {
       genai: genaiKey || envCredentials.genai || '',
       openai: openaiKey || envCredentials.openai || '',
       groq: groqKey || envCredentials.groq || '',
+      openrouter: openrouterKey || envCredentials.openrouter || '',
     },
   }
   emitRuntimeUpdate()

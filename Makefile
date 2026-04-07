@@ -1,4 +1,4 @@
-.PHONY: install dev build preview clean test test-coverage test-models-mock test-models-smoke supabase-start supabase-stop supabase-status supabase-link supabase-db-reset supabase-db-push supabase-functions-serve supabase-functions-deploy docker-build docker-run docker-stop
+.PHONY: install dev build preview clean test test-coverage test-models-mock test-models-smoke test-models-matrix supabase-start supabase-stop supabase-status supabase-link supabase-db-reset supabase-db-push supabase-functions-serve supabase-functions-deploy docker-build docker-run docker-stop
 
 # ──────────────────────────────────────────────
 # Local development
@@ -30,6 +30,9 @@ test-models-mock: ## Run model integration tests (mocked)
 
 test-models-smoke: ## Run model smoke tests with real APIs (.env keys)
 	npm run test:models:smoke
+
+test-models-matrix: ## Run the larger paid model matrix checks manually
+	npm run test:models:matrix
 
 supabase-start: ## Start local Supabase stack
 	npm run supabase:start

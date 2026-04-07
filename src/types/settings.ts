@@ -38,7 +38,7 @@ export interface ModelConfig {
 
   // --- Image generation ---
   imageModel: string;
-  imageSource: 'genai' | 'openai' | 'openrouter';
+  imageSource: 'genai' | 'vertex' | 'openai' | 'openrouter';
 
   // --- Live Roleplay (real-time audio) ---
   liveModel: string;
@@ -88,21 +88,19 @@ export const SOURCE_LABELS: Record<Source, string> = {
 
 export const CHAT_MODELS: ModelOption[] = [
   // Google AI Studio
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (smartest)', source: 'genai' },
-  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview, smartest)', source: 'genai' },
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
-  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro', source: 'genai' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', source: 'genai' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', source: 'genai' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'genai' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', source: 'genai' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', source: 'genai' },
   // Vertex AI
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', source: 'vertex' },
-  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'vertex' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview)', source: 'vertex' },
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'vertex' },
-  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro', source: 'vertex' },
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'vertex' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'vertex' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', source: 'vertex' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'vertex' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'vertex' },
   // OpenRouter
   { value: 'google/gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'openrouter' },
   { value: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4', source: 'openrouter' },
@@ -111,6 +109,17 @@ export const CHAT_MODELS: ModelOption[] = [
   { value: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', source: 'openrouter' },
   { value: 'mistralai/mistral-large', label: 'Mistral Large', source: 'openrouter' },
   { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1', source: 'openrouter' },
+  { value: 'openai/gpt-5.4', label: 'GPT-5.4 (latest & best)', source: 'openrouter' },
+  { value: 'openai/gpt-5.4-mini', label: 'GPT-5.4 Mini', source: 'openrouter' },
+  { value: 'openai/gpt-5.4-nano', label: 'GPT-5.4 Nano (cheapest)', source: 'openrouter' },
+  { value: 'openai/gpt-5.2', label: 'GPT-5.2', source: 'openrouter' },
+  { value: 'openai/gpt-5.1', label: 'GPT-5.1', source: 'openrouter' },
+  { value: 'openai/gpt-5', label: 'GPT-5', source: 'openrouter' },
+  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini (fast)', source: 'openrouter' },
+  { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano', source: 'openrouter' },
+  { value: 'openai/gpt-4.1', label: 'GPT-4.1', source: 'openrouter' },
+  { value: 'openai/gpt-4.1-mini', label: 'GPT-4.1 Mini', source: 'openrouter' },
+  { value: 'openai/gpt-4.1-nano', label: 'GPT-4.1 Nano', source: 'openrouter' },
   // OpenAI Direct
   { value: 'gpt-5.4', label: 'GPT-5.4 (latest & best)', source: 'openai' },
   { value: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', source: 'openai' },
@@ -126,7 +135,6 @@ export const CHAT_MODELS: ModelOption[] = [
   // Groq Direct
   { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (fast & smart)', source: 'groq' },
   { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (fastest)', source: 'groq' },
-  { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick', source: 'groq' },
   { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout', source: 'groq' },
   { value: 'qwen/qwen3-32b', label: 'Qwen3 32B', source: 'groq' },
   { value: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2', source: 'groq' },
@@ -136,22 +144,31 @@ export const CHAT_MODELS: ModelOption[] = [
 
 export const STT_MODELS: ModelOption[] = [
   // Google AI Studio
-  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', source: 'genai' },
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'genai' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview)', source: 'genai' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fast & cheap)', source: 'genai' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (reasoning)', source: 'genai' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (stable)', source: 'genai' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', source: 'genai' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'genai' },
   // Vertex AI
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', source: 'vertex' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview)', source: 'vertex' },
   { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', source: 'vertex' },
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', source: 'vertex' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', source: 'vertex' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'vertex' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', source: 'vertex' },
   // OpenAI
   { value: 'whisper-1', label: 'Whisper v1', source: 'openai' },
   { value: 'gpt-4o-mini-transcribe', label: 'GPT-4o Mini Transcribe', source: 'openai' },
   { value: 'gpt-4o-transcribe', label: 'GPT-4o Transcribe', source: 'openai' },
   // Groq
-  { value: 'whisper-large-v3', label: 'Whisper Large V3 (Groq)', source: 'groq' },
-  { value: 'whisper-large-v3-turbo', label: 'Whisper Large V3 Turbo (Groq)', source: 'groq' },
+  { value: 'whisper-large-v3', label: 'Whisper Large V3', source: 'groq' },
+  { value: 'whisper-large-v3-turbo', label: 'Whisper Large V3 Turbo', source: 'groq' },
+  // OpenRouter
+  { value: 'openai/whisper-1', label: 'Whisper v1', source: 'openrouter' },
+  { value: 'openai/gpt-audio', label: 'GPT Audio', source: 'openrouter' },
+  { value: 'openai/gpt-audio-mini', label: 'GPT Audio Mini', source: 'openrouter' },
+  { value: 'openai/gpt-4o-audio-preview', label: 'GPT 4o Audio Preview', source: 'openrouter' },
 ];
 
 export const TTS_MODELS: ModelOption[] = [
@@ -204,15 +221,22 @@ export const GROQ_TTS_VOICES = [
 export const IMAGE_MODELS: ModelOption[] = [
   // Google AI Studio
   { value: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Gemini 3.1 Flash)', source: 'genai' },
+  { value: 'gemini-3-pro-image-preview', label: 'Nano Banana Pro (Gemini 3 Pro)', source: 'genai' },
   { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash)', source: 'genai' },
-  { value: 'gemini-3-pro-image', label: 'Nano Banana Pro (Gemini 3 Pro)', source: 'genai' },
   // Vertex AI
-  { value: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Vertex)', source: 'vertex' },
-  { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Vertex)', source: 'vertex' },
+  { value: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2 (Gemini 3.1 Flash)', source: 'vertex' },
+  { value: 'gemini-3-pro-image-preview', label: 'Nano Banana Pro (Gemini 3 Pro)', source: 'vertex' },
+  { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash)', source: 'vertex' },
   // OpenAI
   { value: 'gpt-image-1.5', label: 'GPT Image 1.5 (Best)', source: 'openai' },
   { value: 'gpt-image-1-mini', label: 'GPT Image 1 Mini (Fast & Affordable)', source: 'openai' },
   { value: 'gpt-image-1', label: 'GPT Image 1 (Balanced)', source: 'openai' },
+  // OpenRouter (image generation via chat completions with modalities)
+  { value: 'google/gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image', source: 'openrouter' },
+  { value: 'google/gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image', source: 'openrouter' },
+  { value: 'bytedance-seed/seedream-4.5', label: 'Seedream 4.5', source: 'openrouter' },
+  { value: 'openai/gpt-5-image-mini', label: 'GPT 5 Image Mini (cheapest)', source: 'openrouter' },
+  { value: 'openai/gpt-5-image', label: 'GPT 5 Image', source: 'openrouter' },
 ];
 
 export const LIVE_MODELS: ModelOption[] = [
@@ -220,7 +244,7 @@ export const LIVE_MODELS: ModelOption[] = [
   { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (latest)', source: 'genai' },
   { value: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Native Audio', source: 'genai' },
   // Vertex AI
-  { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (Vertex)', source: 'vertex' },
+  { value: 'gemini-live-2.5-flash-native-audio', label: 'Gemini Live 2.5 Flash Native Audio', source: 'vertex' },
   // OpenAI Realtime
   { value: 'gpt-realtime', label: 'GPT Realtime', source: 'openai' },
   { value: 'gpt-realtime-1.5', label: 'GPT Realtime 1.5', source: 'openai' },
@@ -273,6 +297,18 @@ export const GEMINI_LIVE_VOICES = [
   { value: 'Sulafat', label: 'Sulafat (warm)' },
 ];
 
+/** Extract unique sources from a model list, preserving insertion order. */
+export function sourcesFromModels(models: readonly ModelOption[]): Source[] {
+  const seen = new Set<Source>();
+  return models.reduce<Source[]>((acc, m) => {
+    if (!seen.has(m.source)) {
+      seen.add(m.source);
+      acc.push(m.source);
+    }
+    return acc;
+  }, []);
+}
+
 /**
  * Migrate old Provider-based config to Source-based config.
  * Maps: 'gemini' -> 'genai', 'openai' -> 'openai', 'groq' -> 'groq'.
@@ -300,7 +336,7 @@ export function migrateModelConfig(config: Record<string, unknown>): ModelConfig
   }
   if (config.imageProvider && !config.imageSource) {
     migrated.imageModel = (config.imageModel as string) || DEFAULT_MODEL_CONFIG.imageModel;
-    migrated.imageSource = providerToSource(config.imageProvider as string) as 'genai' | 'openai' | 'openrouter';
+    migrated.imageSource = providerToSource(config.imageProvider as string) as 'genai' | 'vertex' | 'openai' | 'openrouter';
   }
   if (config.liveProvider && !config.liveSource) {
     migrated.liveModel = (config.liveModel as string) || DEFAULT_MODEL_CONFIG.liveModel;

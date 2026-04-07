@@ -139,12 +139,15 @@ make test
 make test-coverage
 make test-models-mock
 make test-models-smoke
+make test-models-matrix
 make supabase-start
 make supabase-db-reset
 make supabase-db-push
 make supabase-functions-serve
 make supabase-functions-deploy
 ```
+
+`make test` and `npm test` skip `*.smoke.test.ts` on purpose. The paid model checks only run through the explicit smoke commands above.
 
 ## Verification
 

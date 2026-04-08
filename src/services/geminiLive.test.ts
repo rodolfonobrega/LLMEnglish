@@ -26,12 +26,12 @@ class FakeAudioContext {
   currentTime = 0;
   destination = {};
 
+  audioWorklet = {
+    addModule: vi.fn().mockResolvedValue(undefined),
+  };
+
   createMediaStreamSource() {
     return { connect: vi.fn(), disconnect: vi.fn() };
-  }
-
-  createScriptProcessor() {
-    return { connect: vi.fn(), disconnect: vi.fn(), onaudioprocess: null as ((event: unknown) => void) | null };
   }
 
   createBuffer(_channels: number, frameCount: number, sampleRate: number) {
@@ -70,6 +70,16 @@ describe('GeminiLiveSession', () => {
     });
 
     (globalThis as unknown as { AudioContext: unknown }).AudioContext = FakeAudioContext as unknown;
+
+    // Mock AudioWorkletNode constructor
+    (globalThis as unknown as { AudioWorkletNode: unknown }).AudioWorkletNode = class {
+      port = {
+        onmessage: null as ((event: unknown) => void) | null,
+        postMessage: vi.fn(),
+      };
+      connect = vi.fn();
+      disconnect = vi.fn();
+    } as unknown;
 
     const mediaStream = { getTracks: () => [{ stop: vi.fn() }] };
     Object.defineProperty(globalThis, 'navigator', {
@@ -169,13 +179,39 @@ describe('GeminiLiveSession', () => {
     await session.connect('system');
     await session.startMicrophone();
 
-    const processor = (session as unknown as { processor: { onaudioprocess: (event: unknown) => void } }).processor;
-    processor.onaudioprocess({
-      inputBuffer: {
-        getChannelData: () => new Float32Array([0, 0.1, -0.1]),
-      },
+    // Simulate AudioWorkletNode posting a PCM16 buffer via port.onmessage
+    const processor = (session as unknown as { processor: { port: { onmessage: ((event: { data: { audio: ArrayBuffer } }) => void) | null } } }).processor;
+    const pcm16 = new Int16Array(4096);
+    pcm16[0] = 3277; // ~0.1 amplitude
+    processor.port.onmessage?.({ data: { audio: pcm16.buffer } } as MessageEvent);
+
+    expect(fakeSdkSession.sendRealtimeInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        media: expect.objectContaining({ mimeType: 'audio/pcm;rate=16000' }),
+      }),
+    );
+  });
+
+  it('configures AudioWorklet buffer size on start', async () => {
+    const fakeSdkSession = {
+      sendRealtimeInput: vi.fn(),
+      sendClientContent: vi.fn(),
+      close: vi.fn(),
+    };
+    liveConnectMock.mockResolvedValue(fakeSdkSession);
+
+    const session = new GeminiLiveSession({
+      onAudioResponse: vi.fn(),
+      onTextResponse: vi.fn(),
+      onTurnComplete: vi.fn(),
+      onError: vi.fn(),
+      onConnectionChange: vi.fn(),
     });
 
-    expect(fakeSdkSession.sendRealtimeInput).toHaveBeenCalled();
+    await session.connect('system');
+    await session.startMicrophone();
+
+    const processor = (session as unknown as { processor: { port: { postMessage: ReturnType<typeof vi.fn> } } }).processor;
+    expect(processor.port.postMessage).toHaveBeenCalledWith({ type: 'configure', bufferSize: 4096 });
   });
 });

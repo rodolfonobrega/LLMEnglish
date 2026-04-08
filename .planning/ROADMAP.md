@@ -84,6 +84,15 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.4: Discussão sobre o funcionamento da trilha (BACKLOG)
+
+**Goal:** Discuss how the learning trail works — whether errors are analyzed, whether cards are created from trail progress, and how the overall flow ties together
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

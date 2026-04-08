@@ -102,6 +102,15 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.6: Verificar modelos Gemini de geração de imagem (BACKLOG)
+
+**Goal:** Investigate and fix Gemini image generation models — there appears to be an error in the API call that prevents image generation from working correctly
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

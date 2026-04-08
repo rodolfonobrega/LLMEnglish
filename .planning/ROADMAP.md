@@ -55,6 +55,17 @@
 | 11. AudioWorklet Migration | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 12. IndexedDB Audio Cache | v1.2 | 1/1 | Complete | 2026-04-08 |
 
+## Backlog
+
+### Phase 999.1: Revisar a lógica de erros do aluno (BACKLOG)
+
+**Goal:** Review how student errors are tracked, processed, and displayed to the user
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

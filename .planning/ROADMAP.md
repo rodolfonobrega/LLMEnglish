@@ -5,6 +5,7 @@
 - ✅ **v1.0 Hardening & Praticar Redesign** — Phases 1-6 (shipped 2026-04-02)
 - ✅ **v1.1 Dead Code & Facade Cleanup** — Phase 7 (shipped 2026-04-07)
 - ✅ **v1.2 Audio & Proxy Cleanup** — Phases 8-12 (shipped 2026-04-08)
+- 🔄 **v1.3 Image, Data & UX Improvements** — Phases 13-17 (in progress)
 
 ## Phases
 
@@ -54,89 +55,63 @@
 | 10. Edge Function Modularization | v1.2 | 3/3 | Complete | 2026-04-08 |
 | 11. AudioWorklet Migration | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 12. IndexedDB Audio Cache | v1.2 | 1/1 | Complete | 2026-04-08 |
+| 13. Image Generation | v1.3 | 0/? | Pending | |
+| 14. Student Data Flow | v1.3 | 0/? | Pending | |
+| 15. Model Fallback | v1.3 | 0/? | Pending | |
+| 16. Recording Logic | v1.3 | 0/? | Pending | |
+| 17. Retry Exercise | v1.3 | 0/? | Pending | |
 
-## Backlog
+## v1.3 — Image, Data & UX Improvements (Phases 13-17)
 
-### Phase 999.1: Revisar a lógica de erros do aluno (BACKLOG)
+### Phase 13: Image Generation
 
-**Goal:** Review how student errors are tracked, processed, and displayed to the user
+**Goal:** Verify dialog screen image creation, fix Gemini image generation models, and optimize resolution to reduce token usage and cost
+**Merged from:** 999.5 (dialog images), 999.6 (Gemini image models), 999.7 (resolution optimization)
 **Requirements:** TBD
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
 
-### Phase 999.2: Revisar a lógica dos cards do aluno (BACKLOG)
+### Phase 14: Student Data Flow
 
-**Goal:** Review how student cards work, how the information is used, analyzed, and displayed to the user
+**Goal:** Review how student errors are tracked, how cards work, and how the learning trail ties together — ensure data flows correctly through the system
+**Merged from:** 999.1 (error logic), 999.2 (cards logic), 999.4 (trail discussion)
 **Requirements:** TBD
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
 
-### Phase 999.3: Fallback de modelo em todos os modos (BACKLOG)
+### Phase 15: Model Fallback
 
-**Goal:** Some modes in settings lack model fallback — add fallback configuration for all modes so users don't get stuck when their primary model is unavailable
+**Goal:** Add fallback model configuration for all modes so users don't get stuck when their primary model is unavailable
+**Promoted from:** 999.3
 **Requirements:** TBD
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] TBD (run /gsd-plan-phase 15 to break down)
 
-### Phase 999.4: Discussão sobre o funcionamento da trilha (BACKLOG)
-
-**Goal:** Discuss how the learning trail works — whether errors are analyzed, whether cards are created from trail progress, and how the overall flow ties together
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.5: Verificar tela de diálogo e criação de imagens (BACKLOG)
-
-**Goal:** Verify that the dialog screen is generating images correctly and review the overall image creation flow
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.6: Verificar modelos Gemini de geração de imagem (BACKLOG)
-
-**Goal:** Investigate and fix Gemini image generation models — there appears to be an error in the API call that prevents image generation from working correctly
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.7: Otimizar resolução de geração de imagens (BACKLOG)
-
-**Goal:** Adjust image generation models to produce images at the right resolution to reduce token usage and cost
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.8: Verificar lógica de gravação (BACKLOG)
+### Phase 16: Recording Logic
 
 **Goal:** Review and verify that the audio recording logic is working correctly across all modes
+**Promoted from:** 999.8
 **Requirements:** TBD
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] TBD (run /gsd-plan-phase 16 to break down)
 
-### Phase 999.9: Repetir exercício ao final + gerar novo (BACKLOG)
+### Phase 17: Retry Exercise
 
-**Goal:** At the end of any exercise (speech, text, etc.), offer the user the option to retry the same exercise, and after completion ask if they want to generate a new exercise or go back
+**Goal:** At the end of any exercise (speech, text, etc.), offer retry option, and after completion ask if they want to generate a new exercise or go back
+**Promoted from:** 999.9
 **Requirements:** TBD
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] TBD (run /gsd-plan-phase 17 to break down)
 
 ---
 

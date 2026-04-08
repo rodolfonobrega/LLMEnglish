@@ -4,13 +4,13 @@ milestone: v1.2
 milestone_name: Audio & Proxy Cleanup
 status: executing
 stopped_at: v1.0 milestone archived
-last_updated: "2026-04-08T13:24:47.828Z"
+last_updated: "2026-04-08T14:10:48.735Z"
 last_activity: 2026-04-08
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Phase 10 — Edge Function Modularization
+**Current focus:** Phase 11 — AudioWorklet Migration
 
 ## Current Position
 
-Phase: 11
+Phase: 12
 Plan: Not started
-Status: Executing Phase 10
+Status: Executing Phase 11
 Last activity: 2026-04-08
 
 Progress: [██████████] 100%
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: ~5min
 - Total execution time: ~43min across 8 plans
 
@@ -53,6 +53,7 @@ Progress: [██████████] 100%
 | 09 | 2 | - | - |
 | 08 | 1 | - | - |
 | 10 | 3 | - | - |
+| 11 | 1 | - | - |
 
 **Recent Trend:**
 

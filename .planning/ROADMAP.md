@@ -32,7 +32,7 @@
 - [ ] **Phase 8: Dead Code & Config Cleanup** — Remove dead Groq proxy and stale coverage references
 - [ ] **Phase 9: Model Catalog** — Replace fragile detectSource() with explicit model lookup
 - [x] **Phase 10: Edge Function Modularization** — Split ai-proxy monolith into focused modules (completed 2026-04-08)
-- [ ] **Phase 11: AudioWorklet Migration** — Replace deprecated ScriptProcessorNode in Gemini Live
+- [x] **Phase 11: AudioWorklet Migration** — Replace deprecated ScriptProcessorNode in Gemini Live (completed 2026-04-08)
 - [ ] **Phase 12: IndexedDB Audio Cache** — Build TTS response cache from scratch
 
 ## Phase Details
@@ -93,7 +93,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 11-01-PLAN.md — Create AudioWorklet processor and migrate geminiLive.ts from ScriptProcessorNode
+- [x] 11-01-PLAN.md — Create AudioWorklet processor and migrate geminiLive.ts from ScriptProcessorNode
 
 ### Phase 12: IndexedDB Audio Cache
 **Goal**: TTS responses are cached locally — repeated text produces instant audio without network round-trips
@@ -124,7 +124,7 @@ Plans:
 | 8. Dead Code & Config Cleanup | v1.2 | 0/? | Not started | - |
 | 9. Model Catalog | v1.2 | 0/? | Not started | - |
 | 10. Edge Function Modularization | v1.2 | 3/3 | Complete    | 2026-04-08 |
-| 11. AudioWorklet Migration | v1.2 | 0/? | Not started | - |
+| 11. AudioWorklet Migration | v1.2 | 1/1 | Complete    | 2026-04-08 |
 | 12. IndexedDB Audio Cache | v1.2 | 0/? | Not started | - |
 
 ---

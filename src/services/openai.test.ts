@@ -155,7 +155,7 @@ describe('openai service proxy dispatch', () => {
     expect(proxyChatMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses detectSource for gemini model overrides in chatCompletion', async () => {
+  it('uses resolveSource for gemini model overrides in chatCompletion', async () => {
     proxyChatMock.mockResolvedValue('gemini response');
 
     const result = await chatCompletion('sys', 'hi', 'gemini-2.5-flash');
@@ -169,7 +169,7 @@ describe('openai service proxy dispatch', () => {
     });
   });
 
-  it('uses detectSource for OpenRouter model overrides (IDs with /)', async () => {
+  it('uses resolveSource for OpenRouter model overrides (IDs with /)', async () => {
     proxyChatMock.mockResolvedValue('openrouter response');
 
     const result = await chatCompletion('sys', 'hi', 'anthropic/claude-sonnet-4');
@@ -183,7 +183,7 @@ describe('openai service proxy dispatch', () => {
     });
   });
 
-  it('uses detectSource for Groq model overrides with slash-based IDs', async () => {
+  it('uses resolveSource for Groq model overrides with slash-based IDs', async () => {
     proxyChatMock.mockResolvedValue('groq response');
 
     const result = await chatCompletion('sys', 'hi', 'meta-llama/llama-4-maverick-17b-128e-instruct');
@@ -192,6 +192,34 @@ describe('openai service proxy dispatch', () => {
     expect(proxyChatMock).toHaveBeenCalledWith({
       source: 'groq',
       model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      systemPrompt: 'sys',
+      userMessage: 'hi',
+    });
+  });
+
+  it('uses resolveSource from catalog for known model override', async () => {
+    proxyChatMock.mockResolvedValue('openai response');
+
+    const result = await chatCompletion('sys', 'hi', 'gpt-5.4');
+
+    expect(result).toBe('openai response');
+    expect(proxyChatMock).toHaveBeenCalledWith({
+      source: 'openai',
+      model: 'gpt-5.4',
+      systemPrompt: 'sys',
+      userMessage: 'hi',
+    });
+  });
+
+  it('falls back to heuristic for unknown model override', async () => {
+    proxyChatMock.mockResolvedValue('heuristic response');
+
+    const result = await chatCompletion('sys', 'hi', 'my-custom-fine-tuned-model');
+
+    expect(result).toBe('heuristic response');
+    expect(proxyChatMock).toHaveBeenCalledWith({
+      source: 'openai',
+      model: 'my-custom-fine-tuned-model',
       systemPrompt: 'sys',
       userMessage: 'hi',
     });

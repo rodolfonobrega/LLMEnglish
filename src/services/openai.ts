@@ -6,7 +6,7 @@
  * In dev mode (no Supabase), these calls will fail with a descriptive error.
  */
 
-import { normalizeTtsVoice, type Source } from '../types/settings';
+import { normalizeTtsVoice } from '../types/settings';
 import {
   chatCompletion as proxyChat,
   chatCompletionWithImage as proxyChatWithImage,
@@ -15,27 +15,7 @@ import {
   generateImage as proxyImage,
 } from './supabase/aiProxy';
 import { getRuntimeModelConfig } from './runtimeState';
-
-// ---------------------------------------------------------------------------
-// Helpers for source detection from model overrides
-// ---------------------------------------------------------------------------
-
-function detectSource(modelId: string): Source {
-  if (modelId.startsWith('gemini')) return 'genai';
-  // OpenRouter models use owner/model format (e.g. "anthropic/claude-sonnet-4")
-  // but Groq also uses slashes — exclude known Groq prefixes first.
-  if (
-    modelId.startsWith('llama-') ||
-    modelId.startsWith('meta-llama/') ||
-    modelId.startsWith('qwen/') ||
-    modelId.startsWith('canopylabs/') ||
-    modelId.startsWith('whisper-large-v3')
-  ) {
-    return 'groq';
-  }
-  if (modelId.includes('/')) return 'openrouter';
-  return 'openai';
-}
+import { resolveSource } from './modelCatalog';
 
 // ===== Chat Completions =====
 
@@ -46,7 +26,7 @@ export async function chatCompletion(
 ): Promise<string> {
   const config = getRuntimeModelConfig();
   const model = modelOverride || config.chatModel;
-  const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
+  const source = modelOverride ? resolveSource(modelOverride) : config.chatSource;
 
   try {
     return await proxyChat({ source, model, systemPrompt, userMessage });
@@ -77,7 +57,7 @@ export async function chatCompletionWithImage(
 ): Promise<string> {
   const config = getRuntimeModelConfig();
   const model = modelOverride || config.chatModel;
-  const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
+  const source = modelOverride ? resolveSource(modelOverride) : config.chatSource;
 
   // Groq does not support image input; fall back to genai
   const resolvedSource = source === 'groq' ? 'genai' : source;

@@ -93,7 +93,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
+- [ ] 11-01-PLAN.md — Create AudioWorklet processor and migrate geminiLive.ts from ScriptProcessorNode
 
 ### Phase 12: IndexedDB Audio Cache
 **Goal**: TTS responses are cached locally — repeated text produces instant audio without network round-trips
@@ -108,7 +108,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
+- [ ] 12-01-PLAN.md — Build IndexedDB audio cache with TTS response caching
 
 ## Progress
 

@@ -1,15 +1,5 @@
 # Milestones
 
-## v1.1 Dead Code & Facade Cleanup (Shipped: 2026-04-07)
-
-**Phases completed:** 2 phases, 2 plans, 5 tasks
-
-**Key accomplishments:**
-
-- (none recorded)
-
----
-
 ## v1.0 Hardening & Praticar Redesign (Shipped: 2026-04-02)
 
 **Phases completed:** 6 phases, 8 plans, 17 tasks

@@ -13,4 +13,13 @@ export default defineConfig({
     testTimeout: 120000,
     hookTimeout: 120000,
   },
+  server: {
+    proxy: {
+      '/api/groq': {
+        target: 'https://api.groq.com/openai/v1',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/groq/, ''),
+      },
+    },
+  },
 })

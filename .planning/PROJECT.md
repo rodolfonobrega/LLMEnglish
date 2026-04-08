@@ -33,11 +33,7 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 
 ### Active
 
-- Audio cache migration (localStorage → IndexedDB)
-- Gemini Live ScriptProcessorNode → AudioWorkletNode migration
-- Remove dead Groq proxy from vite.config.ts
-- Refactor Edge Function ai-proxy into modular structure
-- Replace fragile detectSource() with explicit model catalog
+(None — awaiting v1.1 requirements definition)
 
 ### Out of Scope
 
@@ -50,7 +46,7 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 
 ## Context
 
-**Brownfield codebase** — React 19 SPA with Vite, Tailwind CSS, Supabase BaaS, Radix UI primitives. ~15,746 LOC TypeScript.
+**Brownfield codebase** — React 19 SPA with Vite, Tailwind CSS, Supabase BaaS, Radix UI primitives. ~15,277 LOC TypeScript.
 
 **v1.0 shipped with:**
 - Error boundaries at app, route, and chunk-load levels with Portuguese fallback UI
@@ -59,26 +55,10 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - Unified storage facade replacing dual localStorage/Supabase imports
 - Redesigned Praticar page with image-banner cards and 2-section layout
 
-**v1.1 shipped with:**
-- Removed 541 lines of dead code (ChunkErrorFallback, OpenAIRealtimeLiveSession + tests)
-- Cleaned 3 orphaned exports from aiProxy.ts
-- Migrated SettingsPage to async facade-only imports (resolved STOR-01 dual-import gap)
-
 **Known technical debt:**
 - Sequential N+1 database writes in saveCards
 - Gemini Live WebSocket requires client-side API key (accepted risk)
 - v2 requirements deferred (RELI-05/06, PERF-04/05, SEC-05, STOR-03/04, VIS-04/05)
-
-## Current Milestone: v1.2 Audio & Proxy Cleanup
-
-**Goal:** Fix audio infrastructure (cache, deprecated API) and clean up proxy/AI layer — more robust app with no dead code.
-
-**Target features:**
-- Migrate audio cache from localStorage to IndexedDB (eliminates 5MB limit, native Blob support)
-- Migrate ScriptProcessorNode → AudioWorkletNode in Gemini Live (off-main-thread, no glitches)
-- Remove dead Groq proxy from vite.config.ts
-- Refactor Edge Function ai-proxy (1364 → modular: crypto, api-keys, providers)
-- Replace fragile detectSource() prefix matching with explicit model catalog
 
 ## Constraints
 
@@ -98,9 +78,6 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 | New PracticeModeCard vs modifying ModeCard | Safer — no risk to other ModeCard consumers | ✓ Good — clean separation |
 | Dev mode mock user injection in AuthContext | Enables local testing of all hardening work | ✓ Good — full Layout accessible |
 | Gemini Live WebSocket needs client-side API key | Technical constraint of the API | ⚠️ Accepted risk — needs documentation |
-| Dead code removed (ChunkErrorFallback, OpenAIRealtimeLiveSession) | Superseded by ErrorFallback and GeminiLiveSession respectively | ✓ Good — 541 lines removed, zero regressions |
-| Async fetch passthrough for SettingsPage | Resolves v1.0 STOR-01 dual-import gap | ✓ Good — fresh server reads, no stale cache |
-| Removed orphaned exports from aiProxy | getGeminiKeyForLive, getVertexLiveToken, withFallback had zero consumers | ✓ Good — cleaner API surface |
 
 ## Evolution
 
@@ -120,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 — Phase 8 complete: Dead Code & Config Cleanup*
+*Last updated: 2026-04-02 after v1.0 milestone completion*

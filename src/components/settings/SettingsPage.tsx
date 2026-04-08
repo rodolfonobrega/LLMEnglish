@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-  saveModelConfig,
-  saveConversationTone,
+  getModelConfig, saveModelConfig,
+  getConversationTone, saveConversationTone,
   saveApiKeys,
-  fetchModelConfig,
-  fetchConversationTone,
 } from '../../services/storage';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -90,8 +88,8 @@ export function SettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetchModelConfig(),
-      fetchConversationTone(),
+      getModelConfig(),
+      getConversationTone(),
     ]).then(([modelConfig, conversationTone]) => {
       setConfig({
         ...modelConfig,

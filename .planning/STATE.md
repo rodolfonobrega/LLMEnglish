@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Audio & Proxy Cleanup
-status: planning
-last_updated: "2026-04-08T00:50:31.431Z"
-last_activity: 2026-04-07
+milestone: v1.0
+milestone_name: Hardening & Praticar Redesign
+status: milestone_complete
+stopped_at: v1.0 milestone archived and tagged
+last_updated: "2026-04-02T23:50:00.000Z"
+last_activity: 2026-04-02
 progress:
-  total_phases: 5
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -17,27 +18,27 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-07)
+See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** v1.2 Audio & Proxy Cleanup
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 9
-Plan: Not started
-Status: Roadmap defined, ready for planning
-Last activity: 2026-04-07
+Phase: None (milestone complete)
+Plan: None
+Status: v1.0 milestone complete — all 6 phases shipped
+Last activity: 2026-04-02
 
-Progress: [          ] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 12
+- Total plans completed: 8
 - Average duration: ~5min
-- Total execution time: ~52min across 11 plans
+- Total execution time: ~43min across 8 plans
 
 **By Phase:**
 
@@ -49,11 +50,10 @@ Progress: [          ] 0%
 | 04 | 2 | 6min | 3min |
 | 05 | 2 | 10min | 5min |
 | 06 | 1 | 4min | 4min |
-| 07 | 2 | 6min | 3min |
 
 **Recent Trend:**
 
-- Last 11 plans: avg ~5min each
+- Last 8 plans: avg ~5min each
 - Trend: Consistent velocity
 
 ## Accumulated Context
@@ -69,12 +69,9 @@ None.
 ### Blockers/Concerns
 
 - Gemini Live WebSocket constraint: API key must be exposed client-side for direct WebSocket connection. Accepted risk that needs user-facing documentation.
-- Edge Function modularization: Must verify Supabase CLI bundling with multi-file functions during Phase 10.
-- AudioWorklet: Production MIME type for `.js` worklet file needs verification against nginx config during Phase 11.
-- IndexedDB: Safari has stricter quotas — may need Safari-specific testing during Phase 12.
 
 ## Session Continuity
 
-Last session: 2026-04-08T00:50:31.413Z
-Status: v1.2 roadmap created (5 phases, 23 requirements)
-Next: `/gsd-plan-phase 8` to plan first phase
+Last session: 2026-04-02
+Stopped at: v1.0 milestone archived
+Resume file: None

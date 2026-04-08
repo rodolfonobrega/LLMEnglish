@@ -16,6 +16,8 @@ import {
 } from './supabase/aiProxy';
 import { getRuntimeModelConfig } from './runtimeState';
 import { resolveSource } from './modelCatalog';
+import { getAudioCache } from './audioCache';
+import { blobToBase64, base64ToBlob } from '../utils/audio';
 
 // ===== Chat Completions =====
 
@@ -77,8 +79,26 @@ export async function textToSpeech(
   const model = config.ttsModel;
   const voice = normalizeTtsVoice(source, model, voiceOverride || config.ttsVoice);
 
+  // Cache-first: check IndexedDB before network call
+  const audioCache = getAudioCache();
   try {
-    return await proxyTTS({ source, model, voice, text });
+    const cached = await audioCache.get(text, voice, model, source);
+    if (cached) {
+      return await blobToBase64(cached);
+    }
+  } catch {
+    // Cache read failed — proceed with network call
+  }
+
+  try {
+    const base64 = await proxyTTS({ source, model, voice, text });
+    // Store in cache (fire-and-forget, errors logged internally)
+    try {
+      audioCache.set(text, voice, model, source, base64ToBlob(base64)).catch(() => {});
+    } catch {
+      // base64ToBlob failed — skip caching, non-critical
+    }
+    return base64;
   } catch (primaryError) {
     if (config.ttsFallbackModel && config.ttsFallbackSource) {
       console.warn('Primary TTS failed, trying fallback:', primaryError);

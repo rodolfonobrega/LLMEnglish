@@ -111,6 +111,15 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.7: Otimizar resolução de geração de imagens (BACKLOG)
+
+**Goal:** Adjust image generation models to produce images at the right resolution to reduce token usage and cost
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

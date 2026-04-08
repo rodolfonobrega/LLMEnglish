@@ -31,7 +31,7 @@
 
 - [ ] **Phase 8: Dead Code & Config Cleanup** — Remove dead Groq proxy and stale coverage references
 - [ ] **Phase 9: Model Catalog** — Replace fragile detectSource() with explicit model lookup
-- [ ] **Phase 10: Edge Function Modularization** — Split ai-proxy monolith into focused modules
+- [x] **Phase 10: Edge Function Modularization** — Split ai-proxy monolith into focused modules (completed 2026-04-08)
 - [ ] **Phase 11: AudioWorklet Migration** — Replace deprecated ScriptProcessorNode in Gemini Live
 - [ ] **Phase 12: IndexedDB Audio Cache** — Build TTS response cache from scratch
 
@@ -77,9 +77,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Extract shared foundation modules (crypto, api-keys, log, utils)
-- [ ] 10-02-PLAN.md — Extract 5 provider modules (openai, gemini, groq, openrouter, vertex)
-- [ ] 10-03-PLAN.md — Rewrite index.ts as thin router with structured logging
+- [x] 10-01-PLAN.md — Extract shared foundation modules (crypto, api-keys, log, utils)
+- [x] 10-02-PLAN.md — Extract 5 provider modules (openai, gemini, groq, openrouter, vertex)
+- [x] 10-03-PLAN.md — Rewrite index.ts as thin router with structured logging
 
 ### Phase 11: AudioWorklet Migration
 **Goal**: Gemini Live microphone input uses AudioWorkletNode — off-main-thread processing with no deprecated API usage
@@ -123,7 +123,7 @@ Plans:
 | 7. Dead Code & Facade Cleanup | v1.1 | 2/2 | Complete | 2026-04-07 |
 | 8. Dead Code & Config Cleanup | v1.2 | 0/? | Not started | - |
 | 9. Model Catalog | v1.2 | 0/? | Not started | - |
-| 10. Edge Function Modularization | v1.2 | 0/? | Not started | - |
+| 10. Edge Function Modularization | v1.2 | 3/3 | Complete    | 2026-04-08 |
 | 11. AudioWorklet Migration | v1.2 | 0/? | Not started | - |
 | 12. IndexedDB Audio Cache | v1.2 | 0/? | Not started | - |
 

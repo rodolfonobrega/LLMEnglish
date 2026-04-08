@@ -59,10 +59,11 @@ Plans:
   2. Model IDs not in the catalog still work via heuristic fallback — no regression for user-saved custom models
   3. Settings UI shows a warning badge when a selected model+source combination is not in the catalog
   4. Existing chat, TTS, and STT call chains produce identical results for all known models
-**Plans**: 1 plan
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
+- [ ] 09-01-PLAN.md — Build model catalog module and wire openai.ts to catalog-first resolution
+- [ ] 09-02-PLAN.md — Add warning badge to Settings UI for unknown model+source combos
 
 ### Phase 10: Edge Function Modularization
 **Goal**: The ai-proxy Edge Function is maintainable — thin router delegating to focused provider modules with structured logging

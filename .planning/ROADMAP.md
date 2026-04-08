@@ -129,6 +129,15 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.9: Repetir exercício ao final + gerar novo (BACKLOG)
+
+**Goal:** At the end of any exercise (speech, text, etc.), offer the user the option to retry the same exercise, and after completion ask if they want to generate a new exercise or go back
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

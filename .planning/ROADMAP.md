@@ -75,6 +75,15 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.3: Fallback de modelo em todos os modos (BACKLOG)
+
+**Goal:** Some modes in settings lack model fallback — add fallback configuration for all modes so users don't get stuck when their primary model is unavailable
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

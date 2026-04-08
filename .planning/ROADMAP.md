@@ -74,10 +74,12 @@ Plans:
   2. All provider logic lives in dedicated modules (crypto.ts, api-keys.ts, providers/openai.ts, providers/gemini.ts, providers/groq.ts, providers/openrouter.ts, providers/vertex.ts, utils.ts)
   3. Local testing via `supabase functions serve` passes for all action types (chat, TTS, STT, image) with identical request/response shapes
   4. Every request logs a structured entry with request ID, provider, action, and outcome
-**Plans**: 1 plan
+**Plans**: 3 plans
 
 Plans:
-- [x] 08-01-PLAN.md — Remove dead /api/groq proxy and stale coverage references
+- [ ] 10-01-PLAN.md — Extract shared foundation modules (crypto, api-keys, log, utils)
+- [ ] 10-02-PLAN.md — Extract 5 provider modules (openai, gemini, groq, openrouter, vertex)
+- [ ] 10-03-PLAN.md — Rewrite index.ts as thin router with structured logging
 
 ### Phase 11: AudioWorklet Migration
 **Goal**: Gemini Live microphone input uses AudioWorkletNode — off-main-thread processing with no deprecated API usage

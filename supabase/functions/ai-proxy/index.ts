@@ -1303,12 +1303,18 @@ serve(async (req) => {
       // Image Generation
       case 'image': {
         const source = normalizeSource(body.source || body.provider, 'genai')
-        const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-2.5-flash-image' : 'gpt-image-1')
+        const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-3.1-flash-image-preview' : 'gpt-image-1')
 
         const options = {
           size: body.size,
+          quality: body.quality,
+          format: body.format,
+          compression: body.compression,
+          background: body.background,
+          moderation: body.moderation,
           aspectRatio: body.aspectRatio,
           imageSize: body.imageSize,
+          personGeneration: body.personGeneration,
           numberOfImages: body.numberOfImages,
         }
 

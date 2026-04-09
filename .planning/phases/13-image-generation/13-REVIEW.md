@@ -4,18 +4,18 @@ reviewed: 2026-04-08T12:00:00Z
 depth: standard
 files_reviewed: 7
 files_reviewed_list:
-  - src/services/supabase/aiProxy.ts
-  - src/services/supabase/aiProxy.test.ts
-  - src/config/images.ts
   - src/config/images.test.ts
+  - src/config/images.ts
+  - src/services/supabase/aiProxy.test.ts
+  - src/services/supabase/aiProxy.ts
   - supabase/functions/ai-proxy/index.ts
-  - supabase/functions/ai-proxy/providers/openai.ts
   - supabase/functions/ai-proxy/providers/gemini.ts
+  - supabase/functions/ai-proxy/providers/openai.ts
 findings:
-  critical: 0
+  critical: 1
   warning: 3
   info: 3
-  total: 6
+  total: 7
 status: issues_found
 ---
 
@@ -28,99 +28,105 @@ status: issues_found
 
 ## Summary
 
-Reviewed the image generation pipeline: client-side proxy layer (`aiProxy.ts`), image configuration (`images.ts`), edge function (`ai-proxy/index.ts`), and extracted provider modules (`providers/openai.ts`, `providers/gemini.ts`).
+Reviewed the image generation pipeline: client-side proxy layer (`aiProxy.ts`), image configuration (`images.ts`), edge function (`ai-proxy/index.ts`), and extracted provider modules (`providers/openai.ts`, `providers/gemini.ts`), along with their tests.
 
-The architecture is sound -- the proxy pattern keeps API keys server-side, and the config layer cleanly separates OpenAI vs Gemini parameters. However, there is a significant bug where the edge function's inline `openaiImage` ignores several image parameters that the client correctly sends. There is also a mismatch between the client and server for the Vertex live token response shape. The extracted provider modules duplicate code from the edge function but are not actually imported by it.
+The architecture is sound -- the proxy pattern keeps API keys server-side, and the config layer cleanly separates OpenAI vs Gemini parameters. The new image config module and its tests are well-structured with no issues.
+
+One critical issue was found: the `btoa(String.fromCharCode(...Uint8Array))` pattern used across the edge function and providers will crash with a call stack overflow on binary responses larger than ~65KB (TTS audio, images). Several warnings address missing null safety on API response traversal, falsy checks that silently drop valid zero values, and a response shape mismatch between client and server for the Vertex live token endpoint.
+
+## Critical Issues
+
+### CR-01: btoa with spread operator crashes on large binary responses
+
+**File:** `supabase/functions/ai-proxy/index.ts:319`
+**Also:** `index.ts:375`, `index.ts:519`, `index.ts:1075`, `providers/gemini.ts:53`, `providers/openai.ts:53`
+**Issue:** `btoa(String.fromCharCode(...new Uint8Array(buffer)))` uses the spread operator to convert a `Uint8Array` to function arguments. JavaScript engines limit argument count to ~65,536. TTS audio responses and image payloads routinely exceed this, causing `RangeError: Maximum call stack size exceeded`. This affects OpenAI TTS, Groq TTS, OpenRouter TTS, and the `pcm16ToWav` helper.
+**Fix:**
+```typescript
+// Add a shared utility function:
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = ''
+  const chunkSize = 8192
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+    binary += String.fromCharCode(...chunk)
+  }
+  return btoa(binary)
+}
+
+// Then replace all instances of:
+btoa(String.fromCharCode(...new Uint8Array(buffer)))
+// With:
+uint8ToBase64(new Uint8Array(buffer))
+```
 
 ## Warnings
 
-### WR-01: Edge function `openaiImage` drops OpenAI image parameters
-
-**File:** `supabase/functions/ai-proxy/index.ts:927-955`
-**Issue:** The inline `openaiImage` function in the edge function only forwards `size` and `quality` from the options object. The client (`aiProxy.ts`) sends `format`, `compression`, `background`, and `moderation` parameters (lines 213-217), and the extracted provider module (`providers/openai.ts`) correctly forwards all of them (lines 93-97). But the actual edge function code ignores these four parameters, meaning OpenAI image generation always uses default values for format, compression, background, and moderation regardless of what the client requests.
-**Fix:**
-```typescript
-// In openaiImage function (index.ts line ~928), add the missing parameter forwarding:
-async function openaiImage(apiKey: string, prompt: string, model: string, options: Record<string, unknown>): Promise<string> {
-  const body: Record<string, unknown> = { model, prompt, n: 1 }
-
-  if (options.size) body.size = options.size
-  if (options.quality) body.quality = options.quality
-  if (options.format) body.format = options.format         // MISSING
-  if (options.compression) body.compression = options.compression  // MISSING
-  if (options.background) body.background = options.background     // MISSING
-  if (options.moderation) body.moderation = options.moderation     // MISSING
-  // ... rest unchanged
-```
-
-### WR-02: Vertex live token response shape mismatch between client and server
+### WR-01: Vertex live token response shape mismatch between client and server
 
 **File:** `supabase/functions/ai-proxy/index.ts:1354-1358` and `src/services/supabase/aiProxy.ts:256-261`
-**Issue:** The edge function returns `{ accessToken, projectId, region }` (three fields), but the client casts the response as `{ token: string }` and only reads `.token`. This means `getVertexLiveToken()` on the client will return `undefined` at runtime because the response object has no `token` property -- it uses `accessToken` instead.
-**Fix:** Either change the client to match the server:
+**Issue:** The edge function returns `{ accessToken, projectId, region }` (three fields), but the client casts the response as `{ token: string }` and only reads `.token`. This means `getVertexLiveToken()` returns `undefined` at runtime because the response has no `token` property -- it uses `accessToken` instead.
+**Fix:**
 ```typescript
-// Option A: Fix client (aiProxy.ts line 256-261)
+// Option A (fix client, aiProxy.ts line 256-261):
 const result = await callAIProxy({
   action: 'get_vertex_live_token',
 }) as { accessToken: string; projectId: string; region: string }
 return result.accessToken
 ```
-Or change the server to match the client:
-```typescript
-// Option B: Fix server (index.ts line 1354-1358)
-return new Response(
-  JSON.stringify({ token: accessToken }),
-  { headers: corsHeaders }
-)
-```
 
-### WR-03: `generateImage` client uses unsafe type assertion without validation
+### WR-02: Falsy checks silently override valid zero values for numeric options
 
-**File:** `src/services/supabase/aiProxy.ts:222-228`
-**Issue:** The `generateImage` function casts the proxy response as `{ imageUrl: string } | { imageData: string }` without any runtime validation. If the edge function returns an unexpected shape (e.g., an error object that somehow passed the `response.ok` check), the `'imageUrl' in result` check would return `false` and the function would return `result.imageData` which would be `undefined`. This would propagate an `undefined` value as a string to callers.
+**File:** `supabase/functions/ai-proxy/providers/gemini.ts:94`
+**Also:** `providers/gemini.ts:91-93`, `providers/openai.ts:92-97`, `index.ts:930-935`, `index.ts:839`, `index.ts:873`, `index.ts:972-974`, `index.ts:1007`
+**Issue:** Image generation options like `compression` are checked with simple truthiness (`if (options.compression)`). The `compression` field accepts values 0-100 per the config documentation (line 23 of `images.ts`), so `0` is a valid value. Passing `compression: 0` would be silently dropped. Similarly, `numberOfImages: 0` would be overridden to `1`.
 **Fix:**
 ```typescript
-export async function generateImage(options: ImageGenerationOptions): Promise<string> {
-  const result = await callAIProxy({
-    // ... existing fields
-  }) as Record<string, unknown>
+// Instead of:
+if (options.compression) body.compression = options.compression
+// Use:
+if (options.compression !== undefined) body.compression = options.compression
+```
 
-  if (result && typeof result === 'object') {
-    if (typeof result.imageUrl === 'string') return result.imageUrl
-    if (typeof result.imageData === 'string') return result.imageData
-  }
+### WR-03: Missing null safety on deeply nested API response traversal
 
-  throw new Error('Image generation returned unexpected response format')
-}
+**File:** `supabase/functions/ai-proxy/index.ts:237`
+**Also:** `index.ts:263`, `index.ts:293`, `index.ts:491`, `index.ts:712`, `index.ts:755`, `index.ts:824`, `index.ts:1200`, `providers/gemini.ts:27`, `providers/openai.ts:26`
+**Issue:** Multiple locations access deeply nested properties like `data.choices[0].message.content` or `data.candidates[0].content.parts[0].text` without null/undefined guards. If an AI provider returns a safety block, empty candidates array, or unexpected format, this throws an unhelpful `TypeError: Cannot read properties of undefined` instead of a meaningful error message.
+**Fix:**
+```typescript
+// Instead of:
+return data.choices[0].message.content
+// Use:
+const content = data.choices?.[0]?.message?.content
+if (!content) throw new Error('AI provider returned empty response')
+return content
 ```
 
 ## Info
 
-### IN-01: Extracted provider modules not used by edge function
+### IN-01: Extracted provider modules are dead code -- not imported by edge function
 
 **File:** `supabase/functions/ai-proxy/providers/openai.ts` and `supabase/functions/ai-proxy/providers/gemini.ts`
-**Issue:** These two provider modules contain image generation functions (`image()`) that are complete and support all parameters. However, the edge function (`index.ts`) has its own inline copies of `openaiImage` and `geminiImage` that it actually uses. The provider modules appear to be intended for a future refactor but are currently dead code. This creates a maintenance risk because the two copies have already diverged (e.g., `openaiImage` in `index.ts` is missing parameters that `providers/openai.ts` has).
-**Fix:** Import and use the provider modules in the edge function, or remove them if they are not yet intended to be active.
+**Issue:** These provider modules contain image generation functions with full parameter support, but the edge function (`index.ts`) uses its own inline copies (`openaiImage`, `geminiImage`). The provider modules are not imported anywhere. This creates a maintenance risk since the two copies have already diverged slightly (e.g., the provider modules use `!== undefined` checks in some places while the inline versions use truthiness checks).
+**Fix:** Import and use the provider modules in the edge function, removing the duplicated inline implementations.
 
-### IN-02: `getImageConfigAuto` not tested
+### IN-02: Redundant ternary in openrouterImage always returns the same value
 
-**File:** `src/config/images.test.ts`
-**Issue:** The test file covers `IMAGE_CONFIG` values and the `getImageConfig()` function but does not test `getImageConfigAuto()`, which reads the model config from localStorage. This function is the one most likely to be called by UI components and could fail if `getModelConfig()` returns an unexpected `imageSource` value.
-**Fix:** Add tests for `getImageConfigAuto` with mocked `getModelConfig` return values, including edge cases where `imageSource` might be an unexpected value.
+**File:** `supabase/functions/ai-proxy/index.ts:589`
+**Issue:** `imageUrl.startsWith('data:') ? imageUrl : imageUrl` is a no-op ternary that always returns `imageUrl` regardless of the condition.
+**Fix:** Replace with `return imageUrl`.
 
-### IN-03: `getImageConfigAuto` lacks validation for `imageSource`
+### IN-03: `getImageConfigAuto` lacks runtime validation for `imageSource`
 
 **File:** `src/config/images.ts:165-168`
-**Issue:** `getImageConfigAuto` passes `config.imageSource` directly to `getImageConfig`, which only accepts `'genai' | 'vertex' | 'openai' | 'openrouter'`. If `getModelConfig()` returns a different value (e.g., `'groq'` or `undefined`), TypeScript would not catch it at runtime and the function would fall through to the OpenAI path via the else branch.
-**Fix:** Add a runtime check or default:
+**Issue:** `getImageConfigAuto` passes `config.imageSource` directly to `getImageConfig`, which only accepts `'genai' | 'vertex' | 'openai' | 'openrouter'`. If `getModelConfig()` returns a different value (e.g., `'groq'` or `undefined`), TypeScript would not catch it at runtime and the function would fall through to the OpenAI path via the else branch, which may not be the intended behavior.
+**Fix:** Add a runtime guard or default to a safe fallback:
 ```typescript
 export function getImageConfigAuto(context: ImageContext): ImageOptions {
   const config = getModelConfigImport();
-  const validSources = ['genai', 'vertex', 'openai', 'openrouter'] as const;
-  const source = validSources.includes(config.imageSource as typeof validSources[number])
-    ? (config.imageSource as typeof validSources[number])
-    : 'openai'; // safe default
-  return getImageConfig(context, source);
+  const source = config.imageSource ?? 'openai';
+  return getImageConfig(context, source as Parameters<typeof getImageConfig>[1]);
 }
 ```
 

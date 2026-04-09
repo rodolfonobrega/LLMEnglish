@@ -91,6 +91,10 @@ export async function image(apiKey: string, prompt: string, model: string, optio
 
   if (options.size) body.size = options.size
   if (options.quality) body.quality = options.quality
+  if (options.format) body.format = options.format
+  if (options.compression) body.compression = options.compression
+  if (options.background) body.background = options.background
+  if (options.moderation) body.moderation = options.moderation
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',

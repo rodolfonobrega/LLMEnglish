@@ -124,7 +124,6 @@ export async function image(apiKey: string, prompt: string, model: string, optio
     }
 
     if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
-    if (options.imageSize) generationConfig.imageSize = options.imageSize
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,

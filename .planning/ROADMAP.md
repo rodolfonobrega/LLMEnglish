@@ -56,7 +56,7 @@
 | 11. AudioWorklet Migration | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 12. IndexedDB Audio Cache | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 13. Image Generation | v1.3 | 3/3 | Complete    | 2026-04-09 |
-| 14. Student Data Flow | v1.3 | 0/1 | In Progress | |
+| 14. Student Data Flow | v1.3 | 1/1 | Complete   | 2026-04-09 |
 | 15. Model Fallback | v1.3 | 0/? | Pending | |
 | 16. Recording Logic | v1.3 | 0/? | Pending | |
 | 17. Retry Exercise | v1.3 | 0/? | Pending | |
@@ -80,10 +80,10 @@ Plans:
 **Goal:** Fix broken data flow connections — error patterns with fake temp IDs, reviews lost on refresh, weak area cards ignoring category filter, and guessCategory false positives
 **Merged from:** 999.1 (error logic), 999.2 (cards logic), 999.4 (trail discussion)
 **Requirements:** 999.1, 999.2
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 14-01-PLAN.md — Fix error tracking, review persistence, weak area filtering, and guessCategory
+- [x] 14-01-PLAN.md — Fix error tracking, review persistence, weak area filtering, and guessCategory
 
 ### Phase 15: Model Fallback
 

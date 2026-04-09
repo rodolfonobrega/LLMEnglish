@@ -6,7 +6,7 @@
  * In dev mode (no Supabase), these calls will fail with a descriptive error.
  */
 
-import { normalizeTtsVoice } from '../types/settings';
+import { normalizeTtsVoice, type Source } from '../types/settings';
 import {
   chatCompletion as proxyChat,
   chatCompletionWithImage as proxyChatWithImage,
@@ -15,9 +15,27 @@ import {
   generateImage as proxyImage,
 } from './supabase/aiProxy';
 import { getRuntimeModelConfig } from './runtimeState';
-import { resolveSource } from './modelCatalog';
-import { getAudioCache } from './audioCache';
-import { blobToBase64, base64ToBlob } from '../utils/audio';
+
+// ---------------------------------------------------------------------------
+// Helpers for source detection from model overrides
+// ---------------------------------------------------------------------------
+
+function detectSource(modelId: string): Source {
+  if (modelId.startsWith('gemini')) return 'genai';
+  // OpenRouter models use owner/model format (e.g. "anthropic/claude-sonnet-4")
+  // but Groq also uses slashes — exclude known Groq prefixes first.
+  if (
+    modelId.startsWith('llama-') ||
+    modelId.startsWith('meta-llama/') ||
+    modelId.startsWith('qwen/') ||
+    modelId.startsWith('canopylabs/') ||
+    modelId.startsWith('whisper-large-v3')
+  ) {
+    return 'groq';
+  }
+  if (modelId.includes('/')) return 'openrouter';
+  return 'openai';
+}
 
 // ===== Chat Completions =====
 
@@ -28,7 +46,7 @@ export async function chatCompletion(
 ): Promise<string> {
   const config = getRuntimeModelConfig();
   const model = modelOverride || config.chatModel;
-  const source = modelOverride ? resolveSource(modelOverride) : config.chatSource;
+  const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
 
   try {
     return await proxyChat({ source, model, systemPrompt, userMessage });
@@ -59,7 +77,7 @@ export async function chatCompletionWithImage(
 ): Promise<string> {
   const config = getRuntimeModelConfig();
   const model = modelOverride || config.chatModel;
-  const source = modelOverride ? resolveSource(modelOverride) : config.chatSource;
+  const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
 
   // Groq does not support image input; fall back to genai
   const resolvedSource = source === 'groq' ? 'genai' : source;
@@ -79,26 +97,8 @@ export async function textToSpeech(
   const model = config.ttsModel;
   const voice = normalizeTtsVoice(source, model, voiceOverride || config.ttsVoice);
 
-  // Cache-first: check IndexedDB before network call
-  const audioCache = getAudioCache();
   try {
-    const cached = await audioCache.get(text, voice, model, source);
-    if (cached) {
-      return await blobToBase64(cached);
-    }
-  } catch {
-    // Cache read failed — proceed with network call
-  }
-
-  try {
-    const base64 = await proxyTTS({ source, model, voice, text });
-    // Store in cache (fire-and-forget, errors logged internally)
-    try {
-      audioCache.set(text, voice, model, source, base64ToBlob(base64)).catch(() => {});
-    } catch {
-      // base64ToBlob failed — skip caching, non-critical
-    }
-    return base64;
+    return await proxyTTS({ source, model, voice, text });
   } catch (primaryError) {
     if (config.ttsFallbackModel && config.ttsFallbackSource) {
       console.warn('Primary TTS failed, trying fallback:', primaryError);

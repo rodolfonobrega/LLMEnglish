@@ -1,4 +1,3 @@
-import 'fake-indexeddb/auto';
 import { Buffer } from 'node:buffer';
 import { afterEach, beforeAll, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';

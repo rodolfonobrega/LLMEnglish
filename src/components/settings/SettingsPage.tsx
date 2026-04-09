@@ -18,31 +18,14 @@ import {
   IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
   sourcesFromModels,
 } from '../../types/settings';
-import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, LogOut, Loader2, AlertTriangle } from 'lucide-react';
+import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/Tooltip';
 import { cn } from '../../utils/cn';
-import { isKnownModel } from '../../services/modelCatalog';
 
 function firstModelForSource(models: readonly ModelOption[], source: Source): string {
   return models.find(m => m.source === source)?.value ?? models[0].value;
-}
-
-/** Non-blocking warning badge for model+source combos not in the catalog. */
-function ModelWarningBadge({ modelId, source }: { modelId: string; source: Source }) {
-  if (isKnownModel(modelId, source)) return null;
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <AlertTriangle size={14} className="text-amber-500 inline-block ml-1 cursor-help" />
-        </TooltipTrigger>
-        <TooltipContent>This model may not be recognized by the app.</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
 }
 
 /** Two-dropdown model selector: Provider → Model (filtered by provider). */
@@ -65,22 +48,19 @@ function ModelSelect({
 }) {
   const filteredModels = models.filter(m => m.source === currentSource);
   return (
-    <div>
-      <div className="grid grid-cols-2 gap-3">
-        <Select
-          label={`${label} - Provedor`}
-          value={currentSource}
-          options={sources.map(s => ({ value: s, label: SOURCE_LABELS[s] }))}
-          onChange={v => onSourceChange(v as Source)}
-        />
-        <Select
-          label={`${label} - Modelo`}
-          value={currentModel}
-          options={filteredModels.map(m => ({ value: m.value, label: m.label }))}
-          onChange={v => onModelChange(currentSource, v)}
-        />
-      </div>
-      <ModelWarningBadge modelId={currentModel} source={currentSource} />
+    <div className="grid grid-cols-2 gap-3">
+      <Select
+        label={`${label} - Provedor`}
+        value={currentSource}
+        options={sources.map(s => ({ value: s, label: SOURCE_LABELS[s] }))}
+        onChange={v => onSourceChange(v as Source)}
+      />
+      <Select
+        label={`${label} - Modelo`}
+        value={currentModel}
+        options={filteredModels.map(m => ({ value: m.value, label: m.label }))}
+        onChange={v => onModelChange(currentSource, v)}
+      />
     </div>
   );
 }
@@ -316,9 +296,6 @@ export function SettingsPage() {
             disabled={!currentSource}
           />
         </div>
-        {currentSource && currentModel && (
-          <ModelWarningBadge modelId={currentModel} source={currentSource} />
-        )}
         {voiceOptions && currentModel && onVoiceChange && (
           <Select
             label="Voz Fallback"

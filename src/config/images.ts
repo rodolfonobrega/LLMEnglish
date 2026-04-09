@@ -47,8 +47,8 @@ export const IMAGE_CONFIG = {
     openai: {
       size: '1024x1024',
       quality: 'medium',
-      format: 'png',
-      compression: undefined,
+      format: 'jpeg',
+      compression: 80,
       background: 'opaque',
       moderation: 'auto',
     },
@@ -70,8 +70,8 @@ export const IMAGE_CONFIG = {
     openai: {
       size: '1024x1024',
       quality: 'medium',
-      format: 'png',
-      compression: undefined,
+      format: 'jpeg',
+      compression: 80,
       background: 'opaque',
       moderation: 'auto',
     },

@@ -55,7 +55,7 @@
 | 10. Edge Function Modularization | v1.2 | 3/3 | Complete | 2026-04-08 |
 | 11. AudioWorklet Migration | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 12. IndexedDB Audio Cache | v1.2 | 1/1 | Complete | 2026-04-08 |
-| 13. Image Generation | v1.3 | 2/2 | Complete   | 2026-04-09 |
+| 13. Image Generation | v1.3 | 2/3 | Verification gaps | |
 | 14. Student Data Flow | v1.3 | 0/? | Pending | |
 | 15. Model Fallback | v1.3 | 0/? | Pending | |
 | 16. Recording Logic | v1.3 | 0/? | Pending | |
@@ -68,11 +68,12 @@
 **Goal:** Verify dialog screen image creation, fix Gemini image generation models, and optimize resolution to reduce token usage and cost
 **Merged from:** 999.5 (dialog images), 999.6 (Gemini image models), 999.7 (resolution optimization)
 **Requirements:** 999.5, 999.6, 999.7
-**Plans:** 2/2 plans complete
+**Plans:** 3 plans
 
 Plans:
 - [x] 13-01-PLAN.md — Fix client proxy option forwarding (999.5)
 - [x] 13-02-PLAN.md — Fix edge function + providers + config optimization (999.5, 999.6, 999.7)
+- [ ] 13-03-PLAN.md — Close verification gaps: inline provider functions in index.ts (999.5, 999.6, 999.7)
 
 ### Phase 14: Student Data Flow
 

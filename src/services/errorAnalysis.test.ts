@@ -101,7 +101,7 @@ describe('guessCategory (tested via extractErrorPatterns)', () => {
 
   it('generic correction with no keywords returns other category', async () => {
     const evalResult = makeEvaluation({
-      corrections: ['Try to be more natural'],
+      corrections: ['Capitalization missing at start'],
     });
     const patterns = await extractErrorPatterns(evalResult, 'test prompt', 'card-1');
     expect(patterns.length).toBeGreaterThan(0);

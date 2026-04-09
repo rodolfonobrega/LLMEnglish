@@ -195,13 +195,14 @@ export async function extractErrorPatterns(
 
 function guessCategory(correction: string): ErrorCategory {
   const lower = correction.toLowerCase()
+  // Check explicit category keywords first (highest priority)
   if (lower.includes('tense') || lower.includes('past') || lower.includes('present') || lower.includes('future')) {
     return 'verb-tense'
   }
-  if (lower.includes('preposition') || lower.includes('in ') || lower.includes('on ') || lower.includes('at ')) {
+  if (lower.includes('preposition')) {
     return 'preposition'
   }
-  if (lower.includes('article') || lower.includes('a ') || lower.includes('an ') || lower.includes('the ')) {
+  if (lower.includes('article')) {
     return 'article'
   }
   if (lower.includes('word order') || lower.includes('should be')) {
@@ -213,8 +214,21 @@ function guessCategory(correction: string): ErrorCategory {
   if (lower.includes('pronunciation') || lower.includes('sounds')) {
     return 'pronunciation'
   }
-  if (lower.includes('vocabulary') || lower.includes('word')) {
+  if (lower.includes('vocabulary') || lower.includes('word choice') || lower.includes('wrong word')) {
     return 'vocabulary'
+  }
+  if (lower.includes('fluency') || lower.includes('natural') || lower.includes('phrasing')) {
+    return 'fluency'
+  }
+  // Fallback: only match short substrings if they appear as corrections themselves
+  // (e.g., "Use 'in' instead of 'on'" -- the preposition IS the topic)
+  if (/\b(in|on|at|to|for|with|by|from)\b.*\b(instead|rather|use|should)\b/i.test(lower) ||
+      /\b(instead|rather|use|should)\b.*\b(in|on|at|to|for|with|by|from)\b/i.test(lower)) {
+    return 'preposition'
+  }
+  if (/\b(a|an|the)\b.*\b(instead|use|should)\b/i.test(lower) ||
+      /\b(instead|use|should)\b.*\b(a|an|the)\b/i.test(lower)) {
+    return 'article'
   }
   return 'other'
 }
@@ -332,16 +346,45 @@ export async function identifyWeakAreas(): Promise<WeakAreas> {
   }
 }
 
+const categoryToCardThemes: Partial<Record<ErrorCategory, string[]>> = {
+  'verb-tense': ['verb-tense', 'tense', 'grammar'],
+  'preposition': ['preposition', 'grammar'],
+  'article': ['article', 'grammar'],
+  'word-order': ['word-order', 'grammar', 'syntax'],
+  'grammar': ['grammar', 'verb-tense', 'preposition', 'article', 'word-order', 'syntax'],
+  'pronunciation': ['pronunciation'],
+  'vocabulary': ['vocabulary', 'vocab'],
+  'fluency': ['fluency'],
+  'syntax': ['syntax', 'grammar', 'word-order'],
+  'other': [],
+};
+
 export async function getCardsForWeakArea(weakArea: ErrorCategory): Promise<Card[]> {
-  void weakArea
   const allCards = await getCards()
-  return allCards
-    .filter(card => card.latestEvaluation && card.latestEvaluation.score < 7)
-    .sort((a, b) => {
-      const aScore = a.latestEvaluation?.score || 0
-      const bScore = b.latestEvaluation?.score || 0
-      return aScore - bScore
-    })
+  const themeKeywords = categoryToCardThemes[weakArea] || []
+
+  // Filter cards: prefer cards whose theme/context matches the error category
+  const matchingCards = allCards.filter(card => {
+    if (!card.latestEvaluation || card.latestEvaluation.score >= 7) return false
+    if (themeKeywords.length === 0) return true // 'other' returns all low-scoring
+    const cardTheme = (card.theme || '').toLowerCase()
+    const cardContext = (card.context || '').toLowerCase()
+    const cardPrompt = card.prompt.toLowerCase()
+    return themeKeywords.some(keyword =>
+      cardTheme.includes(keyword) || cardContext.includes(keyword) || cardPrompt.includes(keyword)
+    )
+  })
+
+  // If no matches, fall back to all low-scoring cards (same as before)
+  if (matchingCards.length === 0) {
+    return allCards
+      .filter(card => card.latestEvaluation && card.latestEvaluation.score < 7)
+      .sort((a, b) => (a.latestEvaluation?.score || 0) - (b.latestEvaluation?.score || 0))
+      .slice(0, 10)
+  }
+
+  return matchingCards
+    .sort((a, b) => (a.latestEvaluation?.score || 0) - (b.latestEvaluation?.score || 0))
     .slice(0, 10)
 }
 

@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Hardening & Praticar Redesign
-status: milestone_complete
-stopped_at: v1.0 milestone archived and tagged
-last_updated: "2026-04-02T23:50:00.000Z"
-last_activity: 2026-04-02
+milestone: v1.2
+milestone_name: Audio & Proxy Cleanup
+status: executing
+stopped_at: v1.0 milestone archived
+last_updated: "2026-04-08T18:17:36.823Z"
+last_activity: 2026-04-08
 progress:
-  total_phases: 6
-  completed_phases: 6
+  total_phases: 5
+  completed_phases: 5
   total_plans: 8
   completed_plans: 8
   percent: 100
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Planning next milestone
+**Current focus:** Phase 12 — IndexedDB Audio Cache
 
 ## Current Position
 
-Phase: None (milestone complete)
-Plan: None
-Status: v1.0 milestone complete — all 6 phases shipped
-Last activity: 2026-04-02
+Phase: 12
+Plan: Not started
+Status: Executing Phase 12
+Last activity: 2026-04-08
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 18
 - Average duration: ~5min
 - Total execution time: ~43min across 8 plans
 
@@ -50,6 +50,11 @@ Progress: [██████████] 100%
 | 04 | 2 | 6min | 3min |
 | 05 | 2 | 10min | 5min |
 | 06 | 1 | 4min | 4min |
+| 09 | 2 | - | - |
+| 08 | 1 | - | - |
+| 10 | 3 | - | - |
+| 11 | 1 | - | - |
+| 12 | 1 | - | - |
 
 **Recent Trend:**
 

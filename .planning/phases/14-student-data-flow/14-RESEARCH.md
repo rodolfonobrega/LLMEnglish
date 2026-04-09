@@ -239,22 +239,25 @@ export function setOpenAIKey(key: string): void {
 
 **These assumptions need user confirmation before planning.** The planner should verify which of these are actual bugs vs. intentional design.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should ExerciseMode defer error recording until card is saved?**
    - What we know: Currently errors are recorded with temp IDs before the user saves
-   - What's unclear: Whether the intent is to always record errors (even for unsaved exercises) or only when saved
-   - Recommendation: Record errors always (valuable data) but use a stable identifier or nullable cardId
+   - What was unclear: Whether the intent is to always record errors (even for unsaved exercises) or only when saved
+   - Recommendation was: Record errors always (valuable data) but use a stable identifier or nullable cardId
+   - **RESOLVED:** Record errors always with stable `exercise_` prefixed ID. The plan (Task 1 Part A) replaces `temp_${Date.now()}` with `exercise_${Date.now()}` in ExerciseMode.tsx. This preserves error data from unsaved exercises while making the ID clearly distinguishable from real card IDs.
 
 2. **Should trail completion award XP and badges?**
    - What we know: ExerciseMode awards XP_PER_EXERCISE, ReviewPage awards XP_PER_REVIEW, live sessions award XP_PER_LIVE_SESSION
-   - What's unclear: Trail steps already trigger ConversationAnalysis which awards XP_PER_LIVE_SESSION -- is that sufficient?
-   - Recommendation: The live session XP may already cover this, need to verify the flow
+   - What was unclear: Trail steps already trigger ConversationAnalysis which awards XP_PER_LIVE_SESSION -- is that sufficient?
+   - Recommendation was: The live session XP may already cover this, need to verify the flow
+   - **RESOLVED:** DEFERRED out of this phase. Trail steps trigger ConversationAnalysis which already awards XP_PER_LIVE_SESSION. Adding trail-specific XP is an enhancement, not a bug fix. This is not part of the current phase goal (fixing broken data flows). May be addressed in a future phase if the user wants explicit trail completion XP.
 
 3. **Is getCardsForWeakArea meant to be functional or a placeholder?**
    - What we know: Function exists, is exported, is used by errorAnalysis but has `void weakArea`
-   - What's unclear: Whether it was planned to be completed or is intentionally broad
-   - Recommendation: At minimum, document the limitation; ideally, implement category-aware filtering
+   - What was unclear: Whether it was planned to be completed or is intentionally broad
+   - Recommendation was: At minimum, document the limitation; ideally, implement category-aware filtering
+   - **RESOLVED:** It is a functional function that was never completed. The plan (Task 1 Part C) implements category-aware filtering using a `categoryToCardThemes` mapping, replacing the `void weakArea` stub. The ErrorDashboard uses this function to recommend cards, so returning irrelevant cards is a user-visible bug.
 
 ## Environment Availability
 

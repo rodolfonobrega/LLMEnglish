@@ -56,7 +56,7 @@
 | 11. AudioWorklet Migration | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 12. IndexedDB Audio Cache | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 13. Image Generation | v1.3 | 3/3 | Complete    | 2026-04-09 |
-| 14. Student Data Flow | v1.3 | 0/? | Pending | |
+| 14. Student Data Flow | v1.3 | 0/1 | In Progress | |
 | 15. Model Fallback | v1.3 | 0/? | Pending | |
 | 16. Recording Logic | v1.3 | 0/? | Pending | |
 | 17. Retry Exercise | v1.3 | 0/? | Pending | |
@@ -77,13 +77,13 @@ Plans:
 
 ### Phase 14: Student Data Flow
 
-**Goal:** Review how student errors are tracked, how cards work, and how the learning trail ties together — ensure data flows correctly through the system
+**Goal:** Fix broken data flow connections — error patterns with fake temp IDs, reviews lost on refresh, weak area cards ignoring category filter, and guessCategory false positives
 **Merged from:** 999.1 (error logic), 999.2 (cards logic), 999.4 (trail discussion)
-**Requirements:** TBD
-**Plans:** 0 plans
+**Requirements:** 999.1, 999.2
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
+- [ ] 14-01-PLAN.md — Fix error tracking, review persistence, weak area filtering, and guessCategory
 
 ### Phase 15: Model Fallback
 

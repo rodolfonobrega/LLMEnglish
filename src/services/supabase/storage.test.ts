@@ -41,97 +41,71 @@ function makeCard(overrides: Partial<Card> = {}): Card {
 }
 
 /**
- * Build a mock Supabase query chain that supports arbitrary nesting.
- * Usage: setupFromMock({ 'card_reviews': { existingReviews: [...] } })
+ * Track all insert calls per table for assertions.
  */
 function setupFromMock(tableConfigs: Record<string, {
   existingReviews?: Array<{ date: string; score: number }>;
   existingEval?: boolean;
   reviewInsertError?: string;
-}>) {
-  const insertSpies: Record<string, ReturnType<typeof vi.fn>> = {};
+}> = {}) {
+  const insertCalls: Record<string, unknown[][]> = {};
 
   (supabase.from as ReturnType<typeof vi.fn>).mockImplementation((table: string) => {
     const config = tableConfigs[table] || {};
 
-    // Create a recursive chain builder that supports .eq().eq()... chaining
-    const promiseResult = (value: unknown) => Promise.resolve(value);
+    // Create a chainable object: any method call returns another chainable
+    // that is also a Promise (resolves to { data, error })
+    const chainable = (result: unknown): Record<string, unknown> => {
+      const proxy: Record<string, unknown> = {};
 
-    const buildChain = (): Record<string, unknown> => {
-      const chain: Record<string, unknown> = {};
+      // Make it thenable (acts as a Promise)
+      proxy.then = (resolve: (v: unknown) => unknown) => resolve(result);
+      proxy.catch = () => undefined;
 
-      chain.eq = vi.fn(() => {
-        // After eq, return another chainable that also has eq/select/etc
-        const next = buildChain();
-        // eq on update/select also eventually resolves
-        return Object.assign(promiseResult({ error: null, data: null }), next);
+      // Dynamic method support via explicit chainable methods
+      proxy.eq = vi.fn((..._args: unknown[]) => {
+        // For card_reviews select().eq('card_id', ...) - return existing reviews
+        if (table === 'card_reviews') {
+          return chainable({ data: config.existingReviews || [], error: null });
+        }
+        return chainable(result);
       });
 
-      chain.maybeSingle = vi.fn(() => {
+      proxy.maybeSingle = vi.fn(() => {
         if (table === 'card_evaluations') {
-          return promiseResult({
+          return chainable({
             data: config.existingEval ? { id: 'eval-1' } : null,
             error: null,
           });
         }
-        return promiseResult({ data: null, error: null });
+        return chainable({ data: null, error: null });
       });
 
-      chain.select = vi.fn(() => {
-        const selectChain: Record<string, unknown> = {};
+      proxy.select = vi.fn(() => chainable({ data: [], error: null }));
 
-        selectChain.eq = vi.fn(() => {
-          // For card_reviews select, return existing reviews
-          if (table === 'card_reviews') {
-            return promiseResult({
-              data: config.existingReviews || [],
-              error: null,
-            });
-          }
-          // For card_evaluations select, chain to maybeSingle
-          if (table === 'card_evaluations') {
-            const evalChain: Record<string, unknown> = {};
-            evalChain.eq = vi.fn(() => {
-              const innerChain: Record<string, unknown> = {};
-              innerChain.maybeSingle = chain.maybeSingle;
-              return Object.assign(promiseResult({ data: null, error: null }), innerChain);
-            });
-            return Object.assign(promiseResult({ data: null, error: null }), evalChain);
-          }
-          return promiseResult({ data: [], error: null });
-        });
+      proxy.update = vi.fn(() => chainable({ error: null }));
 
-        return Object.assign(promiseResult({ data: [], error: null }), selectChain);
-      });
+      proxy.insert = vi.fn((data: unknown) => {
+        // Track insert calls
+        if (!insertCalls[table]) insertCalls[table] = [];
+        insertCalls[table].push(Array.isArray(data) ? data : [data]);
 
-      chain.update = vi.fn(() => {
-        const updateChain: Record<string, unknown> = {};
-        updateChain.eq = vi.fn(() => {
-          // Support double .eq() chaining for cards update
-          const nextEq: Record<string, unknown> = {};
-          nextEq.eq = vi.fn(() => promiseResult({ error: null }));
-          return Object.assign(promiseResult({ error: null }), nextEq);
-        });
-        return Object.assign(promiseResult({ error: null }), updateChain);
-      });
-
-      chain.insert = vi.fn(() => {
         if (table === 'card_reviews' && config.reviewInsertError) {
-          return promiseResult({ error: { message: config.reviewInsertError } });
+          return chainable({ error: { message: config.reviewInsertError } });
         }
-        return promiseResult({ error: null });
+        return chainable({ error: null });
       });
 
-      return chain;
-    });
+      return proxy;
+    };
 
-    const chain = buildChain();
-    // Track insert spy for assertions
-    insertSpies[table] = chain.insert as ReturnType<typeof vi.fn>;
-    return chain;
+    // Return a fresh chainable for this table
+    return chainable({ error: null });
   });
 
-  return insertSpies;
+  return {
+    getInsertCalls: (table: string) => insertCalls[table] || [],
+  };
 }
 
 describe('updateCard', () => {
@@ -140,7 +114,7 @@ describe('updateCard', () => {
   });
 
   it('when card has reviews, inserts new reviews into card_reviews table', async () => {
-    const spies = setupFromMock({
+    const { getInsertCalls } = setupFromMock({
       cards: {},
       card_evaluations: {},
       card_reviews: {},
@@ -156,11 +130,12 @@ describe('updateCard', () => {
     await updateCard(card);
 
     // card_reviews insert should have been called
-    expect(spies['card_reviews']).toHaveBeenCalled();
+    const calls = getInsertCalls('card_reviews');
+    expect(calls.length).toBeGreaterThan(0);
   });
 
   it('skips reviews already present in card_reviews (dedup by date+score)', async () => {
-    const spies = setupFromMock({
+    const { getInsertCalls } = setupFromMock({
       cards: {},
       card_evaluations: {},
       card_reviews: {
@@ -179,14 +154,12 @@ describe('updateCard', () => {
 
     await updateCard(card);
 
-    // Insert should be called, but only with the new review (not the duplicate)
-    expect(spies['card_reviews']).toHaveBeenCalled();
-    const insertCall = spies['card_reviews'].mock.calls[0][0];
-    // The insert should contain only the new review
-    if (Array.isArray(insertCall)) {
-      expect(insertCall.length).toBe(1);
-      expect(insertCall[0].score).toBe(6);
-    }
+    // Insert should be called with only the new review (not the duplicate)
+    const calls = getInsertCalls('card_reviews');
+    expect(calls.length).toBeGreaterThan(0);
+    const inserted = calls[0] as Array<Record<string, unknown>>;
+    expect(inserted.length).toBe(1);
+    expect(inserted[0].score).toBe(6);
   });
 
   it('card_reviews insert failure does not throw (non-blocking, logs error)', async () => {

@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { GeminiLiveSession } from '../../services/geminiLive';
+import { OpenAIRealtimeLiveSession } from '../../services/openaiRealtimeLive';
+import type { ILiveSession } from '../../services/liveSession';
+import { getRuntimeModelConfig } from '../../services/runtimeState';
 import type { LiveScenario, ConversationTurn } from '../../types/scenario';
 import { LogOut, BarChart3, MessageCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -41,7 +44,7 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [currentAiText, setCurrentAiText] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const sessionRef = useRef<GeminiLiveSession | null>(null);
+  const sessionRef = useRef<ILiveSession | null>(null);
   const turnsRef = useRef<ConversationTurn[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -57,9 +60,10 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
   }, []);
 
   useEffect(() => {
-    const session = new GeminiLiveSession({
+    const { liveSource } = getRuntimeModelConfig();
+    const callbacks = {
       onAudioResponse: () => { },
-      onTextResponse: (text) => setCurrentAiText(prev => prev + text),
+      onTextResponse: (text: string) => setCurrentAiText(prev => prev + text),
       onTurnComplete: () => {
         setCurrentAiText(prev => {
           if (prev.trim()) {
@@ -72,13 +76,17 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
           return '';
         });
       },
-      onUserTranscription: (text) => {
+      onUserTranscription: (text: string) => {
         const userTurn: ConversationTurn = { role: 'user', text, timestamp: Date.now() };
         setTurns(t => [...t, userTurn]);
       },
       onError: setError,
       onConnectionChange: setIsConnected,
-    });
+    };
+
+    const session = liveSource === 'openai'
+      ? new OpenAIRealtimeLiveSession(callbacks)
+      : new GeminiLiveSession(callbacks);
 
     sessionRef.current = session;
     session.connect(scenario.systemPrompt, scenario.suggestedVoice);

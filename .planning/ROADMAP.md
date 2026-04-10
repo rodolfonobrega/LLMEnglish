@@ -58,7 +58,7 @@
 | 13. Image Generation | v1.3 | 3/3 | Complete    | 2026-04-09 |
 | 14. Student Data Flow | v1.3 | 1/1 | Complete    | 2026-04-09 |
 | 15. Model Fallback | v1.3 | 2/2 | Complete    | 2026-04-10 |
-| 16. Recording Logic | v1.3 | 0/2 | Pending | |
+| 16. Recording Logic | v1.3 | 1/2 | Complete    | 2026-04-10 |
 | 17. Retry Exercise | v1.3 | 0/? | Pending | |
 
 ## v1.3 — Image, Data & UX Improvements (Phases 13-17)
@@ -101,11 +101,11 @@ Plans:
 **Goal:** Re-apply AudioWorklet migration (silently reverted), fix blob URL memory leak in useAudioRecorder, fix ReviewPage type mismatch, and add unit tests
 **Promoted from:** 999.8
 **Requirements:** REC-01, REC-02, REC-03, REC-04, REC-05
-**Plans:** 2 plans
+**Plans:** 1/2 plans complete
 
 Plans:
 - [ ] 16-01-PLAN.md — Migrate geminiLive.ts from ScriptProcessorNode to AudioWorkletNode + remove unclamped createPcmBlob
-- [ ] 16-02-PLAN.md — Fix useAudioRecorder blob URL cleanup + stream safety + ReviewPage type fix + tests
+- [x] 16-02-PLAN.md — Fix useAudioRecorder blob URL cleanup + stream safety + ReviewPage type fix + tests
 
 ### Phase 17: Retry Exercise
 

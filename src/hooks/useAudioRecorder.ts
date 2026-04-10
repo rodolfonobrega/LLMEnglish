@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { blobToBase64 } from '../utils/audio';
 
 export interface AudioRecorderState {
@@ -20,9 +20,34 @@ export function useAudioRecorder() {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const audioUrlRef = useRef<string | null>(null);
+
+  const updateState = useCallback((updater: AudioRecorderState | ((prev: AudioRecorderState) => AudioRecorderState)) => {
+    setState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      audioUrlRef.current = next.audioUrl;
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   const startRecording = useCallback(async () => {
     try {
+      // Revoke previous blob URL if user re-records
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -42,7 +67,7 @@ export function useAudioRecorder() {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         const base64 = await blobToBase64(blob);
-        setState(prev => ({
+        updateState(prev => ({
           ...prev,
           isRecording: false,
           audioBlob: blob,
@@ -54,9 +79,9 @@ export function useAudioRecorder() {
 
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
-      setState(prev => ({ ...prev, isRecording: true, error: null }));
+      updateState(prev => ({ ...prev, isRecording: true, error: null }));
     } catch (err) {
-      setState(prev => ({
+      updateState(prev => ({
         ...prev,
         error: `Microphone access denied: ${err}`,
       }));
@@ -65,6 +90,11 @@ export function useAudioRecorder() {
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && state.isRecording) {
+      // Safety net: stop stream tracks immediately in case onstop doesn't fire
+      const stream = mediaRecorderRef.current.stream;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
       mediaRecorderRef.current.stop();
     }
   }, [state.isRecording]);
@@ -73,14 +103,14 @@ export function useAudioRecorder() {
     if (state.audioUrl) {
       URL.revokeObjectURL(state.audioUrl);
     }
-    setState({
+    updateState({
       isRecording: false,
       audioBlob: null,
       audioUrl: null,
       audioBase64: null,
       error: null,
     });
-  }, [state.audioUrl]);
+  }, [state.audioUrl, updateState]);
 
   return {
     ...state,

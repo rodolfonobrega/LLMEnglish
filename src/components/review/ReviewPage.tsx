@@ -63,7 +63,7 @@ export function ReviewPage() {
 
   const currentCard = dueCards[currentIndex];
 
-  const handleAudioReady = async (blob: Blob) => {
+  const handleAudioReady = async (blob: Blob, _base64: string) => {
     if (!currentCard) return;
     setIsEvaluating(true);
     setError(null);

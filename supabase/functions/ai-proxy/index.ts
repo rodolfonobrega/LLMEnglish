@@ -929,6 +929,10 @@ async function openaiImage(apiKey: string, prompt: string, model: string, option
 
   if (options.size) body.size = options.size
   if (options.quality) body.quality = options.quality
+  if (options.format) body.format = options.format
+  if (options.compression) body.compression = options.compression
+  if (options.background) body.background = options.background
+  if (options.moderation) body.moderation = options.moderation
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -1001,7 +1005,6 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
     }
 
     if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
-    if (options.imageSize) generationConfig.imageSize = options.imageSize
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -1303,12 +1306,18 @@ serve(async (req) => {
       // Image Generation
       case 'image': {
         const source = normalizeSource(body.source || body.provider, 'genai')
-        const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-2.5-flash-image' : 'gpt-image-1')
+        const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-3.1-flash-image-preview' : 'gpt-image-1')
 
         const options = {
           size: body.size,
+          quality: body.quality,
+          format: body.format,
+          compression: body.compression,
+          background: body.background,
+          moderation: body.moderation,
           aspectRatio: body.aspectRatio,
           imageSize: body.imageSize,
+          personGeneration: body.personGeneration,
           numberOfImages: body.numberOfImages,
         }
 

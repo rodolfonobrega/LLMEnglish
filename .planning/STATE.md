@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Hardening & Praticar Redesign
-status: milestone_complete
-stopped_at: v1.0 milestone archived and tagged
-last_updated: "2026-04-02T23:50:00.000Z"
-last_activity: 2026-04-02
+milestone: v1.3
+milestone_name: — Image, Data & UX Improvements
+status: executing
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-04-09T15:37:14.094Z"
+last_activity: 2026-04-09
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 5
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Planning next milestone
+**Current focus:** Phase 13 — image-generation
 
 ## Current Position
 
-Phase: None (milestone complete)
-Plan: None
-Status: v1.0 milestone complete — all 6 phases shipped
-Last activity: 2026-04-02
+Phase: 15
+Plan: Not started
+Status: Ready to execute
+Last activity: 2026-04-09
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 22
 - Average duration: ~5min
 - Total execution time: ~43min across 8 plans
 
@@ -50,17 +50,29 @@ Progress: [██████████] 100%
 | 04 | 2 | 6min | 3min |
 | 05 | 2 | 10min | 5min |
 | 06 | 1 | 4min | 4min |
+| 09 | 2 | - | - |
+| 08 | 1 | - | - |
+| 10 | 3 | - | - |
+| 11 | 1 | - | - |
+| 12 | 1 | - | - |
+| 13 | 3 | - | - |
+| 14 | 1 | - | - |
 
 **Recent Trend:**
 
 - Last 8 plans: avg ~5min each
 - Trend: Consistent velocity
 
+| Phase 13 P02 | 4min | 3 tasks | 5 files |
+
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+
+- [Phase 13]: Removed imageSize from Gemini native (:generateContent) path since it is an Imagen-only parameter
+- [Phase 13]: Switched imageMode and exerciseMode OpenAI configs from PNG to JPEG with compression 80 for reduced base64 payload
 
 ### Pending Todos
 
@@ -72,6 +84,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-02
-Stopped at: v1.0 milestone archived
+Last session: 2026-04-09T01:40:02.849Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None

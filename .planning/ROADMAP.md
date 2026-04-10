@@ -57,7 +57,7 @@
 | 12. IndexedDB Audio Cache | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 13. Image Generation | v1.3 | 3/3 | Complete    | 2026-04-09 |
 | 14. Student Data Flow | v1.3 | 1/1 | Complete    | 2026-04-09 |
-| 15. Model Fallback | v1.3 | 0/? | Pending | |
+| 15. Model Fallback | v1.3 | 0/2 | Pending | |
 | 16. Recording Logic | v1.3 | 0/? | Pending | |
 | 17. Retry Exercise | v1.3 | 0/? | Pending | |
 
@@ -89,11 +89,12 @@ Plans:
 
 **Goal:** Add fallback model configuration for all modes so users don't get stuck when their primary model is unavailable
 **Promoted from:** 999.3
-**Requirements:** TBD
-**Plans:** 0 plans
+**Requirements:** IMAGE-FALLBACK-TYPES, LIVE-FACTORY, IMAGE-FALLBACK, IMAGE-CHAT-FALLBACK, SETTINGS-UI
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 15 to break down)
+- [ ] 15-01-PLAN.md — Add image fallback types to ModelConfig + fix live session provider factory
+- [ ] 15-02-PLAN.md — Add image fallback logic to openai.ts + Settings UI for image fallback
 
 ### Phase 16: Recording Logic
 

@@ -57,7 +57,7 @@
 | 12. IndexedDB Audio Cache | v1.2 | 1/1 | Complete | 2026-04-08 |
 | 13. Image Generation | v1.3 | 3/3 | Complete    | 2026-04-09 |
 | 14. Student Data Flow | v1.3 | 1/1 | Complete    | 2026-04-09 |
-| 15. Model Fallback | v1.3 | 2/2 | Complete   | 2026-04-10 |
+| 15. Model Fallback | v1.3 | 2/2 | Complete    | 2026-04-10 |
 | 16. Recording Logic | v1.3 | 0/? | Pending | |
 | 17. Retry Exercise | v1.3 | 0/? | Pending | |
 

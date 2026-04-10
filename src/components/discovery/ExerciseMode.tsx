@@ -179,8 +179,8 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
       evalResult.userTranscription = transcription;
       setEvaluation(evalResult);
 
-      const exerciseSessionId = `exercise_${Date.now()}`;
-      const patterns = await extractErrorPatterns(evalResult, prompt, exerciseSessionId);
+      const tempCardId = `temp_${Date.now()}`;
+      const patterns = await extractErrorPatterns(evalResult, prompt, tempCardId);
       await recordErrorPatterns(patterns)
 
       let xp = XP_PER_EXERCISE;

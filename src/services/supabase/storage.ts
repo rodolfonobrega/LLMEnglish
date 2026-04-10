@@ -188,44 +188,6 @@ export async function updateCard(updated: Card): Promise<void> {
         .insert(evalData)
     }
   }
-
-  // Persist new reviews to card_reviews table
-  if (updated.reviews.length > 0) {
-    // Get existing reviews to avoid duplicates
-    const { data: existingReviews } = await supabase
-      .from('card_reviews')
-      .select('date, score')
-      .eq('card_id', updated.id)
-
-    const existingKeys = new Set(
-      (existingReviews || []).map(r => `${r.date}_${r.score}`)
-    )
-
-    // Insert only reviews not already in DB
-    const newReviews = updated.reviews.filter(review => {
-      const key = `${review.date}_${review.score}`
-      return !existingKeys.has(key)
-    })
-
-    if (newReviews.length > 0) {
-      const { error: reviewError } = await supabase
-        .from('card_reviews')
-        .insert(
-          newReviews.map(review => ({
-            card_id: updated.id,
-            user_id: userId,
-            date: review.date,
-            score: review.score,
-            user_transcription: review.userTranscription,
-          }))
-        )
-
-      if (reviewError) {
-        // Non-blocking: log but don't fail the whole update for review insert failure
-        console.error('Failed to persist reviews:', reviewError.message)
-      }
-    }
-  }
 }
 
 export async function deleteCard(id: string): Promise<void> {

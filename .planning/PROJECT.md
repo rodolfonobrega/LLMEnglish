@@ -31,6 +31,7 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - ✓ Consolidated dual storage layer into single facade with Supabase primary + localStorage fallback (STOR-01, STOR-02) — v1.0 Phase 05
 - ✓ Praticar page redesign with vertical image-banner cards, 2-section layout, full keyboard accessibility (VIS-01, VIS-02, VIS-03) — v1.0 Phase 06
 - ✓ Image generation with client/server option forwarding, Gemini model support, and resolution optimization (999.5, 999.6, 999.7) — v1.3 Phase 13
+- ✓ Model fallback config for image generation, live session factory pattern respecting liveSource (999.8) — v1.3 Phase 15
 
 ### Active
 
@@ -98,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-09 after Phase 14 (student data flow) completion*
+*Last updated: 2026-04-10 after Phase 15 (model fallback) completion*

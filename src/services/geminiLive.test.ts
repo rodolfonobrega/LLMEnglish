@@ -22,16 +22,28 @@ vi.mock('@google/genai', () => ({
 
 import { GeminiLiveSession } from './geminiLive';
 
+/**
+ * Fake AudioWorkletNode with a message port for testing.
+ */
+class FakeAudioWorkletNode {
+  port = { onmessage: null as ((event: unknown) => void) | null, postMessage: vi.fn() };
+  connect = vi.fn();
+  disconnect = vi.fn();
+}
+
+/**
+ * Fake AudioContext that supports AudioWorkletNode (not ScriptProcessorNode).
+ */
 class FakeAudioContext {
   currentTime = 0;
   destination = {};
 
+  audioWorklet = {
+    addModule: vi.fn().mockResolvedValue(undefined),
+  };
+
   createMediaStreamSource() {
     return { connect: vi.fn(), disconnect: vi.fn() };
-  }
-
-  createScriptProcessor() {
-    return { connect: vi.fn(), disconnect: vi.fn(), onaudioprocess: null as ((event: unknown) => void) | null };
   }
 
   createBuffer(_channels: number, frameCount: number, sampleRate: number) {
@@ -62,6 +74,8 @@ class FakeAudioContext {
 }
 
 describe('GeminiLiveSession', () => {
+  let lastCreatedWorkletNode: FakeAudioWorkletNode;
+
   beforeEach(() => {
     getGeminiKeyMock.mockReturnValue('gm-test');
     getModelConfigMock.mockReturnValue({
@@ -70,6 +84,16 @@ describe('GeminiLiveSession', () => {
     });
 
     (globalThis as unknown as { AudioContext: unknown }).AudioContext = FakeAudioContext as unknown;
+
+    // Mock global AudioWorkletNode constructor so production `new AudioWorkletNode(...)` works.
+    // Must use a function (not arrow) so it's callable as a constructor with `new`.
+    lastCreatedWorkletNode = new FakeAudioWorkletNode();
+    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+    (globalThis as unknown as { AudioWorkletNode: unknown }).AudioWorkletNode = class {
+      constructor() {
+        return lastCreatedWorkletNode;
+      }
+    };
 
     const mediaStream = { getTracks: () => [{ stop: vi.fn() }] };
     Object.defineProperty(globalThis, 'navigator', {
@@ -150,7 +174,7 @@ describe('GeminiLiveSession', () => {
     expect(fakeSdkSession.close).toHaveBeenCalled();
   });
 
-  it('streams microphone audio to Gemini session', async () => {
+  it('uses AudioWorkletNode (not ScriptProcessorNode) for microphone input', async () => {
     const fakeSdkSession = {
       sendRealtimeInput: vi.fn(),
       sendClientContent: vi.fn(),
@@ -169,13 +193,74 @@ describe('GeminiLiveSession', () => {
     await session.connect('system');
     await session.startMicrophone();
 
-    const processor = (session as unknown as { processor: { onaudioprocess: (event: unknown) => void } }).processor;
-    processor.onaudioprocess({
-      inputBuffer: {
-        getChannelData: () => new Float32Array([0, 0.1, -0.1]),
-      },
+    // Verify audioWorklet.addModule was called with the pcm-processor worklet
+    const audioCtx = (session as unknown as { inputAudioCtx: FakeAudioContext }).inputAudioCtx;
+    expect(audioCtx.audioWorklet.addModule).toHaveBeenCalledWith('worklets/pcm-processor.js');
+
+    // Verify the private field is workletNode (not processor)
+    const workletNode = (session as unknown as { workletNode: FakeAudioWorkletNode }).workletNode;
+    expect(workletNode).toBeTruthy();
+    expect(workletNode.port.onmessage).toBeTypeOf('function');
+  });
+
+  it('streams microphone audio from worklet port messages to Gemini session', async () => {
+    const fakeSdkSession = {
+      sendRealtimeInput: vi.fn(),
+      sendClientContent: vi.fn(),
+      close: vi.fn(),
+    };
+    liveConnectMock.mockResolvedValue(fakeSdkSession);
+
+    const session = new GeminiLiveSession({
+      onAudioResponse: vi.fn(),
+      onTextResponse: vi.fn(),
+      onTurnComplete: vi.fn(),
+      onError: vi.fn(),
+      onConnectionChange: vi.fn(),
     });
 
-    expect(fakeSdkSession.sendRealtimeInput).toHaveBeenCalled();
+    await session.connect('system');
+    await session.startMicrophone();
+
+    // Simulate the worklet posting a PCM16 audio buffer
+    const workletNode = (session as unknown as { workletNode: FakeAudioWorkletNode }).workletNode;
+    const pcmSamples = new Int16Array([0, 3276, -3276]);
+    workletNode.port.onmessage!({ data: { audio: pcmSamples.buffer } });
+
+    expect(fakeSdkSession.sendRealtimeInput).toHaveBeenCalledWith({
+      media: { data: expect.any(String), mimeType: 'audio/pcm;rate=16000' },
+    });
+  });
+
+  it('stopMicrophone clears worklet port.onmessage and disconnects node', async () => {
+    const fakeSdkSession = {
+      sendRealtimeInput: vi.fn(),
+      sendClientContent: vi.fn(),
+      close: vi.fn(),
+    };
+    liveConnectMock.mockResolvedValue(fakeSdkSession);
+
+    const session = new GeminiLiveSession({
+      onAudioResponse: vi.fn(),
+      onTextResponse: vi.fn(),
+      onTurnComplete: vi.fn(),
+      onError: vi.fn(),
+      onConnectionChange: vi.fn(),
+    });
+
+    await session.connect('system');
+    await session.startMicrophone();
+
+    const workletNode = (session as unknown as { workletNode: FakeAudioWorkletNode }).workletNode;
+    expect(workletNode.port.onmessage).toBeTypeOf('function');
+
+    session.stopMicrophone();
+
+    // port.onmessage should be cleared
+    expect(workletNode.port.onmessage).toBeNull();
+    // disconnect should have been called
+    expect(workletNode.disconnect).toHaveBeenCalled();
+    // workletNode field should be null after stop
+    expect((session as unknown as { workletNode: null }).workletNode).toBeNull();
   });
 });

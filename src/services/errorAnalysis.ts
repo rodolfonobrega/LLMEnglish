@@ -119,13 +119,12 @@ function buildErrorStats(patterns: ErrorPattern[]): ErrorStats {
     .sort((a, b) => b.occurrences - a.occurrences)
     .slice(0, 10)
 
+  const safeAvg = (scores: number[]) =>
+    scores.length > 0 ? scores.reduce((x, y) => x + y, 0) / scores.length : 0
+
   const criticalErrors = patterns
     .filter(pattern => pattern.occurrences >= 3 && pattern.trend === 'worsening')
-    .sort((a, b) => {
-      const aAvg = a.recentScores.reduce((x, y) => x + y, 0) / a.recentScores.length
-      const bAvg = b.recentScores.reduce((x, y) => x + y, 0) / b.recentScores.length
-      return aAvg - bAvg
-    })
+    .sort((a, b) => safeAvg(a.recentScores) - safeAvg(b.recentScores))
     .slice(0, 5)
 
   const needsAttention = patterns

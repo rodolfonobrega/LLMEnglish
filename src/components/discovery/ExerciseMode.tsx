@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater, RotateCcw } from 'lucide-react';
+import { Loader2, RefreshCw, X, Sparkles, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater, RotateCcw } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ThemeSelector } from '../shared/ThemeSelector';

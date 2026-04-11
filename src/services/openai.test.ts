@@ -31,6 +31,7 @@ vi.mock('./runtimeState', () => ({
 
 import {
   chatCompletion,
+  chatCompletionWithImage,
   generateImage,
   speechToText,
   textToSpeech,
@@ -195,5 +196,53 @@ describe('openai service proxy dispatch', () => {
       systemPrompt: 'sys',
       userMessage: 'hi',
     });
+  });
+
+  // --- Image generation fallback tests ---
+
+  it('falls back in image generation when primary fails', async () => {
+    config.imageFallbackModel = 'img-fallback';
+    config.imageFallbackSource = 'openai';
+    proxyImageMock
+      .mockRejectedValueOnce(new Error('primary image fail'))
+      .mockResolvedValueOnce('fallback-image-base64');
+    const result = await generateImage('test prompt');
+    expect(result).toBe('fallback-image-base64');
+  });
+
+  it('throws when image generation fails with no fallback configured', async () => {
+    proxyImageMock
+      .mockRejectedValueOnce(new Error('primary image fail'));
+    await expect(generateImage('test prompt')).rejects.toThrow('primary image fail');
+  });
+
+  it('throws primary error when image generation fallback also fails', async () => {
+    config.imageFallbackModel = 'img-fallback';
+    config.imageFallbackSource = 'openai';
+    proxyImageMock
+      .mockRejectedValueOnce(new Error('primary image fail'))
+      .mockRejectedValueOnce(new Error('fallback image fail'));
+    await expect(generateImage('test prompt')).rejects.toThrow('primary image fail');
+  });
+
+  // --- chatCompletionWithImage fallback tests ---
+
+  it('falls back in chatCompletionWithImage when primary fails', async () => {
+    config.chatFallbackModel = 'chat-fallback';
+    config.chatFallbackSource = 'openai';
+    proxyChatWithImageMock
+      .mockRejectedValueOnce(new Error('primary chat-image fail'))
+      .mockResolvedValueOnce('fallback response');
+    const result = await chatCompletionWithImage('system', 'http://img.url');
+    expect(result).toBe('fallback response');
+  });
+
+  it('does not fallback in chatCompletionWithImage when modelOverride is provided', async () => {
+    config.chatFallbackModel = 'chat-fallback';
+    config.chatFallbackSource = 'openai';
+    proxyChatWithImageMock
+      .mockRejectedValueOnce(new Error('primary fail'));
+    await expect(chatCompletionWithImage('system', 'http://img.url', 'custom-model'))
+      .rejects.toThrow('primary fail');
   });
 });

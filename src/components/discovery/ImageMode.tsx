@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, RotateCcw, X, ImageIcon, Sparkles, ChevronLeft } from 'lucide-react';
+import { Loader2, RefreshCw, X, ImageIcon, Sparkles } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { chatCompletion, chatCompletionWithImage, generateImage, speechToText } from '../../services/openai';
@@ -26,8 +25,6 @@ export function ImageMode() {
   const [saved, setSaved] = useState(false);
   const [userAudioBase64, setUserAudioBase64] = useState<string | null>(null);
   const [tone, setTone] = useState<ConversationTone>('balanced');
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     setTone(getConversationTone());
@@ -103,14 +100,6 @@ export function ImageMode() {
     setError(null);
     setSaved(false);
     setUserAudioBase64(null);
-  };
-
-  const retrySame = () => {
-    setEvaluation(null);
-    setError(null);
-    setSaved(false);
-    setUserAudioBase64(null);
-    // Keep imageUrl and question intact — user sees same image and question again
   };
 
   return (
@@ -199,20 +188,10 @@ export function ImageMode() {
               <p className="text-leaf font-bold">Salvo na Biblioteca!</p>
             </div>
           )}
-          <div className="space-y-2">
-            <Button variant="primary" size="lg" onClick={retrySame} className="w-full rounded-2xl cursor-pointer">
-              <RotateCcw size={18} />
-              Tentar Novamente
-            </Button>
-            <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl cursor-pointer">
-              <RefreshCw size={18} />
-              Novo Exercicio
-            </Button>
-            <Button variant="ghost" size="lg" onClick={() => navigate('/practice')} className="w-full rounded-2xl cursor-pointer">
-              <ChevronLeft size={18} />
-              Voltar ao Hub
-            </Button>
-          </div>
+          <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl">
+            <RefreshCw size={18} />
+            Tentar Outro
+          </Button>
         </div>
       )}
 

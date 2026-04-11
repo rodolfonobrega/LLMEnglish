@@ -157,7 +157,7 @@ export function SettingsPage() {
 
   // --- Fallback handlers ---
   const handleFallbackSourceChange = (
-    field: 'chat' | 'stt' | 'tts',
+    field: 'chat' | 'stt' | 'tts' | 'image',
     newSource: Source | '',
   ) => {
     if (!newSource) {
@@ -165,6 +165,7 @@ export function SettingsPage() {
         chat: { chatFallbackModel: undefined, chatFallbackSource: undefined },
         stt: { sttFallbackModel: undefined, sttFallbackSource: undefined },
         tts: { ttsFallbackModel: undefined, ttsFallbackSource: undefined, ttsFallbackVoice: undefined },
+        image: { imageFallbackModel: undefined, imageFallbackSource: undefined },
       };
       updateConfig(clears[field]);
       return;
@@ -173,6 +174,7 @@ export function SettingsPage() {
       chat: CHAT_MODELS,
       stt: STT_MODELS,
       tts: TTS_MODELS,
+      image: IMAGE_MODELS,
     };
     const model = firstModelForSource(modelLists[field], newSource);
     const updates: Record<string, Partial<ModelConfig>> = {
@@ -183,12 +185,13 @@ export function SettingsPage() {
         ttsFallbackModel: model,
         ttsFallbackVoice: defaultTtsVoice(newSource, model),
       },
+      image: { imageFallbackSource: newSource, imageFallbackModel: model },
     };
     updateConfig(updates[field]);
   };
 
   const handleFallbackModelChange = (
-    field: 'chat' | 'stt' | 'tts',
+    field: 'chat' | 'stt' | 'tts' | 'image',
     source: Source,
     model: string,
   ) => {
@@ -200,6 +203,7 @@ export function SettingsPage() {
         ttsFallbackModel: model,
         ttsFallbackVoice: normalizeTtsVoice(source, model, config.ttsFallbackVoice),
       },
+      image: { imageFallbackSource: source, imageFallbackModel: model },
     };
     updateConfig(updates[field]);
   };
@@ -619,15 +623,26 @@ export function SettingsPage() {
             icon: ImageIcon, color: 'amber' as const, title: 'Geração de Imagem',
             desc: 'Gera imagens para o modo de Desafio Visual.',
             content: (
-              <ModelSelect
-                label="Imagem"
-                sources={IMAGE_SOURCES}
-                models={IMAGE_MODELS}
-                currentSource={config.imageSource}
-                currentModel={config.imageModel}
-                onSourceChange={handleImageSourceChange}
-                onModelChange={handleImageModelChange}
-              />
+              <>
+                <ModelSelect
+                  label="Imagem"
+                  sources={IMAGE_SOURCES}
+                  models={IMAGE_MODELS}
+                  currentSource={config.imageSource}
+                  currentModel={config.imageModel}
+                  onSourceChange={handleImageSourceChange}
+                  onModelChange={handleImageModelChange}
+                />
+                <FallbackSection
+                  label="Fallback"
+                  modelSources={IMAGE_SOURCES}
+                  modelOptions={IMAGE_MODELS}
+                  currentModel={config.imageFallbackModel}
+                  currentSource={config.imageFallbackSource}
+                  onSourceChange={s => handleFallbackSourceChange('image', s)}
+                  onModelChange={(s, m) => handleFallbackModelChange('image', s, m)}
+                />
+              </>
             ),
           },
           {

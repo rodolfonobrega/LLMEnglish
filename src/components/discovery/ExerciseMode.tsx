@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, RotateCcw, X, Sparkles, ImageIcon, Mic, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater } from 'lucide-react';
+import { Loader2, RefreshCw, X, Sparkles, ImageIcon, Mic, ChevronLeft, ChevronRight, MessageCircle, FileText, Theater } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ThemeSelector } from '../shared/ThemeSelector';
@@ -127,8 +126,6 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
   const [saved, setSaved] = useState(false);
   const [userAudioBase64, setUserAudioBase64] = useState<string | null>(null);
 
-  const navigate = useNavigate();
-
   const config = exerciseConfig[initialType];
   const hasActiveSession = !!prompt;
 
@@ -224,14 +221,6 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
     setSaved(false);
     setUserAudioBase64(null);
     setSetupStep('theme');
-  };
-
-  const retrySame = () => {
-    setEvaluation(null);
-    setError(null);
-    setSaved(false);
-    setUserAudioBase64(null);
-    // Keep prompt intact — user sees the same exercise prompt again
   };
 
   const getActiveStepIndex = (): number => {
@@ -460,20 +449,10 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
           </div>
         )}
 
-        <div className="space-y-2">
-          <Button variant="primary" size="lg" onClick={retrySame} className="w-full rounded-2xl cursor-pointer">
-            <RotateCcw size={18} />
-            Tentar Novamente
-          </Button>
-          <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl cursor-pointer">
-            <RefreshCw size={18} />
-            Novo Exercicio
-          </Button>
-          <Button variant="ghost" size="lg" onClick={() => navigate('/practice')} className="w-full rounded-2xl cursor-pointer">
-            <ChevronLeft size={18} />
-            Voltar ao Hub
-          </Button>
-        </div>
+        <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl cursor-pointer">
+          <RefreshCw size={18} />
+          Tentar Outro
+        </Button>
 
         {error && (
           <div className="bg-[var(--danger-soft)] border border-[var(--danger)]/30 rounded-2xl p-4 text-[var(--danger)] text-sm">

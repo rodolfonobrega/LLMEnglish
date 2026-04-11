@@ -22,8 +22,11 @@ if (!ENCRYPTION_KEY) {
 }
 
 // Initialize Supabase client
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables must be set')
+}
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // ============================================================================
@@ -84,11 +87,10 @@ async function encrypt(plaintext: string, key: string): Promise<{ ciphertext: st
     new TextEncoder().encode(plaintext)
   )
   const ciphertextBytes = new Uint8Array(encrypted)
-  const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes))
   return {
-    ciphertext: toBase64(ciphertextBytes),
-    iv: toBase64(iv),
-    salt: toBase64(salt),
+    ciphertext: uint8ToBase64(ciphertextBytes),
+    iv: uint8ToBase64(iv),
+    salt: uint8ToBase64(salt),
   }
 }
 
@@ -316,7 +318,7 @@ async function openaiTTS(apiKey: string, text: string, voice: string, model: str
   }
 
   const buffer = await response.arrayBuffer()
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  const base64 = uint8ToBase64(new Uint8Array(buffer))
   return base64
 }
 
@@ -372,7 +374,7 @@ async function groqTTS(apiKey: string, text: string, voice: string, model: strin
   }
 
   const buffer = await response.arrayBuffer()
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  const base64 = uint8ToBase64(new Uint8Array(buffer))
   return base64
 }
 
@@ -516,7 +518,7 @@ async function openrouterTTS(apiKey: string, text: string, voice: string, model:
   }
 
   const buffer = await response.arrayBuffer()
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  return uint8ToBase64(new Uint8Array(buffer))
 }
 
 /**
@@ -641,7 +643,7 @@ async function getVertexAccessToken(): Promise<string> {
     new TextEncoder().encode(`${header}.${payload}`)
   )
 
-  const jwt = `${header}.${payload}.${btoa(String.fromCharCode(...new Uint8Array(signature)))}`
+  const jwt = `${header}.${payload}.${uint8ToBase64(new Uint8Array(signature))}`
 
   // Exchange JWT for access token
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -908,6 +910,20 @@ async function vertexImage(accessToken: string, projectId: string, region: strin
 // HELPER: String to ArrayBuffer
 // ============================================================================
 
+/**
+ * Safely convert a Uint8Array to a base64 string.
+ * Uses chunked encoding to avoid call stack limits on large arrays.
+ */
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 function str2ab(str: string): ArrayBuffer {
   const buf = new ArrayBuffer(str.length)
   const view = new Uint8Array(buf)
@@ -1072,7 +1088,7 @@ function pcm16ToWav(pcm16Base64: string, sampleRate: number): string {
   }
 
   const wavBytes = new Uint8Array(buffer)
-  return btoa(String.fromCharCode(...wavBytes))
+  return uint8ToBase64(wavBytes)
 }
 
 function writeString(view: DataView, offset: number, string: string): void {
@@ -1158,7 +1174,7 @@ serve(async (req) => {
               const imgResp = await fetch(body.imageUrl)
               const blob = await imgResp.blob()
               mimeType = blob.type || 'image/png'
-              imageData = await blob.arrayBuffer().then(b => btoa(String.fromCharCode(...new Uint8Array(b))))
+              imageData = await blob.arrayBuffer().then(b => uint8ToBase64(new Uint8Array(b)))
             }
 
             content = await vertexChatWithImage(accessToken, projectId, region, model, body.systemPrompt, imageData, mimeType)
@@ -1181,7 +1197,7 @@ serve(async (req) => {
               const imgResp = await fetch(body.imageUrl)
               const blob = await imgResp.blob()
               mimeType = blob.type || 'image/png'
-              imageData = await blob.arrayBuffer().then(b => btoa(String.fromCharCode(...new Uint8Array(b))))
+              imageData = await blob.arrayBuffer().then(b => uint8ToBase64(new Uint8Array(b)))
             }
 
             const ai = new GoogleGenerativeAI({ apiKey })

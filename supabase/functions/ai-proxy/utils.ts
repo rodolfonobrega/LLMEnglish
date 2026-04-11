@@ -1,5 +1,20 @@
 /** PCM16-to-WAV conversion and buffer helpers */
 
+/**
+ * Safely convert a Uint8Array to a base64 string.
+ * Uses chunked encoding to avoid call stack limits with the spread operator
+ * on large arrays (>64KB TTS audio, images, etc.).
+ */
+export function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 export function str2ab(str: string): ArrayBuffer {
   const buf = new ArrayBuffer(str.length)
   const view = new Uint8Array(buf)
@@ -40,7 +55,7 @@ export function pcm16ToWav(pcm16Base64: string, sampleRate: number): string {
   }
 
   const wavBytes = new Uint8Array(buffer)
-  return btoa(String.fromCharCode(...wavBytes))
+  return uint8ToBase64(wavBytes)
 }
 
 export function writeString(view: DataView, offset: number, string: string): void {

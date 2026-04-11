@@ -1,4 +1,5 @@
 /** OpenRouter API calls: chat, TTS, STT, image generation */
+import { uint8ToBase64 } from '../utils.ts'
 
 /**
  * OpenRouter Chat Completion (OpenAI-compatible format)
@@ -56,7 +57,7 @@ export async function tts(apiKey: string, text: string, voice: string, model: st
   }
 
   const buffer = await response.arrayBuffer()
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  return uint8ToBase64(new Uint8Array(buffer))
 }
 
 /**

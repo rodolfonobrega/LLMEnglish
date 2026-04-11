@@ -1,5 +1,5 @@
 /** Vertex AI API calls: auth, config, chat, chatWithImage, TTS, STT, image */
-import { pcm16ToWav, str2ab } from '../utils.ts'
+import { pcm16ToWav, str2ab, uint8ToBase64 } from '../utils.ts'
 
 /**
  * Get Vertex AI access token using Application Default Credentials.
@@ -40,7 +40,7 @@ export async function getAccessToken(): Promise<string> {
     new TextEncoder().encode(`${header}.${payload}`)
   )
 
-  const jwt = `${header}.${payload}.${btoa(String.fromCharCode(...new Uint8Array(signature)))}`
+  const jwt = `${header}.${payload}.${uint8ToBase64(new Uint8Array(signature))}`
 
   // Exchange JWT for access token
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -61,7 +61,17 @@ export async function getAccessToken(): Promise<string> {
 /**
  * Get Vertex AI config (project ID and region) from user's stored credentials.
  */
-export async function getConfig(supabaseClient: any, userId: string): Promise<{ projectId: string; region: string }> {
+interface SupabaseQueryClient {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        single(): Promise<{ data: any; error: any }>
+      }
+    }
+  }
+}
+
+export async function getConfig(supabaseClient: SupabaseQueryClient, userId: string): Promise<{ projectId: string; region: string }> {
   const { data, error } = await supabaseClient
     .from('encrypted_api_keys')
     .select('vertex_config')

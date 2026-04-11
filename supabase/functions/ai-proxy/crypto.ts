@@ -1,4 +1,5 @@
 /** AES-256-GCM encryption with PBKDF2 key derivation */
+import { uint8ToBase64 } from './utils.ts'
 
 export const PBKDF2_ITERATIONS = 600_000
 export const SALT_LENGTH = 16
@@ -54,10 +55,9 @@ export async function encrypt(plaintext: string, key: string): Promise<{ ciphert
     new TextEncoder().encode(plaintext)
   )
   const ciphertextBytes = new Uint8Array(encrypted)
-  const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes))
   return {
-    ciphertext: toBase64(ciphertextBytes),
-    iv: toBase64(iv),
-    salt: toBase64(salt),
+    ciphertext: uint8ToBase64(ciphertextBytes),
+    iv: uint8ToBase64(iv),
+    salt: uint8ToBase64(salt),
   }
 }

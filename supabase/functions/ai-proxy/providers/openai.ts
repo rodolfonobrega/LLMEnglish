@@ -1,4 +1,5 @@
 /** OpenAI API calls: chat, TTS, STT, image generation */
+import { uint8ToBase64 } from '../utils.ts'
 
 export async function chat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8): Promise<string> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -50,7 +51,7 @@ export async function tts(apiKey: string, text: string, voice: string, model: st
   }
 
   const buffer = await response.arrayBuffer()
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  const base64 = uint8ToBase64(new Uint8Array(buffer))
   return base64
 }
 

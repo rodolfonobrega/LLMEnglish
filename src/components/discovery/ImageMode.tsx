@@ -73,7 +73,8 @@ export function ImageMode() {
 
       let xp = XP_PER_EXERCISE;
       if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
-      await addXP(xp)
+      await addXP(xp);
+      await syncGamificationState();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Evaluation failed');
     } finally {

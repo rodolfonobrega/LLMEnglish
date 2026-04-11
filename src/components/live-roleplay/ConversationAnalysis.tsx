@@ -179,7 +179,11 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
         currentAudioRef.current = null;
         resolve();
       };
-      audio.play();
+      audio.play().catch(() => {
+        // Autoplay blocked — resolve so the caller is not left hanging
+        currentAudioRef.current = null;
+        resolve();
+      });
     });
   }, []);
 

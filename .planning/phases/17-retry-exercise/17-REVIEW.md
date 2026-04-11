@@ -1,201 +1,155 @@
 ---
 phase: 17-retry-exercise
-reviewed: 2026-04-11T12:00:00Z
+reviewed: 2026-04-11T20:37:10Z
 depth: standard
-files_reviewed: 24
+files_reviewed: 4
 files_reviewed_list:
-  - package.json
-  - src/components/live-roleplay/LiveSession.tsx
-  - src/components/review/ReviewPage.tsx
-  - src/components/settings/SettingsPage.tsx
-  - src/config/images.test.ts
-  - src/hooks/useAudioRecorder.test.ts
-  - src/hooks/useAudioRecorder.ts
-  - src/services/errorAnalysis.test.ts
-  - src/services/geminiLive.test.ts
-  - src/services/geminiLive.ts
-  - src/services/openai.test.ts
-  - src/services/openai.ts
-  - src/services/supabase/aiProxy.test.ts
-  - src/services/supabase/storage.test.ts
-  - src/test/setup.ts
-  - src/types/settings.ts
-  - supabase/functions/ai-proxy/crypto.ts
-  - supabase/functions/ai-proxy/index.ts
-  - supabase/functions/ai-proxy/providers/gemini.ts
-  - supabase/functions/ai-proxy/providers/groq.ts
-  - supabase/functions/ai-proxy/providers/openai.ts
-  - supabase/functions/ai-proxy/providers/openrouter.ts
-  - supabase/functions/ai-proxy/providers/vertex.ts
-  - supabase/functions/ai-proxy/utils.ts
+  - src/components/discovery/ExerciseMode.tsx
+  - src/components/discovery/ImageMode.tsx
+  - src/components/live-roleplay/LiveRoleplayPage.tsx
+  - src/components/live-roleplay/ConversationAnalysis.tsx
 findings:
-  critical: 2
-  warning: 5
-  info: 4
-  total: 11
+  critical: 0
+  warning: 4
+  info: 3
+  total: 7
 status: issues_found
 ---
 
 # Phase 17: Code Review Report
 
-**Reviewed:** 2026-04-11T12:00:00Z
+**Reviewed:** 2026-04-11T20:37:10Z
 **Depth:** standard
-**Files Reviewed:** 24
+**Files Reviewed:** 4
 **Status:** issues_found
 
 ## Summary
 
-Reviewed 24 source files across the SpeakLab retry-exercise phase: React components (LiveSession, ReviewPage, SettingsPage), service modules (openai, geminiLive, errorAnalysis, aiProxy), Edge Function (ai-proxy with 5 provider modules), type definitions, and test files.
+Reviewed 4 source files added or modified in the retry-exercise phase: `ExerciseMode.tsx` and `ImageMode.tsx` (discovery exercise modes) and `LiveRoleplayPage.tsx` and `ConversationAnalysis.tsx` (live roleplay flow). All four files implement the retry-same-exercise feature via `retrySame()` / `handleRetryScenario()` handlers that clear evaluation state while preserving the active prompt/scenario.
 
-Compared to the prior review (2026-04-10), several issues have been resolved: the CORS origin now uses the configured site URL, Vertex JWT encoding uses proper base64url, `JSON.parse` in ReviewPage has try/catch with shape validation, the STT model parameter is passed through, and the React key for chat history uses a stable composite. These fixes are verified.
+The retry logic itself is correct in all four components — state resets are complete and consistent. The main issues found are: unguarded async save operations that surface unhandled rejections to users, a missing `syncGamificationState()` call in `ImageMode.handleAudioReady` creating an inconsistency between components, and an XP/persistence block in `ConversationAnalysis.analyzeConversation` that can abort a successful analysis when persistence fails.
 
-Two critical security issues were found in the edge function: Gemini API key leaked via URL query parameters in server-side calls (distinct from the known client-side Live API limitation), and an SSRF vulnerability via unsanitized imageUrl fetching. Five warnings include a source-detection bug that misroutes Groq models with `openai/` prefix, an overly broad farewell detection pattern, potential NaN on empty scores, dead provider modules not imported by index.ts, and a missing CORS Content-Type header. Four info items cover error message leakage, debug logging of user IDs, test type assertions, and large-scale code duplication between index.ts and provider modules.
-
-## Critical Issues
-
-### CR-01: Gemini API key leaked in URL query parameter (server-side)
-
-**File:** `supabase/functions/ai-proxy/providers/gemini.ts:9` (also lines 101, 133)
-**Issue:** The Gemini API key is appended as a URL query parameter (`?key=${apiKey}`) for chat, image, and predict endpoints. This occurs on the server side in the edge function. URL parameters are logged by web servers, proxies, CDNs, and browser histories. The same pattern is duplicated inline in `index.ts` at lines 256, 1038, 1070. This is distinct from the known CR-01 in the prior review (client-side Live SDK) -- this is the server-side proxy that should be fully protecting keys.
-**Fix:**
-```typescript
-// Instead of:
-fetch(`https://...?key=${apiKey}`, { ... })
-
-// Use the x-goog-api-key header:
-fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-goog-api-key': apiKey,
-  },
-  body: JSON.stringify({ ... }),
-})
-```
-
-### CR-02: SSRF via unsanitized imageUrl fetch in edge function
-
-**File:** `supabase/functions/ai-proxy/index.ts:1218-1221` and `1241-1244`
-**Issue:** When `body.imageUrl` is a regular URL (not data:), the edge function fetches it server-side without validating the hostname or protocol. An authenticated attacker can supply an internal network URL (e.g., `http://169.254.169.254/latest/meta-data/` on AWS/GCP) to read cloud metadata, or `http://localhost:5432/...` to probe internal services. This is a Server-Side Request Forgery vulnerability.
-**Fix:**
-```typescript
-function isSafeImageUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url)
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
-    const hostname = parsed.hostname
-    if (hostname === 'localhost' || hostname === '127.0.0.1') return false
-    if (hostname.startsWith('192.168.') || hostname.startsWith('10.')) return false
-    if (hostname.startsWith('172.') && parseInt(hostname.split('.')[1]) >= 16 && parseInt(hostname.split('.')[1]) <= 31) return false
-    if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return false
-    if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') return false
-    return true
-  } catch {
-    return false
-  }
-}
-// Then before fetch(body.imageUrl):
-if (!isSafeImageUrl(body.imageUrl)) {
-  throw new Error('Image URL must be a publicly accessible HTTPS or HTTP URL')
-}
-```
+No critical (security or data-loss) issues were found in this file set.
 
 ## Warnings
 
-### WR-01: detectSource misroutes Groq models with openai/ prefix
+### WR-01: Unhandled rejection in ExerciseMode handleSaveToLibrary crashes silently
 
-**File:** `src/services/openai.ts:23-37`
-**Issue:** The `detectSource` function uses prefix matching. Groq models `openai/gpt-oss-120b` and `openai/gpt-oss-20b` (listed in `settings.ts` lines 149-150) contain a `/` but do not match the Groq prefixes (`llama-`, `meta-llama/`, `qwen/`, `canopylabs/`, `whisper-large-v3`). They fall through to the `modelId.includes('/')` check which maps them to `'openrouter'` instead of `'groq'`. This causes chat completion calls for these Groq models to be sent to the wrong provider's API key and endpoint.
+**File:** `src/components/discovery/ExerciseMode.tsx:221-223`
+**Issue:** `handleSaveToLibrary` awaits `addCard(card)` and `syncGamificationState()` without a try/catch. If either throws (e.g., Supabase is offline, localStorage quota exceeded), the promise rejects and the error propagates to the `void handleSaveToLibrary()` call site at line 459. The `void` operator discards the rejection silently — no error is shown to the user, `setSaved(true)` at line 223 is never reached, and the user cannot tell if saving succeeded or failed.
 **Fix:**
 ```typescript
-function detectSource(modelId: string): Source {
-  if (modelId.startsWith('gemini')) return 'genai';
-  if (
-    modelId.startsWith('llama-') ||
-    modelId.startsWith('meta-llama/') ||
-    modelId.startsWith('qwen/') ||
-    modelId.startsWith('canopylabs/') ||
-    modelId.startsWith('whisper-large-v3') ||
-    modelId.startsWith('openai/gpt-oss')  // Groq-hosted OSS models
-  ) {
-    return 'groq';
+const handleSaveToLibrary = async () => {
+  if (!evaluation) return;
+  const card = createDefaultCard({ /* ... */ });
+  try {
+    await addCard(card);
+    await syncGamificationState();
+    setSaved(true);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Falha ao salvar na biblioteca');
   }
-  if (modelId.includes('/')) return 'openrouter';
-  return 'openai';
-}
+};
 ```
 
-### WR-02: Farewell detection matches false positives in LiveSession
+### WR-02: Missing syncGamificationState() after addXP in ImageMode.handleAudioReady
 
-**File:** `src/components/live-roleplay/LiveSession.tsx:60-61`
-**Issue:** The `checkForFarewell` function uses `text.toLowerCase().trim().includes(f)` for each farewell keyword. The keyword `'bye'` matches inside "by the way" (partial word match), and `'have a good'` matches many non-farewell sentences like "I have a good idea" or "Do you have a good map?". This can prematurely trigger conversation end and call `onEnd` while the user is mid-conversation.
+**File:** `src/components/discovery/ImageMode.tsx:74-76`
+**Issue:** After evaluation succeeds, `ImageMode.handleAudioReady` calls `await addXP(xp)` but does not call `syncGamificationState()`. `ExerciseMode.handleAudioReady` (line 193) calls both. Without `syncGamificationState()`, the gamification state in memory and in storage goes out of sync: `addXP` saves raw XP to storage, but the runtime state singleton is not updated and the `gamification-update` event is not dispatched. The XP bar and streak UI will not reflect the earned XP until the next navigation or sync elsewhere.
 **Fix:**
 ```typescript
-const checkForFarewell = useCallback((text: string) => {
-  const lower = text.toLowerCase().trim();
-  const farewells = [
-    /\bbye\b/i, /\bgoodbye\b/i, /\bsee you\b/i, /\btake care\b/i,
-    /\bhave a good\s+(day|night|one|trip|time|evening|morning)\b/i,
-    /\bthanks,?\s*bye\b/i, /\bthank you,?\s*bye\b/i,
-  ];
-  return farewells.some(pattern => pattern.test(lower));
-}, []);
+let xp = XP_PER_EXERCISE;
+if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
+await addXP(xp);
+await syncGamificationState(); // add this line — dispatches gamification-update event
 ```
 
-### WR-03: Potential NaN when computing average score with empty array
+### WR-03: Unhandled rejection in ImageMode.handleSaveToLibrary crashes silently
 
-**File:** `src/components/review/ReviewPage.tsx:185`
-**Issue:** `sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length` produces `NaN` if `sessionScores` is empty (0/0). While the UI guard at line 142 (`currentIndex < dueCards.length - 1`) and the fact that `sessionComplete` is only set after processing at least one card makes this unlikely in practice, there is no explicit guard. If a race condition or state desync caused `sessionComplete` to be true with an empty scores array, this would render `NaN` to the user.
+**File:** `src/components/discovery/ImageMode.tsx:93-95`
+**Issue:** Same pattern as WR-01 in ExerciseMode. `addCard(card)` and `syncGamificationState()` are awaited without try/catch. Errors are silently swallowed by the `void handleSaveToLibrary()` call at line 195.
 **Fix:**
 ```typescript
-const avgScore = sessionScores.length > 0
-  ? sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length
-  : 0;
+const handleSaveToLibrary = async () => {
+  if (!evaluation) return;
+  const card = createDefaultCard({ /* ... */ });
+  try {
+    await addCard(card);
+    await syncGamificationState();
+    setSaved(true);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Falha ao salvar na biblioteca');
+  }
+};
 ```
 
-### WR-04: Edge function provider modules are dead code (not imported)
+### WR-04: XP/persistence failure in ConversationAnalysis aborts analysis display
 
-**File:** `supabase/functions/ai-proxy/providers/*.ts` (all 5 files), `supabase/functions/ai-proxy/crypto.ts`, `supabase/functions/ai-proxy/utils.ts`
-**Issue:** The provider modules (`gemini.ts`, `groq.ts`, `openai.ts`, `openrouter.ts`, `vertex.ts`) and utility modules (`crypto.ts`, `utils.ts`) are not imported by `index.ts`. The main edge function file still contains all the same logic inline (1434 lines). Any bug fix must be applied in two places, increasing drift risk. This was noted in the prior review (IN-01/WR-06) and has not been addressed. The duplication has now expanded with the addition of provider modules that duplicate the inline code.
-**Fix:** Have `index.ts` import from the provider modules and remove all inline function declarations.
+**File:** `src/components/live-roleplay/ConversationAnalysis.tsx:88-121`
+**Issue:** In `analyzeConversation`, `setAnalysis(data)` is called at line 87 (making the analysis available), but then `addXP`, `saveLiveSession`, `createSessionReport`, and `recordSessionSnapshot` are all awaited inside the same try block (lines 89-121). If any of these persistence calls throw, the catch at line 122 sets `setError(...)` and the user sees an error screen — even though `setAnalysis(data)` has already been called with a valid result. The analysis was successful; only the persistence failed. The user loses their conversation analysis entirely due to a background save error.
 
-### WR-05: CORS response headers missing Content-Type
-
-**File:** `supabase/functions/ai-proxy/index.ts:13-16`
-**Issue:** The `corsHeaders` object sets `Access-Control-Allow-Origin` and `Access-Control-Allow-Headers` but does not include `Content-Type: application/json`. Every successful response returns JSON without explicitly setting the Content-Type header in the response. While the body is JSON, the response may be served without a proper MIME type, causing issues with strict CORS configurations or content sniffing.
-**Fix:**
+This is the inverse of how `ExerciseMode.handleAudioReady` handles it (lines 186-197): ExerciseMode explicitly separates the main evaluation from background persistence so that a persistence failure does not replace the shown result with an error.
+**Fix:** Move the persistence block into its own try/catch after the main result is set, mirroring the ExerciseMode pattern:
 ```typescript
-const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('SITE_URL') || 'http://localhost:5173',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json',
+const data: AnalysisData = JSON.parse(cleanResponse);
+setAnalysis(data); // show result to user immediately
+
+// Background persistence: do not block or replace analysis on failure
+try {
+  await addXP(XP_PER_LIVE_SESSION);
+  const sessionData: LiveSessionData = { /* ... */ };
+  await saveLiveSession(sessionData);
+  await createSessionReport(/* ... */);
+  await recordSessionSnapshot();
+} catch (persistErr) {
+  console.warn('Background persistence failed (analysis still shown):', persistErr);
 }
 ```
 
 ## Info
 
-### IN-01: Error handler leaks internal details to client
+### IN-01: onRetry prop is optional but "Tentar Novamente" button always renders
 
-**File:** `supabase/functions/ai-proxy/index.ts:1426-1432`
-**Issue:** The catch-all error handler returns `error.message` directly to the client with status 400. Upstream API error responses may include partial API keys, internal URLs, or stack traces. For example, OpenAI errors include the full request path. Consider sanitizing error messages before returning to the client.
+**File:** `src/components/live-roleplay/ConversationAnalysis.tsx:24,426`
+**Issue:** The `ConversationAnalysisProps` interface declares `onRetry?: () => void` (optional). The "Tentar Novamente" button at line 426 is always rendered with `onClick={onRetry}`. If a future call site omits `onRetry`, the button appears but does nothing when clicked. There is no visual differentiation or conditional rendering to hide the button when retry is not supported. The current call site in `LiveRoleplayPage.tsx` always passes `onRetry`, so this is not a current bug.
+**Fix:** Either make `onRetry` required (remove the `?`), or conditionally render the button:
+```typescript
+{onRetry && (
+  <Button variant="primary" size="lg" onClick={onRetry} className="w-full rounded-2xl cursor-pointer">
+    <RotateCcw size={18} />
+    Tentar Novamente
+  </Button>
+)}
+```
 
-### IN-02: Plaintext user ID logged during key migration
+### IN-02: analyzeConversation runs unconditionally on mount and re-runs on prop identity change
 
-**File:** `supabase/functions/ai-proxy/index.ts:169`
-**Issue:** `console.log(\`Migrated plaintext key for user ${userId}, source ${source}\`)` logs the user ID in plaintext. In production, edge function logs are accessible to project administrators. Consider logging only a hashed or truncated user identifier to reduce PII exposure in logs.
+**File:** `src/components/live-roleplay/ConversationAnalysis.tsx:158-160`
+**Issue:** `useEffect(() => { analyzeConversation(); }, [analyzeConversation])` triggers whenever the `analyzeConversation` callback reference changes. `analyzeConversation` is memoized with `useCallback` but depends on `[scenario, turns]` (line 127). Since `turns` is an array, a new reference (e.g., from `setTurns([])` in `handleRetryScenario`) will produce a new callback and re-trigger analysis. In the current `handleRetryScenario` flow, the component is unmounted and remounted (phase changes to `'conversation'` first), so re-analysis doesn't happen inadvertently. However, if `ConversationAnalysis` were ever kept mounted across retries, this would silently re-fire the expensive analysis API call. The dependency could be made more explicit.
+**Fix:** For robustness, run the effect only on mount:
+```typescript
+useEffect(() => {
+  analyzeConversation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // intentionally runs only on mount; scenario and turns are captured via closure
+```
 
-### IN-03: Test files use `as any` type assertions extensively
+### IN-03: Magic number 7 in ImageMode scene selection
 
-**File:** `src/services/errorAnalysis.test.ts:143,161,176` and `src/services/supabase/storage.test.ts:53`
-**Issue:** Several test files use `as any[]` or `as any` to bypass TypeScript checking on mock data. While acceptable in test code, using proper typed factory functions (like the `makeCard` helper already present in `storage.test.ts`) would improve test reliability and catch interface drift.
-
-### IN-04: Duplicate code between index.ts and provider modules (~800 lines)
-
-**File:** `supabase/functions/ai-proxy/index.ts` vs `supabase/functions/ai-proxy/providers/gemini.ts` (and others)
-**Issue:** The `geminiChat`, `geminiTTS`, `geminiSTT`, `geminiImage` functions in `index.ts` are character-for-character identical to the exports in `providers/gemini.ts`. The same duplication exists for OpenAI, Groq, OpenRouter, and Vertex providers, as well as `crypto.ts` (encrypt/decrypt/deriveKey) and `utils.ts` (uint8ToBase64, pcm16ToWav, str2ab). This is approximately 800 lines of duplicated code. Related to WR-04 but tracked separately as a maintainability concern.
+**File:** `src/components/discovery/ImageMode.tsx:45`
+**Issue:** `Math.floor(Math.random() * 7)` hardcodes the array length as `7`. If the scene list is extended or shortened, this number must be updated manually. A mismatch causes the last element to never be selected (if too small) or `undefined` to be selected (if too large).
+**Fix:**
+```typescript
+const scenes = [
+  'a bustling street market with distinct colorful stalls',
+  'a cozy, warm-lit coffee shop interior',
+  // ...
+];
+const scene = scenes[Math.floor(Math.random() * scenes.length)];
+```
 
 ---
 
-_Reviewed: 2026-04-11T12:00:00Z_
+_Reviewed: 2026-04-11T20:37:10Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_

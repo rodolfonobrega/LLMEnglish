@@ -86,39 +86,44 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
       const data: AnalysisData = JSON.parse(cleanResponse);
       setAnalysis(data);
 
-      await addXP(XP_PER_LIVE_SESSION)
+      // Background persistence: do not block or replace analysis on failure
+      try {
+        await addXP(XP_PER_LIVE_SESSION);
 
-      const sessionData: LiveSessionData = {
-        id: scenario.id,
-        scenario,
-        turns,
-        analysis: {
-          improvements: data.improvements,
-          cleanDialogue: data.cleanDialogue.map(d => ({
-            role: d.role as 'user' | 'ai',
-            text: d.text,
-            timestamp: Date.now(),
-          })),
-          overallFeedback: data.overallFeedback,
-        },
-        startedAt: new Date(turns[0]?.timestamp || Date.now()).toISOString(),
-        endedAt: new Date().toISOString(),
-      };
-      await saveLiveSession(sessionData)
+        const sessionData: LiveSessionData = {
+          id: scenario.id,
+          scenario,
+          turns,
+          analysis: {
+            improvements: data.improvements,
+            cleanDialogue: data.cleanDialogue.map(d => ({
+              role: d.role as 'user' | 'ai',
+              text: d.text,
+              timestamp: Date.now(),
+            })),
+            overallFeedback: data.overallFeedback,
+          },
+          startedAt: new Date(turns[0]?.timestamp || Date.now()).toISOString(),
+          endedAt: new Date().toISOString(),
+        };
+        await saveLiveSession(sessionData);
 
-      const durationSec = turns.length > 0
-        ? Math.round((Date.now() - turns[0].timestamp) / 1000)
-        : 0;
-      await createSessionReport(
-        'live-roleplay',
-        [],
-        data.improvements.length,
-        XP_PER_LIVE_SESSION,
-        durationSec,
-        data.improvements,
-      );
+        const durationSec = turns.length > 0
+          ? Math.round((Date.now() - turns[0].timestamp) / 1000)
+          : 0;
+        await createSessionReport(
+          'live-roleplay',
+          [],
+          data.improvements.length,
+          XP_PER_LIVE_SESSION,
+          durationSec,
+          data.improvements,
+        );
 
-      await recordSessionSnapshot()
+        await recordSessionSnapshot();
+      } catch (persistErr) {
+        console.warn('Background persistence failed (analysis still shown):', persistErr);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed');
     } finally {

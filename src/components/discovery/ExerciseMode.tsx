@@ -218,9 +218,13 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
       userAudioBlob: userAudioBase64 || undefined,
     });
 
-    await addCard(card)
-    await syncGamificationState()
-    setSaved(true);
+    try {
+      await addCard(card);
+      await syncGamificationState();
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao salvar na biblioteca');
+    }
   };
 
   const reset = () => {

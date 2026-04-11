@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: — Image, Data & UX Improvements
 status: executing
-stopped_at: Phase 16 UI-SPEC approved
-last_updated: "2026-04-10T21:47:47.506Z"
-last_activity: 2026-04-10
+stopped_at: Phase 17 UI-SPEC approved
+last_updated: "2026-04-11T02:09:26.353Z"
+last_activity: 2026-04-11 -- Phase 17 execution started
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 8
+  total_plans: 10
   completed_plans: 7
-  percent: 88
+  percent: 70
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Phase 16 — recording-logic
+**Current focus:** Phase 17 — retry-exercise
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: Executing Phase 16
-Last activity: 2026-04-10
+Phase: 17 (retry-exercise) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 17
+Last activity: 2026-04-11 -- Phase 17 execution started
 
 Progress: [██████████] 100%
 
@@ -85,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-10T19:52:42.667Z
-Stopped at: Phase 16 UI-SPEC approved
-Resume file: .planning/phases/16-recording-logic/16-UI-SPEC.md
+Last session: 2026-04-11T01:05:13.660Z
+Stopped at: Phase 17 UI-SPEC approved
+Resume file: .planning/phases/17-retry-exercise/17-UI-SPEC.md

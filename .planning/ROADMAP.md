@@ -59,7 +59,7 @@
 | 14. Student Data Flow | v1.3 | 1/1 | Complete    | 2026-04-09 |
 | 15. Model Fallback | v1.3 | 2/2 | Complete    | 2026-04-10 |
 | 16. Recording Logic | v1.3 | 1/2 | Complete    | 2026-04-10 |
-| 17. Retry Exercise | v1.3 | 0/2 | Pending | |
+| 17. Retry Exercise | v1.3 | 2/2 | Complete | 2026-04-10 |
 
 ## v1.3 — Image, Data & UX Improvements (Phases 13-17)
 
@@ -112,11 +112,11 @@ Plans:
 **Goal:** At the end of any exercise (speech, text, etc.), offer retry option, and after completion ask if they want to generate a new exercise or go back
 **Promoted from:** 999.9
 **Requirements:** RETRY-01, RETRY-02, RETRY-03, RETRY-04, RETRY-05, RETRY-06, RETRY-07
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 17-01-PLAN.md — Add retry + post-exercise navigation to ExerciseMode and ImageMode
-- [ ] 17-02-PLAN.md — Add retry-same-scenario to LiveRoleplayPage and ConversationAnalysis
+- [x] 17-01-PLAN.md — Add retry + post-exercise navigation to ExerciseMode and ImageMode
+- [x] 17-02-PLAN.md — Add retry-same-scenario to LiveRoleplayPage and ConversationAnalysis
 
 ---
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

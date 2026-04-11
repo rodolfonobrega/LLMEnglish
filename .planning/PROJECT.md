@@ -33,6 +33,7 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - ✓ Image generation with client/server option forwarding, Gemini model support, and resolution optimization (999.5, 999.6, 999.7) — v1.3 Phase 13
 - ✓ Model fallback config for image generation, live session factory pattern respecting liveSource (999.8) — v1.3 Phase 15
 - ✓ AudioWorklet migration (re-applied), blob URL memory leak fix, stream cleanup safety net, ReviewPage type fix — v1.3 Phase 16
+- ✓ Retry exercise + post-exercise navigation for ExerciseMode, ImageMode, LiveRoleplay (RETRY-01~07) — v1.3 Phase 17
 
 ### Active
 
@@ -100,4 +101,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after Phase 15 (model fallback) completion*
+*Last updated: 2026-04-11 after Phase 17 (retry exercise) completion*

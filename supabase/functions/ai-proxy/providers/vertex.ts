@@ -133,7 +133,11 @@ export async function chat(accessToken: string, projectId: string, region: strin
   }
 
   const data = await response.json()
-  return data.candidates[0].content.parts[0].text
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    throw new Error(`Vertex returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return text
 }
 
 /**
@@ -176,7 +180,11 @@ export async function chatWithImage(
   }
 
   const data = await response.json()
-  return data.candidates[0].content.parts[0].text
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    throw new Error(`Vertex returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return text
 }
 
 /**

@@ -29,7 +29,11 @@ export async function chat(apiKey: string, model: string, systemPrompt: string, 
   }
 
   const data = await response.json()
-  return data.choices[0].message.content
+  const content = data.choices?.[0]?.message?.content
+  if (!content) {
+    throw new Error(`OpenRouter returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return content
 }
 
 /**

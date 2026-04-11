@@ -93,11 +93,6 @@ export function useAudioRecorder() {
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecordingRef.current) {
-      // Safety net: stop stream tracks immediately in case onstop doesn't fire
-      const stream = mediaRecorderRef.current.stream;
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-      }
       mediaRecorderRef.current.stop();
     }
   }, []);

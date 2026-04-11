@@ -2,6 +2,21 @@
 import { pcm16ToWav, str2ab, uint8ToBase64 } from '../utils.ts'
 
 /**
+ * URL-safe Base64 encoding for JWT (RFC 7519).
+ * Standard btoa produces +/= which are invalid in JWT tokens.
+ */
+function base64urlEncode(str: string): string {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/**
+ * URL-safe Base64 encoding for binary data (JWT signatures).
+ */
+function uint8ToBase64url(bytes: Uint8Array): string {
+  return uint8ToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/**
  * Get Vertex AI access token using Application Default Credentials.
  * In Supabase Edge Functions, this reads from VERTEX_SERVICE_ACCOUNT_KEY secret.
  */
@@ -15,8 +30,8 @@ export async function getAccessToken(): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
 
   // Create JWT
-  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-  const payload = btoa(JSON.stringify({
+  const header = base64urlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const payload = base64urlEncode(JSON.stringify({
     iss: sa.client_email,
     scope: 'https://www.googleapis.com/auth/cloud-platform',
     aud: 'https://oauth2.googleapis.com/token',
@@ -40,7 +55,7 @@ export async function getAccessToken(): Promise<string> {
     new TextEncoder().encode(`${header}.${payload}`)
   )
 
-  const jwt = `${header}.${payload}.${uint8ToBase64(new Uint8Array(signature))}`
+  const jwt = `${header}.${payload}.${uint8ToBase64url(new Uint8Array(signature))}`
 
   // Exchange JWT for access token
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {

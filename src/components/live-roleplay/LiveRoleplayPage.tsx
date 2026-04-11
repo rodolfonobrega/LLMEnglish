@@ -31,6 +31,12 @@ export function LiveRoleplayPage() {
     setTurns([]);
   };
 
+  const handleRetryScenario = () => {
+    setTurns([]);
+    setPhase('conversation');
+    // Keep scenario intact — re-enters LiveSession with same scenario
+  };
+
   return (
     <div className="space-y-6">
       {/* Back to practice hub - only on setup phase (conversation/analysis have their own exit) */}
@@ -61,6 +67,7 @@ export function LiveRoleplayPage() {
           scenario={scenario}
           turns={turns}
           onReset={handleExit}
+          onRetry={handleRetryScenario}
         />
       )}
     </div>

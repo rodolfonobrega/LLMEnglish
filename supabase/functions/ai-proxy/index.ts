@@ -120,6 +120,30 @@ function normalizeSource(source: string | undefined, fallback = 'genai'): string
   return source
 }
 
+/**
+ * Validate that an image URL is safe to fetch server-side (SSRF protection).
+ * Blocks internal/private IPs and non-HTTP protocols.
+ */
+function isSafeImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    const hostname = parsed.hostname.toLowerCase()
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return false
+    if (hostname.startsWith('192.168.') || hostname.startsWith('10.')) return false
+    if (hostname.startsWith('172.')) {
+      const secondOctet = parseInt(hostname.split('.')[1])
+      if (secondOctet >= 16 && secondOctet <= 31) return false
+    }
+    if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return false
+    if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') return false
+    if (hostname.startsWith('0.') || hostname === '::1') return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ============================================================================
 // API KEY RETRIEVAL
 // ============================================================================
@@ -1215,6 +1239,9 @@ serve(async (req) => {
               mimeType = match[1]
               imageData = match[2]
             } else {
+              if (!isSafeImageUrl(body.imageUrl)) {
+                throw new Error('Image URL must be a publicly accessible HTTPS or HTTP URL')
+              }
               const imgResp = await fetch(body.imageUrl)
               const blob = await imgResp.blob()
               mimeType = blob.type || 'image/png'
@@ -1238,6 +1265,9 @@ serve(async (req) => {
               mimeType = match[1]
               imageData = match[2]
             } else {
+              if (!isSafeImageUrl(body.imageUrl)) {
+                throw new Error('Image URL must be a publicly accessible HTTPS or HTTP URL')
+              }
               const imgResp = await fetch(body.imageUrl)
               const blob = await imgResp.blob()
               mimeType = blob.type || 'image/png'

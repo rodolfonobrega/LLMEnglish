@@ -34,6 +34,7 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 - ✓ Model fallback config for image generation, live session factory pattern respecting liveSource (999.8) — v1.3 Phase 15
 - ✓ AudioWorklet migration (re-applied), blob URL memory leak fix, stream cleanup safety net, ReviewPage type fix — v1.3 Phase 16
 - ✓ Retry exercise + post-exercise navigation for ExerciseMode, ImageMode, LiveRoleplay (RETRY-01~07) — v1.3 Phase 17
+- ✓ Fix exercise_ ID prefix, category-filtered getCardsForWeakArea, guessCategory false positives (Phase 14 audit gaps) — v1.3 Phase 18
 
 ### Active
 

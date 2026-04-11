@@ -177,15 +177,22 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
       const cleanResponse = cleanJson(evalResponse);
       const evalResult: EvaluationResult = JSON.parse(cleanResponse);
       evalResult.userTranscription = transcription;
+
+      // Show evaluation immediately — user should always see their result
       setEvaluation(evalResult);
 
-      const exerciseSessionId = `exercise_${Date.now()}`;
-      const patterns = await extractErrorPatterns(evalResult, prompt, exerciseSessionId);
-      await recordErrorPatterns(patterns)
-
-      let xp = XP_PER_EXERCISE;
-      if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
-      await addXP(xp)
+      // Background persistence: do not block or replace the evaluation on failure
+      try {
+        const exerciseSessionId = `exercise_${Date.now()}`;
+        const patterns = await extractErrorPatterns(evalResult, prompt, exerciseSessionId);
+        await recordErrorPatterns(patterns);
+        let xp = XP_PER_EXERCISE;
+        if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
+        await addXP(xp);
+        await syncGamificationState();
+      } catch (persistErr) {
+        console.warn('Background persistence failed (evaluation still shown):', persistErr);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Evaluation failed');
     } finally {

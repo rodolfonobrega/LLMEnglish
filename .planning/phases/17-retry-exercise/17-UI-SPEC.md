@@ -53,6 +53,7 @@ Exceptions: none
 | Label | 14px | 500 | 1.5 |
 | Heading | 20px | 600 | 1.2 |
 | Display | 28px | 700 | 1.2 |
+| Button | 16px | 600 | 1.2 |
 
 **Source:** Inherited from existing project typography. No typography changes in this phase. Buttons use `text-base` (16px) at size `lg`, which is the existing Button component behavior.
 
@@ -148,7 +149,7 @@ None. All UI is composed from existing Button component with existing variants.
 +------------------------------------------+
 ```
 
-**Button group container:** `div` with `className="space-y-3"` (12px gap between buttons).
+**Button group container:** `div` with `className="space-y-2"` (8px gap between buttons, "sm" token).
 
 **Button styling:** All three use `size="lg"` and `className="w-full rounded-2xl cursor-pointer"`.
 

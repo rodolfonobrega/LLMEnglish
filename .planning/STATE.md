@@ -4,8 +4,8 @@ milestone: v1.3
 milestone_name: — Image, Data & UX Improvements
 status: executing
 stopped_at: Phase 16 UI-SPEC approved
-last_updated: "2026-04-11T02:37:07.045Z"
-last_activity: 2026-04-11 -- Phase 17 execution started
+last_updated: "2026-04-11T03:31:26.768Z"
+last_activity: 2026-04-11
 progress:
   total_phases: 5
   completed_phases: 0
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 ## Current Position
 
-Phase: 17 (retry-exercise) — EXECUTING
-Plan: 1 of 2
+Phase: 17
+Plan: Not started
 Status: Executing Phase 17
-Last activity: 2026-04-11 -- Phase 17 execution started
+Last activity: 2026-04-11
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 25
+- Total plans completed: 27
 - Average duration: ~5min
 - Total execution time: ~43min across 8 plans
 
@@ -58,6 +58,7 @@ Progress: [██████████] 100%
 | 13 | 3 | - | - |
 | 14 | 1 | - | - |
 | 16 | 1 | - | - |
+| 17 | 2 | - | - |
 
 **Recent Trend:**
 

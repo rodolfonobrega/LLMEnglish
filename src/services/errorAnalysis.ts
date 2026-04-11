@@ -195,13 +195,14 @@ export async function extractErrorPatterns(
 
 function guessCategory(correction: string): ErrorCategory {
   const lower = correction.toLowerCase()
+  // Check explicit category keywords first (highest priority)
   if (lower.includes('tense') || lower.includes('past') || lower.includes('present') || lower.includes('future')) {
     return 'verb-tense'
   }
-  if (lower.includes('preposition') || lower.includes('in ') || lower.includes('on ') || lower.includes('at ')) {
+  if (lower.includes('preposition')) {
     return 'preposition'
   }
-  if (lower.includes('article') || lower.includes('a ') || lower.includes('an ') || lower.includes('the ')) {
+  if (lower.includes('article')) {
     return 'article'
   }
   if (lower.includes('word order') || lower.includes('should be')) {
@@ -213,8 +214,21 @@ function guessCategory(correction: string): ErrorCategory {
   if (lower.includes('pronunciation') || lower.includes('sounds')) {
     return 'pronunciation'
   }
-  if (lower.includes('vocabulary') || lower.includes('word')) {
+  if (lower.includes('vocabulary') || lower.includes('word choice') || lower.includes('wrong word')) {
     return 'vocabulary'
+  }
+  if (lower.includes('fluency') || lower.includes('natural') || lower.includes('phrasing')) {
+    return 'fluency'
+  }
+  // Fallback: only match short substrings if they appear as corrections themselves
+  // (e.g., "Use 'in' instead of 'on'" -- the preposition IS the topic)
+  if (/\b(in|on|at|to|for|with|by|from)\b.*\b(instead|rather|use|should)\b/i.test(lower) ||
+      /\b(instead|rather|use|should)\b.*\b(in|on|at|to|for|with|by|from)\b/i.test(lower)) {
+    return 'preposition'
+  }
+  if (/\b(a|an|the)\b.*\b(instead|use|should)\b/i.test(lower) ||
+      /\b(instead|use|should)\b.*\b(a|an|the)\b/i.test(lower)) {
+    return 'article'
   }
   return 'other'
 }

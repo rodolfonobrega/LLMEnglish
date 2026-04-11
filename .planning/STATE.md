@@ -83,12 +83,6 @@ None.
 
 - Gemini Live WebSocket constraint: API key must be exposed client-side for direct WebSocket connection. Accepted risk that needs user-facing documentation.
 
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260411-ksx | Fix lint errors and wire edge function provider modules | 2026-04-11 | 885e5dc | [260411-ksx](./quick/260411-ksx-fix-lint-errors-and-wire-edge-function-p/) |
-
 ## Session Continuity
 
 Last session: 2026-04-11T01:05:13.660Z

@@ -5,7 +5,7 @@
 - ✅ **v1.0 Hardening & Praticar Redesign** — Phases 1-6 (shipped 2026-04-02)
 - ✅ **v1.1 Dead Code & Facade Cleanup** — Phase 7 (shipped 2026-04-07)
 - ✅ **v1.2 Audio & Proxy Cleanup** — Phases 8-12 (shipped 2026-04-08)
-- 🔄 **v1.3 Image, Data & UX Improvements** — Phases 13-19 (in progress)
+- 🔄 **v1.3 Image, Data & UX Improvements** — Phases 13-17 (in progress)
 
 ## Phases
 
@@ -60,8 +60,6 @@
 | 15. Model Fallback | v1.3 | 2/2 | Complete    | 2026-04-10 |
 | 16. Recording Logic | v1.3 | 1/2 | Complete    | 2026-04-10 |
 | 17. Retry Exercise | v1.3 | 2/2 | Complete | 2026-04-10 |
-| 18. Fix Student Data Flow | v1.3 | 0/1 | Pending | — |
-| 19. Fix TTS MIME Type | v1.3 | 0/1 | Pending | — |
 
 ## v1.3 — Image, Data & UX Improvements (Phases 13-17)
 
@@ -119,26 +117,6 @@ Plans:
 Plans:
 - [x] 17-01-PLAN.md — Add retry + post-exercise navigation to ExerciseMode and ImageMode
 - [x] 17-02-PLAN.md — Add retry-same-scenario to LiveRoleplayPage and ConversationAnalysis
-
-### Phase 18: Fix Student Data Flow
-
-**Goal:** Close the two Phase 14 gaps confirmed by the milestone audit — stable exercise IDs at the call site and a real category filter in getCardsForWeakArea
-**Requirements:** 999.1, 999.2
-**Gap Closure:** Closes gaps from v1.3 audit
-**Plans:** 0/1 plans complete
-
-Plans:
-- [ ] 18-01-PLAN.md — Fix exercise_ ID prefix in ExerciseMode.tsx + implement categoryToCardThemes mapping in errorAnalysis.ts
-
-### Phase 19: Fix TTS MIME Type
-
-**Goal:** Fix pre-existing bug where ttsProvider (always undefined) is checked instead of ttsSource, silently breaking OpenAI TTS MP3 audio output
-**Requirements:** TTS-MIME-FIX
-**Gap Closure:** Closes pre-existing TTS integration gap flagged in v1.3 audit
-**Plans:** 0/1 plans complete
-
-Plans:
-- [ ] 19-01-PLAN.md — Fix config.ttsProvider → config.ttsSource in ConversationAnalysis.tsx and useTTS.ts
 
 ---
 *See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full v1.0 phase details.*

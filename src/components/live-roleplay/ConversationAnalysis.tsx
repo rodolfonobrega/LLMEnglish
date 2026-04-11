@@ -25,7 +25,6 @@ interface ConversationAnalysisProps {
   scenario: LiveScenario;
   turns: ConversationTurn[];
   onReset: () => void;
-  onRetry?: () => void;
 }
 
 interface AnalysisData {
@@ -53,7 +52,7 @@ function getShadowingVoices(): { userVoice: string; aiVoice: string } {
   return { userVoice: primary, aiVoice: VOICE_B };
 }
 
-export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: ConversationAnalysisProps) {
+export function ConversationAnalysis({ scenario, turns, onReset }: ConversationAnalysisProps) {
   const navigate = useNavigate();
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +71,6 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
   const [currentPlayingLine, setCurrentPlayingLine] = useState<number | null>(null);
   const isPlayingFullRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
-  const hasAnalyzedRef = useRef(false);
 
   const analyzeConversation = useCallback(async () => {
     setIsLoading(true);
@@ -125,7 +123,7 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
     } finally {
       setIsLoading(false);
     }
-  }, [scenario, turns, tone]);
+  }, [scenario, turns]);
 
   const generateDialogueAudio = useCallback(async (data: AnalysisData) => {
     setIsGeneratingAudio(true);
@@ -157,8 +155,6 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
   }, []);
 
   useEffect(() => {
-    if (hasAnalyzedRef.current) return;
-    hasAnalyzedRef.current = true;
     analyzeConversation();
   }, [analyzeConversation]);
 
@@ -182,11 +178,7 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
         currentAudioRef.current = null;
         resolve();
       };
-      audio.play().catch(() => {
-        // Autoplay blocked — resolve so the caller is not left hanging
-        currentAudioRef.current = null;
-        resolve();
-      });
+      audio.play();
     });
   }, []);
 
@@ -429,18 +421,24 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
       </Card>
 
       {/* Actions */}
-      <div className="space-y-2">
-        <Button variant="primary" size="lg" onClick={onRetry} className="w-full rounded-2xl cursor-pointer">
-          <RotateCcw size={18} />
-          Tentar Novamente
+      <div className="flex gap-3">
+        <Button
+          size="lg"
+          onClick={() => navigate('/history')}
+          variant="outline"
+          className="flex-1 text-base font-bold py-6 rounded-xl"
+        >
+          <Clock size={18} className="mr-2" />
+          Histórico
         </Button>
-        <Button variant="secondary" size="lg" onClick={onReset} className="w-full rounded-2xl cursor-pointer">
-          <Sparkles size={18} />
-          Novo Cenario
-        </Button>
-        <Button variant="ghost" size="lg" onClick={() => navigate('/history')} className="w-full rounded-2xl cursor-pointer">
-          <Clock size={18} />
-          Ver Historico
+        <Button
+          size="lg"
+          onClick={onReset}
+          variant="default"
+          className="flex-1 text-base font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+        >
+          <RotateCcw size={18} className="mr-2" />
+          Nova Conversa
         </Button>
       </div>
     </div>

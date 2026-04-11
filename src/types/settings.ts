@@ -58,8 +58,6 @@ export interface ModelConfig {
   ttsFallbackModel?: string;
   ttsFallbackSource?: Source;
   ttsFallbackVoice?: string;
-  imageFallbackModel?: string;
-  imageFallbackSource?: 'genai' | 'vertex' | 'openai' | 'openrouter';
 }
 
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
@@ -412,14 +410,6 @@ export function migrateModelConfig(config: Record<string, unknown>): ModelConfig
     migrated.ttsFallbackModel = config.ttsFallbackModel as string | undefined;
     migrated.ttsFallbackSource = providerToSource(config.ttsFallbackProvider as string);
     migrated.ttsFallbackVoice = config.ttsFallbackVoice as string | undefined;
-  }
-  if (config.imageFallbackSource) {
-    migrated.imageFallbackModel = config.imageFallbackModel as string | undefined;
-    migrated.imageFallbackSource = config.imageFallbackSource as 'genai' | 'vertex' | 'openai' | 'openrouter';
-  }
-  if (config.imageFallbackProvider && !config.imageFallbackSource) {
-    migrated.imageFallbackModel = config.imageFallbackModel as string | undefined;
-    migrated.imageFallbackSource = providerToSource(config.imageFallbackProvider as string) as 'genai' | 'vertex' | 'openai' | 'openrouter';
   }
 
   return migrated;

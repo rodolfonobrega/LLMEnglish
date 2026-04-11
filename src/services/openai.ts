@@ -83,24 +83,7 @@ export async function chatCompletionWithImage(
   const resolvedSource = source === 'groq' ? 'genai' : source;
   const resolvedModel = source === 'groq' ? 'gemini-2.5-flash' : model;
 
-  try {
-    return await proxyChatWithImage({ source: resolvedSource, model: resolvedModel, systemPrompt, imageUrl });
-  } catch (primaryError) {
-    if (!modelOverride && config.chatFallbackModel && config.chatFallbackSource) {
-      console.warn('Primary chat-with-image failed, trying fallback:', primaryError);
-      try {
-        return await proxyChatWithImage({
-          source: config.chatFallbackSource,
-          model: config.chatFallbackModel,
-          systemPrompt,
-          imageUrl,
-        });
-      } catch {
-        throw primaryError;
-      }
-    }
-    throw primaryError;
-  }
+  return proxyChatWithImage({ source: resolvedSource, model: resolvedModel, systemPrompt, imageUrl });
 }
 
 // ===== Text to Speech =====
@@ -190,24 +173,7 @@ export async function generateImage(
   const config = getRuntimeModelConfig();
   const source = config.imageSource;
   const model = config.imageModel;
-  try {
-    return await proxyImage({ source, model, prompt, ...options });
-  } catch (primaryError) {
-    if (config.imageFallbackModel && config.imageFallbackSource) {
-      console.warn('Primary image generation failed, trying fallback:', primaryError);
-      try {
-        return await proxyImage({
-          source: config.imageFallbackSource,
-          model: config.imageFallbackModel,
-          prompt,
-          ...options,
-        });
-      } catch {
-        throw primaryError;
-      }
-    }
-    throw primaryError;
-  }
+  return proxyImage({ source, model, prompt, ...options });
 }
 
 // Export types used by consumers

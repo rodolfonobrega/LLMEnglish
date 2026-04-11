@@ -45,6 +45,20 @@ async function decodeAudioData(
 }
 
 /**
+ * Helper: convert Float32Array microphone data to a Gemini Blob for sendRealtimeInput.
+ */
+function createPcmBlob(data: Float32Array): { data: string; mimeType: string } {
+  const int16 = new Int16Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    int16[i] = data[i] * 32768;
+  }
+  return {
+    data: encodeBase64(new Uint8Array(int16.buffer)),
+    mimeType: 'audio/pcm;rate=16000',
+  };
+}
+
+/**
  * Gemini Live API session using the official @google/genai SDK.
  * Supports bidirectional audio conversation with transcription.
  */
@@ -55,7 +69,7 @@ export class GeminiLiveSession implements ILiveSession {
   private mediaStream: MediaStream | null = null;
   private inputAudioCtx: AudioContext | null = null;
   private outputAudioCtx: AudioContext | null = null;
-  private workletNode: AudioWorkletNode | null = null;
+  private processor: ScriptProcessorNode | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private isStreaming = false;
 
@@ -221,24 +235,18 @@ export class GeminiLiveSession implements ILiveSession {
       await this.inputAudioCtx.resume();
 
       this.sourceNode = this.inputAudioCtx.createMediaStreamSource(this.mediaStream);
+      this.processor = this.inputAudioCtx.createScriptProcessor(4096, 1, 1);
 
-      await this.inputAudioCtx.audioWorklet.addModule('worklets/pcm-processor.js');
-      this.workletNode = new AudioWorkletNode(this.inputAudioCtx, 'pcm-processor', {
-        parameterData: { bufferSize: 4096 },
-      });
-
-      this.workletNode.port.onmessage = (event) => {
+      this.processor.onaudioprocess = (event) => {
         if (!this.isStreaming || !this.session) return;
 
-        const pcm16 = new Int16Array(event.data.audio);
-        const base64 = encodeBase64(new Uint8Array(pcm16.buffer));
-        this.session.sendRealtimeInput({
-          media: { data: base64, mimeType: 'audio/pcm;rate=16000' },
-        });
+        const inputData = event.inputBuffer.getChannelData(0);
+        const pcmBlob = createPcmBlob(inputData);
+        this.session.sendRealtimeInput({ media: pcmBlob });
       };
 
-      this.sourceNode.connect(this.workletNode);
-      this.workletNode.connect(this.inputAudioCtx.destination);
+      this.sourceNode.connect(this.processor);
+      this.processor.connect(this.inputAudioCtx.destination);
       this.isStreaming = true;
     } catch (err) {
       this.callbacks.onError(`Microphone access error: ${err}`);
@@ -247,10 +255,9 @@ export class GeminiLiveSession implements ILiveSession {
 
   stopMicrophone(): void {
     this.isStreaming = false;
-    if (this.workletNode) {
-      this.workletNode.port.onmessage = null;
-      this.workletNode.disconnect();
-      this.workletNode = null;
+    if (this.processor) {
+      this.processor.disconnect();
+      this.processor = null;
     }
     if (this.sourceNode) {
       this.sourceNode.disconnect();

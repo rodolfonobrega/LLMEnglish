@@ -182,7 +182,9 @@ export function ReviewPage() {
   }
 
   if (sessionComplete) {
-    const avgScore = sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length;
+    const avgScore = sessionScores.length > 0
+      ? sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length
+      : 0;
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center space-y-8">
         <div className="size-20 bg-[var(--amber-soft)] rounded-full flex items-center justify-center">

@@ -243,7 +243,7 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
           <div className="bg-slate-50 dark:bg-card/50 rounded-2xl p-4 max-h-56 overflow-y-auto space-y-3 shadow-inner border border-slate-100 dark:border-border/50">
             {turns.map((turn, i) => (
               <div
-                key={i}
+                key={`${turn.role}-${turn.timestamp}-${i}`}
                 className={cn('flex animate-message-in', turn.role === 'user' ? 'justify-end' : 'justify-start')}
               >
                 <div

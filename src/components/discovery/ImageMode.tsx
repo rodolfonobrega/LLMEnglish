@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, X, ImageIcon, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, RefreshCw, X, ImageIcon, Sparkles, RotateCcw, ChevronLeft } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { chatCompletion, chatCompletionWithImage, generateImage, speechToText } from '../../services/openai';
@@ -16,6 +17,7 @@ import { Button } from '../ui/Button';
 import { Skeleton, SkeletonText } from '../ui/Skeleton';
 
 export function ImageMode() {
+  const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState('');
   const [question, setQuestion] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -100,6 +102,14 @@ export function ImageMode() {
     setError(null);
     setSaved(false);
     setUserAudioBase64(null);
+  };
+
+  const retrySame = () => {
+    setEvaluation(null);
+    setError(null);
+    setSaved(false);
+    setUserAudioBase64(null);
+    // Keep imageUrl and question intact — user sees same image and question again
   };
 
   return (
@@ -188,10 +198,20 @@ export function ImageMode() {
               <p className="text-leaf font-bold">Salvo na Biblioteca!</p>
             </div>
           )}
-          <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl">
-            <RefreshCw size={18} />
-            Tentar Outro
-          </Button>
+          <div className="space-y-2">
+            <Button variant="primary" size="lg" onClick={retrySame} className="w-full rounded-2xl cursor-pointer">
+              <RotateCcw size={18} />
+              Tentar Novamente
+            </Button>
+            <Button variant="secondary" size="lg" onClick={reset} className="w-full rounded-2xl cursor-pointer">
+              <RefreshCw size={18} />
+              Novo Exercicio
+            </Button>
+            <Button variant="ghost" size="lg" onClick={() => navigate('/practice')} className="w-full rounded-2xl cursor-pointer">
+              <ChevronLeft size={18} />
+              Voltar ao Hub
+            </Button>
+          </div>
         </div>
       )}
 

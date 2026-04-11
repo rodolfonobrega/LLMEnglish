@@ -73,7 +73,15 @@ export function ReviewPage() {
       const transcription = await speechToText(blob);
       const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`, tone);
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
-      const evalResult: EvaluationResult = JSON.parse(evalResponse);
+      let evalResult: EvaluationResult;
+      try {
+        evalResult = JSON.parse(evalResponse);
+      } catch {
+        throw new Error('AI returned invalid JSON for evaluation. Please try again.');
+      }
+      if (typeof evalResult.score !== 'number' || !Array.isArray(evalResult.corrections)) {
+        throw new Error('AI returned an incomplete evaluation. Please try again.');
+      }
       evalResult.userTranscription = transcription;
       setEvaluation(evalResult);
       setShowResults(true);

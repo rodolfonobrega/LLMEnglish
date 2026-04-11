@@ -21,6 +21,7 @@ export function useAudioRecorder() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioUrlRef = useRef<string | null>(null);
+  const isRecordingRef = useRef(false);
 
   const updateState = useCallback((updater: AudioRecorderState | ((prev: AudioRecorderState) => AudioRecorderState)) => {
     setState(prev => {
@@ -64,6 +65,7 @@ export function useAudioRecorder() {
       };
 
       mediaRecorder.onstop = async () => {
+        isRecordingRef.current = false;
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         const base64 = await blobToBase64(blob);
@@ -79,6 +81,7 @@ export function useAudioRecorder() {
 
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
+      isRecordingRef.current = true;
       updateState(prev => ({ ...prev, isRecording: true, error: null }));
     } catch (err) {
       updateState(prev => ({
@@ -89,7 +92,7 @@ export function useAudioRecorder() {
   }, []);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && state.isRecording) {
+    if (mediaRecorderRef.current && isRecordingRef.current) {
       // Safety net: stop stream tracks immediately in case onstop doesn't fire
       const stream = mediaRecorderRef.current.stream;
       if (stream) {
@@ -97,7 +100,7 @@ export function useAudioRecorder() {
       }
       mediaRecorderRef.current.stop();
     }
-  }, [state.isRecording]);
+  }, []);
 
   const discardRecording = useCallback(() => {
     if (state.audioUrl) {

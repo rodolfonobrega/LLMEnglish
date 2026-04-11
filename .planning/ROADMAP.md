@@ -59,7 +59,7 @@
 | 14. Student Data Flow | v1.3 | 1/1 | Complete    | 2026-04-09 |
 | 15. Model Fallback | v1.3 | 2/2 | Complete    | 2026-04-10 |
 | 16. Recording Logic | v1.3 | 1/2 | Complete    | 2026-04-10 |
-| 17. Retry Exercise | v1.3 | 2/2 | Complete | 2026-04-10 |
+| 17. Retry Exercise | v1.3 | 2/2 | Complete    | 2026-04-11 |
 | 18. Fix Student Data Flow | v1.3 | 1/0 | Complete    | 2026-04-11 |
 | 19. Fix TTS MIME Type | v1.3 | 0/1 | Pending | — |
 

@@ -1,6 +1,6 @@
 ---
 phase: 17-retry-exercise
-reviewed: 2026-04-10T12:00:00Z
+reviewed: 2026-04-11T12:00:00Z
 depth: standard
 files_reviewed: 24
 files_reviewed_list:
@@ -29,170 +29,106 @@ files_reviewed_list:
   - supabase/functions/ai-proxy/providers/vertex.ts
   - supabase/functions/ai-proxy/utils.ts
 findings:
-  critical: 3
-  warning: 6
-  info: 3
-  total: 12
+  critical: 1
+  warning: 4
+  info: 5
+  total: 10
 status: issues_found
 ---
 
 # Phase 17: Code Review Report
 
-**Reviewed:** 2026-04-10T12:00:00Z
+**Reviewed:** 2026-04-11T12:00:00Z
 **Depth:** standard
 **Files Reviewed:** 24
 **Status:** issues_found
 
 ## Summary
 
-Reviewed 24 source files spanning client-side components (LiveSession, ReviewPage, SettingsPage), service modules (openai.ts, geminiLive.ts, aiProxy tests), hooks (useAudioRecorder), type definitions (settings.ts), tests, and the Supabase Edge Function (ai-proxy) with its extracted provider modules. The codebase is generally well-structured with solid fallback patterns and good test coverage. The modularization of the edge function into provider modules is clean, though index.ts still retains full inline copies (noted in prior review).
+Reviewed 24 source files across the SpeakLab codebase covering live roleplay, review exercises, settings, audio recording, AI proxy services, and Supabase Edge Function providers. The codebase shows solid engineering: good fallback patterns, proper retry logic, well-structured provider modules, and comprehensive test coverage.
 
-Key concerns: CORS wildcard origin in production, insecure JWT base64 encoding in Vertex auth, and an unsafe plaintext API key migration path that can expose keys. Client-side issues include stale closures in LiveSession and an unchecked JSON.parse in ReviewPage.
+Compared to the prior review (2026-04-10), several issues have been resolved: the CORS origin now uses the configured site URL (not wildcard), Vertex JWT encoding uses proper base64url, the plaintext key migration is now awaited with error logging, `JSON.parse` in ReviewPage has try/catch with shape validation, the STT model parameter is now passed through, and the React key for chat history uses a stable composite. These are verified fixes.
+
+One critical issue remains: the Gemini API key is exposed client-side in network URLs for the Live API (an architectural limitation). New warnings include potential race conditions in audio recording and a LiveSession effect that could cause unnecessary reconnections.
 
 ## Critical Issues
 
-### CR-01: CORS wildcard origin in production edge function
+### CR-01: Gemini API key exposed in browser network requests (architectural)
 
-**File:** `supabase/functions/ai-proxy/index.ts:13-15`
-**Issue:** The CORS headers use `Access-Control-Allow-Origin: *` which allows any origin to call the edge function. Since this function handles encrypted API keys and authenticated requests, a wildcard origin is a security risk. An attacker's page could potentially make authenticated cross-origin requests if a user visits it while logged in, though the Bearer token requirement mitigates this partially.
-**Fix:**
-```typescript
-const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('SITE_URL') || 'http://localhost:5173',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-```
-Replace the wildcard with the configured site URL from environment variables.
-
-### CR-02: Insecure JWT construction using btoa in Vertex auth
-
-**File:** `supabase/functions/ai-proxy/providers/vertex.ts:19-20` (also `supabase/functions/ai-proxy/index.ts:621-622`)
-**Issue:** JWT header and payload are constructed using `btoa()` which produces standard base64 with `+/` characters and `=` padding, not URL-safe base64 (`-_` characters, no padding) as required by JWT spec (RFC 7519 section 2). While Google's token endpoint may tolerate this currently, it violates the JWT standard and could break with stricter validators or future API changes.
-**Fix:**
-```typescript
-function base64urlEncode(str: string): string {
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-const header = base64urlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-const payload = base64urlEncode(JSON.stringify({
-  iss: sa.client_email,
-  scope: 'https://www.googleapis.com/auth/cloud-platform',
-  aud: 'https://oauth2.googleapis.com/token',
-  iat: now,
-  exp: now + 3600,
-}))
-```
-
-### CR-03: Plaintext API key exposed during auto-migration
-
-**File:** `supabase/functions/ai-proxy/index.ts:153-169`
-**Issue:** The `getApiKey` function falls back to treating the stored value as plaintext when it doesn't match the encrypted format. It then returns this plaintext value directly and triggers a background re-encryption via `saveApiKey`. This means if a database read occurs for a legacy plaintext key, the raw key is returned in the function response AND a background write starts -- both operations with the unencrypted key in memory. Additionally, any error in the background `saveApiKey` call is silently ignored (no await, no catch).
-**Fix:** At minimum, await the `saveApiKey` call and handle errors. Consider also logging the migration event for auditing:
-```typescript
-// Plaintext key (or old client-side encrypted) — auto-migrate
-const plaintextValue = encryptedKey
-try {
-  await saveApiKey(userId, source, plaintextValue)
-  console.log(`Migrated plaintext key for user ${userId}, source ${source}`)
-} catch (err) {
-  console.error(`Failed to migrate key for user ${userId}:`, err)
-}
-return plaintextValue
-```
+**File:** `src/services/geminiLive.ts:86`
+**Issue:** The Gemini Live session creates a `GoogleGenAI({ apiKey: key })` client directly in the browser using the raw API key from `getGeminiKey()`. The SDK's WebSocket connection URL will contain the API key as a query parameter, making it visible in browser DevTools, network logs, and potentially referrer headers. The project's own `SEC-04` policy states "API keys are never exposed client-side." All other AI calls correctly route through the Supabase Edge Function proxy. This is an architectural limitation of the Gemini Live API which requires a persistent WebSocket and cannot be proxied through the edge function, but the deviation from the security policy is not documented.
+**Fix:** This cannot be fully resolved without a WebSocket proxy (significant infrastructure change). Recommended mitigations:
+1. Add a clear warning in the Live Roleplay UI that the Gemini API key is used directly from the browser
+2. Document the architectural exception in the codebase security documentation
+3. Consider using short-lived API key restrictions (Google API key restrictions to only Gemini API)
 
 ## Warnings
 
-### WR-01: Stale closure in LiveSession useEffect callback
+### WR-01: Race condition between stopRecording safety-net and onstop handler
 
-**File:** `src/components/live-roleplay/LiveSession.tsx:62-95`
-**Issue:** The `useEffect` that creates the live session captures `onEnd` in its closure. Since `onEnd` is a prop that may get a new reference on parent re-renders, the `onTurnComplete` callback at line 72 uses `onEnd` from the effect closure which may be stale. The dependency array includes `onEnd` but this causes the entire session to be recreated (disconnect + reconnect) whenever `onEnd` changes, which is likely unintentional and disruptive to active conversations.
-**Fix:** Use a ref to hold the latest `onEnd` callback and remove it from the effect dependencies:
+**File:** `src/hooks/useAudioRecorder.ts:67-80,94-102`
+**Issue:** `stopRecording` (line 97-100) stops stream tracks immediately as a safety net before calling `mediaRecorder.stop()`. The `onstop` handler (line 79) also calls `stream.getTracks().forEach(t => t.stop())`. If the safety-net stop causes the MediaRecorder to emit an incomplete final data chunk (stream killed before the final `ondataavailable` event), the recorded audio could be truncated or empty. The timing depends on browser implementation -- some browsers deliver the final data event before `onstop`, others may not.
+**Fix:** Defer stream track cleanup to the `onstop` handler only, or add a guard:
 ```typescript
-const onEndRef = useRef(onEnd);
-useEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
-// Inside onTurnComplete, use onEndRef.current instead of onEnd
-// Remove onEnd from the useEffect dependency array
-```
-
-### WR-02: Race condition in useAudioRecorder stopRecording
-
-**File:** `src/hooks/useAudioRecorder.ts:91-99`
-**Issue:** `stopRecording` reads `state.isRecording` from the React state closure, but state is captured at render time. If `stopRecording` is called rapidly or during a state transition, the stale `state.isRecording` value could cause a double-stop or missed stop. The callback dependency `[state.isRecording]` means a new function reference is created on each recording state change, but between renders the ref-based check would be safer.
-**Fix:** Use a ref to track the MediaRecorder instance state for synchronous access:
-```typescript
-const isRecordingRef = useRef(false);
-// Set isRecordingRef.current = true/false alongside setState calls
-// In stopRecording, check isRecordingRef.current instead of state.isRecording
-```
-
-### WR-03: Unchecked JSON.parse in ReviewPage evaluation handler
-
-**File:** `src/components/review/ReviewPage.tsx:76`
-**Issue:** `JSON.parse(evalResponse)` is called without a dedicated try/catch. If the AI returns malformed JSON (common with LLM responses), this throws a generic error that reaches the outer catch at line 96 but provides no diagnostic context. The parsed object is also cast directly to `EvaluationResult` without validating its shape, so a partial or incorrect response could cause downstream errors when accessing `evalResult.score` or `evalResult.corrections`.
-**Fix:**
-```typescript
-let evalResult: EvaluationResult;
-try {
-  evalResult = JSON.parse(evalResponse);
-} catch {
-  throw new Error('AI returned invalid JSON for evaluation. Please try again.');
-}
-if (typeof evalResult.score !== 'number' || !Array.isArray(evalResult.corrections)) {
-  throw new Error('AI returned an incomplete evaluation. Please try again.');
+// In onstop handler (line 79), check track state before stopping:
+const tracks = stream.getTracks();
+if (tracks.some(t => t.readyState === 'live')) {
+  tracks.forEach(t => t.stop());
 }
 ```
 
-### WR-04: GeminiSTT in edge function ignores model parameter
+### WR-02: LiveSession useEffect may trigger unnecessary session reconnections
 
-**File:** `supabase/functions/ai-proxy/providers/gemini.ts:62` (also `supabase/functions/ai-proxy/index.ts:413-417`)
-**Issue:** The `stt` function in the Gemini provider hardcodes `model: 'gemini-2.5-flash'` instead of using the `model` parameter passed by the caller. At index.ts line 1316, `geminiSTT(apiKey, body.audio, body.mimeType)` is called without passing the user's configured model at all. This means user-configured STT model selection has no effect for the Gemini source.
-**Fix:** Update the function signature to accept `model` and pass it through:
+**File:** `src/components/live-roleplay/LiveSession.tsx:64-97`
+**Issue:** The `useEffect` that creates the live session depends on `[scenario, checkForFarewell]`. The `checkForFarewell` callback is memoized with `useCallback([], ...)`, which is stable. However, `scenario` is an object prop -- if the parent re-renders and creates a new `scenario` object reference (even with identical content), the effect re-runs, disconnecting the live session and creating a new one. This would disrupt an active conversation. The `onEnd` prop is correctly handled via `onEndRef`, but `scenario` is not.
+**Fix:** Either memoize `scenario` in the parent, or extract primitive identifiers as dependencies:
 ```typescript
-// providers/gemini.ts
-export async function stt(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
-  const response = await ai.models.generateContent({ model, /* ... */ })
-}
-// index.ts call site
-text = await geminiSTT(apiKey, body.audio, body.mimeType, model)
+// Replace [scenario, ...] with stable primitive deps:
+useEffect(() => {
+  // ... session creation using scenario
+}, [scenario.systemPrompt, scenario.suggestedVoice, scenario.theme, checkForFarewell]);
 ```
 
-### WR-05: Index used as React key in chat history rendering
+### WR-03: Unprotected nested property access in Edge Function API responses
 
-**File:** `src/components/live-roleplay/LiveSession.tsx:244`
-**Issue:** The chat history rendering uses `key={i}` (array index) for turn elements. While this works for append-only lists, if the turns array is ever reordered or items are removed, React will mismatch DOM elements. Since conversation turns are append-only in practice this is low risk, but it remains an anti-pattern.
-**Fix:** Use a stable unique key combining role and timestamp:
+**File:** `supabase/functions/ai-proxy/index.ts:244,270,299,498`
+**Issue:** Multiple API response parsers access deeply nested properties without null checks. Examples: `data.choices[0].message.content` (line 244), `data.candidates[0].content.parts[0].text` (line 270), `data.choices[0].message.content` (line 299, 498). If the API returns an unexpected shape (e.g., content filtered by safety, empty candidates due to moderation), these throw `TypeError: Cannot read properties of undefined` which surfaces as a generic 400 error with no useful context for the client.
+**Fix:** Use optional chaining with descriptive fallback errors:
 ```typescript
-key={`${turn.role}-${turn.timestamp}-${i}`}
+const content = data.choices?.[0]?.message?.content;
+if (!content) throw new Error(`OpenAI returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`);
+return content;
 ```
+Note: The provider modules in `supabase/functions/ai-proxy/providers/` have the same issue and should be fixed in tandem.
 
-### WR-06: Duplicate code between index.ts and extracted provider modules
+### WR-04: Plaintext key migration retries indefinitely on every request
 
-**File:** `supabase/functions/ai-proxy/index.ts` (lines 216-1054) vs `supabase/functions/ai-proxy/providers/*.ts`
-**Issue:** The edge function `index.ts` contains full inline implementations of all provider functions (openaiChat, geminiChat, groqChat, openaiTTS, etc.) that are duplicated almost verbatim in the extracted provider modules. The `index.ts` does not import from the provider modules. Any bug fix must be applied in two places, increasing drift risk. This was previously noted as IN-01 and has not been addressed.
-**Fix:** Have `index.ts` import from the provider modules:
+**File:** `supabase/functions/ai-proxy/index.ts:166-173`
+**Issue:** The `getApiKey` function attempts to migrate plaintext keys on every call. If the `saveApiKey` call fails (e.g., DB permissions issue), the error is logged but the plaintext key is returned. On the next request for the same key, migration is attempted again (because the DB still has the plaintext value). This creates persistent retry spam in logs and adds latency to every request for that key. The prior review noted this was fixed (now awaited), but the indefinite retry behavior remains.
+**Fix:** Add a migration marker or timestamp to prevent repeated attempts, or rate-limit migration attempts:
 ```typescript
-import { chat as openaiChat, tts as openaiTTS, /* ... */ } from './providers/openai.ts';
-import { chat as geminiChat, /* ... */ } from './providers/gemini.ts';
-// Remove all inline provider function declarations
+// After failed migration, at minimum add a clear persistent-warning log:
+console.error(`PERSISTENT: Migration failed for user ${userId}, source ${source}. Will retry next request.`);
 ```
 
 ## Info
 
-### IN-01: SettingsPage vertexProjectId and vertexRegion not loaded from storage
+### IN-01: Massive code duplication between index.ts and provider modules
 
-**File:** `src/components/settings/SettingsPage.tsx:81-82, 89-103`
-**Issue:** The `vertexProjectId` and `vertexRegion` state values are initialized as empty/`'us-central1'` but the `useEffect` that loads settings on mount only calls `getModelConfig()` and `getConversationTone()`. There is no code to load the stored Vertex config (projectId/region). The `handleSave` function also does not persist these values -- `saveApiKeys` receives `openai`, `genai`, `groq`, `openrouter` keys but no `vertex` config. Vertex settings appear non-functional in the UI.
+**File:** `supabase/functions/ai-proxy/index.ts` (1410 lines) vs `supabase/functions/ai-proxy/providers/*.ts`
+**Issue:** The edge function `index.ts` contains full inline implementations of all provider functions (`openaiChat`, `geminiChat`, `groqChat`, `openaiTTS`, `geminiTTS`, `groqTTS`, `openaiSTT`, `geminiSTT`, `groqSTT`, `openaiImage`, `geminiImage`, `openrouterChat`, `openrouterTTS`, `openrouterSTT`, `openrouterImage`, `vertexChat`, `vertexChatWithImage`, `vertexTTS`, `vertexSTT`, `vertexImage`) that are duplicated almost verbatim in the extracted provider modules. `index.ts` does not import from any provider module. Any bug fix must be applied in two places, increasing drift risk. This was noted in the prior review (WR-06) and has not been addressed.
+**Fix:** Have `index.ts` import from the provider modules and remove all inline function declarations.
+
+### IN-02: Vertex settings not loaded or saved in SettingsPage
+
+**File:** `src/components/settings/SettingsPage.tsx:81-82,89-103,217-244`
+**Issue:** The `vertexProjectId` and `vertexRegion` state values are initialized as empty/`'us-central1'` but the mount `useEffect` (line 89-103) only loads `getModelConfig()` and `getConversationTone()`. There is no code to load stored Vertex config. The `handleSave` function (line 217-244) also does not persist Vertex config -- `saveApiKeys` receives `openai`, `genai`, `groq`, `openrouter` keys but no `vertex` config. Vertex settings appear to be non-functional in the UI -- users can type values but they are never loaded or saved. This was noted in the prior review (IN-01) and has not been addressed.
 **Fix:** Load Vertex config from storage in the mount effect and include it in the save handler.
-
-### IN-02: Unused `_base64` parameter in ReviewPage
-
-**File:** `src/components/review/ReviewPage.tsx:66`
-**Issue:** The `handleAudioReady` callback receives `_base64` (underscore-prefixed, intentionally unused). The function calls `speechToText(blob)` directly. The AudioRecorder component computes base64 unnecessarily for this consumer. This is a minor inefficiency, not a bug.
 
 ### IN-03: Non-null assertions on Supabase env vars in index.ts
 
 **File:** `supabase/functions/ai-proxy/index.ts:25-26`
-**Issue:** `Deno.env.get('SUPABASE_URL')!` and `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!` use non-null assertions. If these env vars are missing, the code passes `undefined` to `createClient` which will fail with an obscure error later. The `ENCRYPTION_KEY` check at line 20 correctly validates immediately; these two should follow the same pattern. This was previously noted as WR-02 and has not been addressed.
+**Issue:** `Deno.env.get('SUPABASE_URL')!` and `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!` use non-null assertions. If these env vars are missing, the code passes `undefined` to `createClient` which fails with an obscure error later. The `ENCRYPTION_KEY` check at line 20 correctly validates immediately; these two should follow the same pattern. This was noted in the prior review (IN-03) and has not been addressed.
 **Fix:**
 ```typescript
 const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -202,8 +138,24 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 ```
 
+### IN-04: Magic numbers for audio sample rates in geminiLive.ts
+
+**File:** `src/services/geminiLive.ts:183,189,220`
+**Issue:** The output sample rate `24000` (lines 183, 189) and input sample rate `16000` (line 220) are hardcoded. These are Gemini Live API constants that are unlikely to change, but naming them improves readability.
+**Fix:**
+```typescript
+const OUTPUT_SAMPLE_RATE = 24000;
+const INPUT_SAMPLE_RATE = 16000;
+```
+
+### IN-05: `as any` type assertions in test mocks
+
+**File:** `src/services/errorAnalysis.test.ts:143,157,162,176`
+**Issue:** Several `as any[]` type assertions are used when creating mock card objects. While common in tests, these bypass TypeScript's structural checking, meaning the mock data may drift from the actual `Card` interface without compiler warnings.
+**Fix:** Use `Partial<Card>[]` or explicit typed mock factory functions.
+
 ---
 
-_Reviewed: 2026-04-10T12:00:00Z_
+_Reviewed: 2026-04-11T12:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_

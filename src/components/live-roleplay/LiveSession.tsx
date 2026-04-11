@@ -57,8 +57,13 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
   }, [turns, currentAiText]);
 
   const checkForFarewell = useCallback((text: string) => {
-    const farewells = ['bye', 'goodbye', 'see you', 'take care', 'have a good', 'have a nice', 'thanks, bye', 'thank you, bye'];
-    return farewells.some(f => text.toLowerCase().trim().includes(f));
+    const farewells = [
+      /\bbye\b/i, /\bgoodbye\b/i, /\bsee you\b/i, /\btake care\b/i,
+      /\bhave a good\s+(day|night|one|trip|time|evening|morning)\b/i,
+      /\bhave a nice\s+(day|night|trip|time|evening|morning)\b/i,
+      /\bthanks,?\s*bye\b/i, /\bthank you,?\s*bye\b/i,
+    ];
+    return farewells.some(pattern => pattern.test(text));
   }, []);
 
   useEffect(() => {

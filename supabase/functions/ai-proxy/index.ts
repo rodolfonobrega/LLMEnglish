@@ -164,7 +164,12 @@ async function getApiKey(userId: string, source: string): Promise<string | null>
 
   // Plaintext key (or old client-side encrypted) — auto-migrate by re-encrypting server-side
   const plaintextValue = encryptedKey
-  await saveApiKey(userId, source, plaintextValue)
+  try {
+    await saveApiKey(userId, source, plaintextValue)
+    console.log(`Migrated plaintext key for user ${userId}, source ${source}`)
+  } catch (err) {
+    console.error(`Failed to migrate key for user ${userId}, source ${source}:`, err)
+  }
   return plaintextValue
 }
 

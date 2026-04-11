@@ -346,16 +346,43 @@ export async function identifyWeakAreas(): Promise<WeakAreas> {
   }
 }
 
+const categoryToCardThemes: Partial<Record<ErrorCategory, string[]>> = {
+  'verb-tense': ['verb-tense', 'tense', 'grammar'],
+  'preposition': ['preposition', 'grammar'],
+  'article': ['article', 'grammar'],
+  'word-order': ['word-order', 'grammar', 'syntax'],
+  'grammar': ['grammar', 'verb-tense', 'preposition', 'article', 'word-order', 'syntax'],
+  'pronunciation': ['pronunciation'],
+  'vocabulary': ['vocabulary', 'vocab'],
+  'fluency': ['fluency'],
+  'syntax': ['syntax', 'grammar', 'word-order'],
+  'other': [],
+}
+
 export async function getCardsForWeakArea(weakArea: ErrorCategory): Promise<Card[]> {
-  void weakArea
   const allCards = await getCards()
-  return allCards
-    .filter(card => card.latestEvaluation && card.latestEvaluation.score < 7)
-    .sort((a, b) => {
-      const aScore = a.latestEvaluation?.score || 0
-      const bScore = b.latestEvaluation?.score || 0
-      return aScore - bScore
-    })
+  const themeKeywords = categoryToCardThemes[weakArea] || []
+
+  const matchingCards = allCards.filter(card => {
+    if (!card.latestEvaluation || card.latestEvaluation.score >= 7) return false
+    if (themeKeywords.length === 0) return true // 'other' returns all low-scoring
+    const cardTheme = (card.theme || '').toLowerCase()
+    const cardContext = (card.context || '').toLowerCase()
+    const cardPrompt = card.prompt.toLowerCase()
+    return themeKeywords.some(keyword =>
+      cardTheme.includes(keyword) || cardContext.includes(keyword) || cardPrompt.includes(keyword)
+    )
+  })
+
+  if (matchingCards.length === 0) {
+    return allCards
+      .filter(card => card.latestEvaluation && card.latestEvaluation.score < 7)
+      .sort((a, b) => (a.latestEvaluation?.score || 0) - (b.latestEvaluation?.score || 0))
+      .slice(0, 10)
+  }
+
+  return matchingCards
+    .sort((a, b) => (a.latestEvaluation?.score || 0) - (b.latestEvaluation?.score || 0))
     .slice(0, 10)
 }
 

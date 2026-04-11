@@ -2,8 +2,8 @@
 status: partial
 phase: 17-retry-exercise
 source: [17-VERIFICATION.md]
-started: 2026-04-10T19:57:00Z
-updated: 2026-04-10T19:57:00Z
+started: 2026-04-11T00:00:00Z
+updated: 2026-04-11T00:00:00Z
 ---
 
 ## Current Test
@@ -12,20 +12,20 @@ updated: 2026-04-10T19:57:00Z
 
 ## Tests
 
-### 1. ExerciseMode 3-button layout
-expected: After completing an exercise, user sees 3 buttons: Tentar Novamente (retries same exercise), Novo Exercicio (new exercise), Voltar ao Hub (navigates to /practice)
+### 1. Button visual styling
+expected: 3-button layout renders with correct primary/secondary/ghost contrast in both light and dark mode
 result: [pending]
 
-### 2. ImageMode 3-button layout
-expected: After completing an image exercise, user sees same 3-button pattern. Retry preserves imageUrl and question.
+### 2. ExerciseMode retry flow
+expected: Clicking "Tentar Novamente" after evaluation preserves same prompt and no new generation occurs
 result: [pending]
 
-### 3. LiveRoleplay 3-button layout
-expected: After live roleplay analysis, user sees: Tentar Novamente (retries same scenario), Novo Cenario (goes to setup), Ver Historico (navigates to /history)
+### 3. ImageMode retry flow
+expected: Clicking "Tentar Novamente" after evaluation preserves same image and question
 result: [pending]
 
-### 4. State preservation across retry
-expected: Clicking "Tentar Novamente" in all modes preserves exercise content (prompt, image, scenario) while clearing evaluation/audio state
+### 4. Live roleplay retry
+expected: Clicking "Tentar Novamente" on ConversationAnalysis re-enters conversation phase with same scenario, without going to setup
 result: [pending]
 
 ## Summary

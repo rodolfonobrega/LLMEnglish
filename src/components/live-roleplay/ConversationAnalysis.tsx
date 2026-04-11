@@ -72,6 +72,7 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
   const [currentPlayingLine, setCurrentPlayingLine] = useState<number | null>(null);
   const isPlayingFullRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const hasAnalyzedRef = useRef(false);
 
   const analyzeConversation = useCallback(async () => {
     setIsLoading(true);
@@ -156,6 +157,8 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
   }, []);
 
   useEffect(() => {
+    if (hasAnalyzedRef.current) return;
+    hasAnalyzedRef.current = true;
     analyzeConversation();
   }, [analyzeConversation]);
 

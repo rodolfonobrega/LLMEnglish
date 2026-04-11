@@ -241,7 +241,11 @@ async function openaiChat(apiKey: string, model: string, systemPrompt: string, u
   }
 
   const data = await response.json()
-  return data.choices[0].message.content
+  const content = data.choices?.[0]?.message?.content
+  if (!content) {
+    throw new Error(`OpenAI returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return content
 }
 
 /**
@@ -249,10 +253,10 @@ async function openaiChat(apiKey: string, model: string, systemPrompt: string, u
  */
 async function geminiChat(apiKey: string, model: string, systemPrompt: string, userMessage: string): Promise<string> {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
@@ -267,7 +271,11 @@ async function geminiChat(apiKey: string, model: string, systemPrompt: string, u
   }
 
   const data = await response.json()
-  return data.candidates[0].content.parts[0].text
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    throw new Error(`Gemini returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return text
 }
 
 /**
@@ -296,7 +304,11 @@ async function groqChat(apiKey: string, model: string, systemPrompt: string, use
   }
 
   const data = await response.json()
-  return data.choices[0].message.content
+  const content = data.choices?.[0]?.message?.content
+  if (!content) {
+    throw new Error(`Groq returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return content
 }
 
 /**
@@ -495,7 +507,11 @@ async function openrouterChat(apiKey: string, model: string, systemPrompt: strin
   }
 
   const data = await response.json()
-  return data.choices[0].message.content
+  const content = data.choices?.[0]?.message?.content
+  if (!content) {
+    throw new Error(`OpenRouter returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return content
 }
 
 /**
@@ -716,7 +732,11 @@ async function vertexChat(accessToken: string, projectId: string, region: string
   }
 
   const data = await response.json()
-  return data.candidates[0].content.parts[0].text
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    throw new Error(`Vertex returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return text
 }
 
 /**
@@ -759,7 +779,11 @@ async function vertexChatWithImage(
   }
 
   const data = await response.json()
-  return data.candidates[0].content.parts[0].text
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    throw new Error(`Vertex returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return text
 }
 
 /**
@@ -1011,10 +1035,10 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
     else generationConfig.numberOfImages = 1
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           instances: [{ prompt }],
           parameters: generationConfig,
@@ -1043,10 +1067,10 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
     if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig,
@@ -1233,7 +1257,7 @@ serve(async (req) => {
               }],
             })
 
-            content = response.candidates[0].content.parts[0].text
+            content = response.candidates?.[0]?.content?.parts?.[0]?.text || ''
           } else if (source === 'openrouter') {
             const apiKey = await getApiKey(userId, source)
             if (!apiKey) throw new Error('No OpenRouter API key configured')

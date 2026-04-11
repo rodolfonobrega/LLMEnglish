@@ -6,10 +6,10 @@ import { pcm16ToWav } from '../utils.ts'
  */
 export async function chat(apiKey: string, model: string, systemPrompt: string, userMessage: string): Promise<string> {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
@@ -24,7 +24,11 @@ export async function chat(apiKey: string, model: string, systemPrompt: string, 
   }
 
   const data = await response.json()
-  return data.candidates[0].content.parts[0].text
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    throw new Error(`Gemini returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return text
 }
 
 /**
@@ -94,10 +98,10 @@ export async function image(apiKey: string, prompt: string, model: string, optio
     else generationConfig.numberOfImages = 1
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           instances: [{ prompt }],
           parameters: generationConfig,
@@ -126,10 +130,10 @@ export async function image(apiKey: string, prompt: string, model: string, optio
     if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig,

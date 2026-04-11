@@ -47,6 +47,8 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
   const sessionRef = useRef<ILiveSession | null>(null);
   const turnsRef = useRef<ConversationTurn[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const onEndRef = useRef(onEnd);
+  useEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
 
   useEffect(() => { turnsRef.current = turns; }, [turns]);
 
@@ -69,7 +71,7 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
             const newTurn: ConversationTurn = { role: 'ai', text: prev.trim(), timestamp: Date.now() };
             setTurns(t => [...t, newTurn]);
             if (checkForFarewell(prev)) {
-              setTimeout(() => onEnd([...turnsRef.current, newTurn]), 2000);
+              setTimeout(() => onEndRef.current([...turnsRef.current, newTurn]), 2000);
             }
           }
           return '';
@@ -92,7 +94,7 @@ export function LiveSession({ scenario, onEnd, onExit }: LiveSessionProps) {
     sessionRef.current = session;
     session.connect(scenario.systemPrompt, scenario.suggestedVoice);
     return () => session.disconnect();
-  }, [scenario, checkForFarewell, onEnd]);
+  }, [scenario, checkForFarewell]);
 
   const toggleMic = async () => {
     if (!sessionRef.current) return;

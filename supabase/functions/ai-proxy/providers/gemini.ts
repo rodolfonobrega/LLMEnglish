@@ -58,12 +58,12 @@ export async function tts(apiKey: string, text: string, voice: string, model: st
 /**
  * Gemini STT
  */
-export async function stt(apiKey: string, audioBase64: string, mimeType: string): Promise<string> {
+export async function stt(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
   const { GoogleGenerativeAI } = await import('https://esm.sh/@google/generative-ai@0.21.0')
 
   const ai = new GoogleGenerativeAI({ apiKey })
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model,
     contents: {
       parts: [
         { inlineData: { mimeType, data: audioBase64 } },

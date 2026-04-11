@@ -415,12 +415,12 @@ async function openaiSTT(apiKey: string, audioBase64: string, mimeType: string, 
 /**
  * Gemini STT
  */
-async function geminiSTT(apiKey: string, audioBase64: string, mimeType: string): Promise<string> {
+async function geminiSTT(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
   const { GoogleGenerativeAI } = await import('https://esm.sh/@google/generative-ai@0.21.0')
 
   const ai = new GoogleGenerativeAI({ apiKey })
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model,
     contents: {
       parts: [
         { inlineData: { mimeType, data: audioBase64 } },
@@ -1333,7 +1333,7 @@ serve(async (req) => {
           // genai (default)
           const apiKey = await getApiKey(userId, source)
           if (!apiKey) throw new Error('No Gemini API key configured')
-          text = await geminiSTT(apiKey, body.audio, body.mimeType)
+          text = await geminiSTT(apiKey, body.audio, body.mimeType, model)
         }
 
         return new Response(JSON.stringify({ text }), { headers: corsHeaders })

@@ -29,7 +29,8 @@ function detectSource(modelId: string): Source {
     modelId.startsWith('meta-llama/') ||
     modelId.startsWith('qwen/') ||
     modelId.startsWith('canopylabs/') ||
-    modelId.startsWith('whisper-large-v3')
+    modelId.startsWith('whisper-large-v3') ||
+    modelId.startsWith('openai/gpt-oss')
   ) {
     return 'groq';
   }

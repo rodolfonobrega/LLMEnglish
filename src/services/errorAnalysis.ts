@@ -473,8 +473,9 @@ export async function recordSessionSnapshot(): Promise<void> {
 
   if (listError) throw new Error(`Failed to list error snapshots: ${listError.message}`)
 
-  if ((snapshots || []).length > 100) {
-    const toDelete = snapshots!.slice(100).map(snapshot => snapshot.id)
+  const snapshotList = snapshots || []
+  if (snapshotList.length > 100) {
+    const toDelete = snapshotList.slice(100).map(snapshot => snapshot.id)
     const { error: deleteError } = await supabase
       .from('error_snapshots')
       .delete()

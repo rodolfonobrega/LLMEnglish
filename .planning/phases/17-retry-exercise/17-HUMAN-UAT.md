@@ -2,8 +2,8 @@
 status: partial
 phase: 17-retry-exercise
 source: [17-VERIFICATION.md]
-started: 2026-04-10T19:57:00Z
-updated: 2026-04-10T19:57:00Z
+started: 2026-04-11T14:55:00.000Z
+updated: 2026-04-11T14:55:00.000Z
 ---
 
 ## Current Test
@@ -12,20 +12,20 @@ updated: 2026-04-10T19:57:00Z
 
 ## Tests
 
-### 1. ExerciseMode 3-button layout
-expected: After completing an exercise, user sees 3 buttons: Tentar Novamente (retries same exercise), Novo Exercicio (new exercise), Voltar ao Hub (navigates to /practice)
+### 1. ExerciseMode retry flow
+expected: After completing an exercise and clicking "Tentar Novamente", AudioRecorder remounts cleanly with no stale state. Exercise prompt text remains unchanged.
 result: [pending]
 
-### 2. ImageMode 3-button layout
-expected: After completing an image exercise, user sees same 3-button pattern. Retry preserves imageUrl and question.
+### 2. ImageMode retry flow
+expected: After completing an image exercise and clicking "Tentar Novamente", the same image and question are still visible. AudioRecorder resets. Evaluation panel disappears.
 result: [pending]
 
-### 3. LiveRoleplay 3-button layout
-expected: After live roleplay analysis, user sees: Tentar Novamente (retries same scenario), Novo Cenario (goes to setup), Ver Historico (navigates to /history)
+### 3. LiveRoleplay retry flow
+expected: After analysis is shown, clicking "Tentar Novamente" re-enters the live conversation with the same scenario (no ScenarioSetup shown). Conversation turns are cleared.
 result: [pending]
 
-### 4. State preservation across retry
-expected: Clicking "Tentar Novamente" in all modes preserves exercise content (prompt, image, scenario) while clearing evaluation/audio state
+### 4. Button visual hierarchy
+expected: Primary (teal) / secondary (outlined) / ghost (text-only) renders correctly in light and dark mode. All buttons full-width and vertically stacked.
 result: [pending]
 
 ## Summary

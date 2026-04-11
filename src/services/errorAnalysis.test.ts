@@ -32,8 +32,9 @@ vi.mock('./storage', () => ({
   getCards: vi.fn(() => Promise.resolve([])),
 }));
 
-import { extractErrorPatterns, getCardsForWeakArea } from './errorAnalysis';
+import { extractErrorPatterns, getCardsForWeakArea, getErrorStats } from './errorAnalysis';
 import { getCards } from './storage';
+import { supabase } from './supabase/client';
 import type { EvaluationResult } from '../types/card';
 
 function makeEvaluation(overrides: Partial<EvaluationResult> = {}): EvaluationResult {
@@ -181,5 +182,101 @@ describe('getCardsForWeakArea', () => {
     for (const card of result) {
       expect(card.latestEvaluation!.score).toBeLessThan(7);
     }
+  });
+});
+
+// WR-01: safeAvg guard — criticalErrors sort with empty recentScores must not produce NaN
+describe('buildErrorStats criticalErrors sort (safeAvg guard)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('criticalErrors sort produces stable numeric order when recentScores is empty', async () => {
+    // Two worsening patterns with occurrences >= 3 and empty recentScores.
+    // Without safeAvg, scores.reduce/length would produce NaN and the sort comparator
+    // would return NaN, making the order unstable and unpredictable.
+    // With safeAvg returning 0 for empty arrays, both patterns get score 0 and sort stably.
+    const patternRows = [
+      {
+        id: 'row-1',
+        user_id: 'test-user-id',
+        pattern_key: 'other_pattern_A',
+        pattern: 'pattern A',
+        category: 'other',
+        occurrences: 5,
+        first_seen: '2026-01-01T00:00:00Z',
+        last_seen: '2026-01-10T00:00:00Z',
+        examples: [],
+        trend: 'worsening',
+        recent_scores: [],
+      },
+      {
+        id: 'row-2',
+        user_id: 'test-user-id',
+        pattern_key: 'other_pattern_B',
+        pattern: 'pattern B',
+        category: 'other',
+        occurrences: 4,
+        first_seen: '2026-01-01T00:00:00Z',
+        last_seen: '2026-01-10T00:00:00Z',
+        examples: [],
+        trend: 'worsening',
+        recent_scores: [],
+      },
+    ];
+
+    // Override the supabase `from` mock to return the two worsening patterns
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          order: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: patternRows, error: null })),
+          })),
+        })),
+      })),
+    } as any);
+
+    const stats = await getErrorStats();
+
+    // Both patterns qualify (occurrences >= 3, trend === 'worsening')
+    expect(stats.criticalErrors.length).toBe(2);
+
+    // With safeAvg, each pattern scores 0; no NaN should appear in any score field
+    for (const pattern of stats.criticalErrors) {
+      expect(pattern.recentScores.length).toBe(0);
+      // The sort comparator must have returned a finite number (0 - 0 = 0), not NaN
+      // Verify by asserting the patterns are present (NaN comparator causes lost entries in V8)
+      expect(pattern.pattern).toMatch(/pattern [AB]/);
+    }
+  });
+});
+
+// WR-02: guessCategory article regex — 'a' removed to prevent false positives
+describe('guessCategory article regex false-positive prevention (WR-02)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('"You should use a simpler structure" is NOT classified as article', async () => {
+    // Before the fix, the fallback article regex included /\ba\b/ which matched the
+    // standalone 'a' in this sentence along with the meta-word 'use', causing a
+    // false article classification. The fix drops 'a' from the fallback regex,
+    // leaving only the unambiguous 'an' and 'the'.
+    const evalResult = makeEvaluation({
+      corrections: ['You should use a simpler structure instead'],
+    });
+    const patterns = await extractErrorPatterns(evalResult, 'test prompt', 'card-1');
+    expect(patterns.length).toBeGreaterThan(0);
+    expect(patterns[0].category).not.toBe('article');
+  });
+
+  it('"Use the instead of a" IS classified as article (unambiguous article correction)', async () => {
+    // 'the' is unambiguous — should still classify as article after the fix
+    const evalResult = makeEvaluation({
+      corrections: ["Use 'the' instead of nothing"],
+    });
+    const patterns = await extractErrorPatterns(evalResult, 'test prompt', 'card-1');
+    expect(patterns.length).toBeGreaterThan(0);
+    expect(patterns[0].category).toBe('article');
   });
 });

@@ -25,6 +25,7 @@ interface ConversationAnalysisProps {
   scenario: LiveScenario;
   turns: ConversationTurn[];
   onReset: () => void;
+  onRetry?: () => void;
 }
 
 interface AnalysisData {
@@ -52,7 +53,7 @@ function getShadowingVoices(): { userVoice: string; aiVoice: string } {
   return { userVoice: primary, aiVoice: VOICE_B };
 }
 
-export function ConversationAnalysis({ scenario, turns, onReset }: ConversationAnalysisProps) {
+export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: ConversationAnalysisProps) {
   const navigate = useNavigate();
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -421,24 +422,18 @@ export function ConversationAnalysis({ scenario, turns, onReset }: ConversationA
       </Card>
 
       {/* Actions */}
-      <div className="flex gap-3">
-        <Button
-          size="lg"
-          onClick={() => navigate('/history')}
-          variant="outline"
-          className="flex-1 text-base font-bold py-6 rounded-xl"
-        >
-          <Clock size={18} className="mr-2" />
-          Histórico
+      <div className="space-y-2">
+        <Button variant="primary" size="lg" onClick={onRetry} className="w-full rounded-2xl cursor-pointer">
+          <RotateCcw size={18} />
+          Tentar Novamente
         </Button>
-        <Button
-          size="lg"
-          onClick={onReset}
-          variant="default"
-          className="flex-1 text-base font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
-        >
-          <RotateCcw size={18} className="mr-2" />
-          Nova Conversa
+        <Button variant="secondary" size="lg" onClick={onReset} className="w-full rounded-2xl cursor-pointer">
+          <Sparkles size={18} />
+          Novo Cenario
+        </Button>
+        <Button variant="ghost" size="lg" onClick={() => navigate('/history')} className="w-full rounded-2xl cursor-pointer">
+          <Clock size={18} />
+          Ver Historico
         </Button>
       </div>
     </div>

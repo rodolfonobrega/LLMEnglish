@@ -225,8 +225,9 @@ function guessCategory(correction: string): ErrorCategory {
       /\b(instead|rather|use|should)\b.*\b(in|on|at|to|for|with|by|from)\b/i.test(lower)) {
     return 'preposition'
   }
-  if (/\b(a|an|the)\b.*\b(instead|use|should)\b/i.test(lower) ||
-      /\b(instead|use|should)\b.*\b(a|an|the)\b/i.test(lower)) {
+  // Only use unambiguous articles 'an' and 'the' in fallback context — 'a' is too common
+  if (/\b(an|the)\b.*\b(instead|use|should)\b/i.test(lower) ||
+      /\b(instead|use|should)\b.*\b(an|the)\b/i.test(lower)) {
     return 'article'
   }
   return 'other'

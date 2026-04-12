@@ -108,7 +108,7 @@ function sourceToDbColumn(source: string): string | null {
   if (source === 'openai') return 'openai_key'
   if (source === 'groq') return 'groq_key'
   if (source === 'openrouter') return 'openrouter_key'
-  if (source === 'vertex') return null  // uses ADC, not per-user keys
+  if (source === 'vertex') return null  // vertex uses genai key via getApiKey(userId, 'genai')
   return null
 }
 
@@ -1225,8 +1225,8 @@ serve(async (req) => {
         if (body.imageMode) {
           // Chat with image
           if (source === 'vertex') {
-            const accessToken = await getVertexAccessToken()
-            const { projectId, region } = await getVertexConfig(userId)
+            const apiKey = await getApiKey(userId, 'genai')
+            if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
 
             let imageData: string
             let mimeType: string
@@ -1246,7 +1246,7 @@ serve(async (req) => {
               imageData = await blob.arrayBuffer().then(b => uint8ToBase64(new Uint8Array(b)))
             }
 
-            content = await vertexChatWithImage(accessToken, projectId, region, model, body.systemPrompt, imageData, mimeType)
+            content = await vertexChatWithImage(apiKey, model, body.systemPrompt, imageData, mimeType)
           } else if (source === 'genai') {
             // Handle image with Gemini
             const apiKey = await getApiKey(userId, source)
@@ -1310,9 +1310,9 @@ serve(async (req) => {
             if (!apiKey) throw new Error('No OpenRouter API key configured')
             content = await openrouterChat(apiKey, model, body.systemPrompt, body.userMessage, body.temperature)
           } else if (source === 'vertex') {
-            const accessToken = await getVertexAccessToken()
-            const { projectId, region } = await getVertexConfig(userId)
-            content = await vertexChat(accessToken, projectId, region, model, body.systemPrompt, body.userMessage)
+            const apiKey = await getApiKey(userId, 'genai')
+            if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
+            content = await vertexChat(apiKey, model, body.systemPrompt, body.userMessage)
           } else {
             // genai (default)
             const apiKey = await getApiKey(userId, source)
@@ -1345,9 +1345,9 @@ serve(async (req) => {
           if (!apiKey) throw new Error('No OpenRouter API key configured')
           audio = await openrouterTTS(apiKey, body.text, voice, model)
         } else if (source === 'vertex') {
-          const accessToken = await getVertexAccessToken()
-          const { projectId, region } = await getVertexConfig(userId)
-          audio = await vertexTTS(accessToken, projectId, region, model, body.text, voice)
+          const apiKey = await getApiKey(userId, 'genai')
+          if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
+          audio = await vertexTTS(apiKey, model, body.text, voice)
         } else {
           // genai (default)
           const apiKey = await getApiKey(userId, source)
@@ -1378,9 +1378,9 @@ serve(async (req) => {
           if (!apiKey) throw new Error('No OpenRouter API key configured')
           text = await openrouterSTT(apiKey, body.audio, body.mimeType, model)
         } else if (source === 'vertex') {
-          const accessToken = await getVertexAccessToken()
-          const { projectId, region } = await getVertexConfig(userId)
-          text = await vertexSTT(accessToken, projectId, region, model, body.audio, body.mimeType)
+          const apiKey = await getApiKey(userId, 'genai')
+          if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
+          text = await vertexSTT(apiKey, model, body.audio, body.mimeType)
         } else {
           // genai (default)
           const apiKey = await getApiKey(userId, source)
@@ -1412,9 +1412,9 @@ serve(async (req) => {
         let result: string
 
         if (source === 'vertex') {
-          const accessToken = await getVertexAccessToken()
-          const { projectId, region } = await getVertexConfig(userId)
-          result = await vertexImage(accessToken, projectId, region, model, body.prompt, options)
+          const apiKey = await getApiKey(userId, 'genai')
+          if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
+          result = await vertexImage(apiKey, model, body.prompt, options)
         } else if (source === 'openrouter') {
           const apiKey = await getApiKey(userId, source)
           if (!apiKey) throw new Error('No OpenRouter API key configured')

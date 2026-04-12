@@ -893,6 +893,7 @@ async function vertexImage(accessToken: string, projectId: string, region: strin
       responseModalities: ['IMAGE'],
     }
     if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
+    if (options.imageSize) generationConfig.sampleImageSize = options.imageSize
     if (options.numberOfImages) generationConfig.numberOfImages = options.numberOfImages
     else generationConfig.numberOfImages = 1
 
@@ -923,10 +924,14 @@ async function vertexImage(accessToken: string, projectId: string, region: strin
 
     throw new Error('Vertex AI did not return an image.')
   } else {
+    const imageConfig: Record<string, unknown> = {}
+    if (options.aspectRatio) imageConfig.aspectRatio = options.aspectRatio
+    if (options.imageSize) imageConfig.imageSize = options.imageSize
+
     const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
+      ...(Object.keys(imageConfig).length > 0 ? { imageConfig } : {}),
     }
-    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
     const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent`
 
@@ -1085,11 +1090,14 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
 
     throw new Error('Gemini did not return an image.')
   } else {
+    const imageConfig: Record<string, unknown> = {}
+    if (options.aspectRatio) imageConfig.aspectRatio = options.aspectRatio
+    if (options.imageSize) imageConfig.imageSize = options.imageSize
+
     const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
+      ...(Object.keys(imageConfig).length > 0 ? { imageConfig } : {}),
     }
-
-    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,

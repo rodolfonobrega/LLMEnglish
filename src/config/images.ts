@@ -99,11 +99,13 @@ export const IMAGE_CONFIG = {
       moderation: 'auto',
     },
 
-    // ── Google (Imagen) ────────────────────────────────────────
+    // ── Google (Imagen / Flash-image) ──────────────────────────
     gemini: {
       aspectRatio: '16:9',     // Widescreen
       imageSize: '1K',         // Sufficient for thumbnails
       personGeneration: 'allow_adult',
+      outputMimeType: 'image/jpeg',
+      outputCompressionQuality: 85,
     },
   },
 

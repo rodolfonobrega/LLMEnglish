@@ -733,15 +733,15 @@ async function getVertexConfig(userId: string): Promise<{ projectId: string; reg
 }
 
 /**
- * Vertex AI Chat Completion (Gemini API format, different URL)
+ * Vertex AI Chat Completion (express mode with API key)
  */
-async function vertexChat(accessToken: string, projectId: string, region: string, model: string, systemPrompt: string, userMessage: string): Promise<string> {
-  const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent`
+async function vertexChat(apiKey: string, model: string, systemPrompt: string, userMessage: string): Promise<string> {
+  const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      'x-goog-api-key': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -765,18 +765,16 @@ async function vertexChat(accessToken: string, projectId: string, region: string
 }
 
 /**
- * Vertex AI Chat with Image (Gemini API format)
+ * Vertex AI Chat with Image (express mode with API key)
  */
 async function vertexChatWithImage(
-  accessToken: string,
-  projectId: string,
-  region: string,
+  apiKey: string,
   model: string,
   systemPrompt: string,
   imageBase64: string,
   imageMimeType: string,
 ): Promise<string> {
-  const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent`
+  const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const contents: Record<string, unknown>[] = [{
     role: 'user',
@@ -789,7 +787,7 @@ async function vertexChatWithImage(
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      'x-goog-api-key': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -812,16 +810,15 @@ async function vertexChatWithImage(
 }
 
 /**
- * Vertex AI TTS (Gemini API format)
+ * Vertex AI TTS (express mode with API key)
  */
-async function vertexTTS(accessToken: string, projectId: string, region: string, model: string, text: string, voice: string): Promise<string> {
-  // Vertex uses REST API with AUDIO response modality
-  const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent`
+async function vertexTTS(apiKey: string, model: string, text: string, voice: string): Promise<string> {
+  const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      'x-goog-api-key': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -850,15 +847,15 @@ async function vertexTTS(accessToken: string, projectId: string, region: string,
 }
 
 /**
- * Vertex AI STT (Gemini API format)
+ * Vertex AI STT (express mode with API key)
  */
-async function vertexSTT(accessToken: string, projectId: string, region: string, model: string, audioBase64: string, mimeType: string): Promise<string> {
-  const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent`
+async function vertexSTT(apiKey: string, model: string, audioBase64: string, mimeType: string): Promise<string> {
+  const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      'x-goog-api-key': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -883,9 +880,9 @@ async function vertexSTT(accessToken: string, projectId: string, region: string,
 }
 
 /**
- * Vertex AI Image Generation
+ * Vertex AI Image Generation (express mode with API key)
  */
-async function vertexImage(accessToken: string, projectId: string, region: string, model: string, prompt: string, options: Record<string, unknown>): Promise<string> {
+async function vertexImage(apiKey: string, model: string, prompt: string, options: Record<string, unknown>): Promise<string> {
   const isImagenModel = model.startsWith('imagen-')
 
   if (isImagenModel) {
@@ -893,16 +890,15 @@ async function vertexImage(accessToken: string, projectId: string, region: strin
       responseModalities: ['IMAGE'],
     }
     if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
-    if (options.imageSize) generationConfig.sampleImageSize = options.imageSize
     if (options.numberOfImages) generationConfig.numberOfImages = options.numberOfImages
     else generationConfig.numberOfImages = 1
 
-    const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:predict`
+    const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:predict`
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'x-goog-api-key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -924,21 +920,17 @@ async function vertexImage(accessToken: string, projectId: string, region: strin
 
     throw new Error('Vertex AI did not return an image.')
   } else {
-    const imageConfig: Record<string, unknown> = {}
-    if (options.aspectRatio) imageConfig.aspectRatio = options.aspectRatio
-    if (options.imageSize) imageConfig.imageSize = options.imageSize
-
     const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
-      ...(Object.keys(imageConfig).length > 0 ? { imageConfig } : {}),
     }
+    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
-    const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent`
+    const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'x-goog-api-key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1090,14 +1082,11 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
 
     throw new Error('Gemini did not return an image.')
   } else {
-    const imageConfig: Record<string, unknown> = {}
-    if (options.aspectRatio) imageConfig.aspectRatio = options.aspectRatio
-    if (options.imageSize) imageConfig.imageSize = options.imageSize
-
     const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
-      ...(Object.keys(imageConfig).length > 0 ? { imageConfig } : {}),
     }
+
+    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,

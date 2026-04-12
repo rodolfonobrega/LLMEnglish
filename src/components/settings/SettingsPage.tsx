@@ -185,7 +185,7 @@ export function SettingsPage() {
         ttsFallbackModel: model,
         ttsFallbackVoice: defaultTtsVoice(newSource, model),
       },
-      image: { imageFallbackSource: newSource, imageFallbackModel: model },
+      image: { imageFallbackSource: newSource as ModelConfig['imageFallbackSource'], imageFallbackModel: model },
     };
     updateConfig(updates[field]);
   };
@@ -203,7 +203,7 @@ export function SettingsPage() {
         ttsFallbackModel: model,
         ttsFallbackVoice: normalizeTtsVoice(source, model, config.ttsFallbackVoice),
       },
-      image: { imageFallbackSource: source, imageFallbackModel: model },
+      image: { imageFallbackSource: source as ModelConfig['imageFallbackSource'], imageFallbackModel: model },
     };
     updateConfig(updates[field]);
   };
@@ -221,10 +221,10 @@ export function SettingsPage() {
     try {
       if (openaiKey || geminiKey || groqKey || openrouterKey) {
         await saveApiKeys({
-          openai: openaiKey || undefined,
-          genai: geminiKey || undefined,
-          groq: groqKey || undefined,
-          openrouter: openrouterKey || undefined,
+          openai: openaiKey || '',
+          genai: geminiKey || '',
+          groq: groqKey || '',
+          openrouter: openrouterKey || '',
         });
       }
       await saveModelConfig(config);

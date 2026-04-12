@@ -34,12 +34,12 @@ let dbPromise: Promise<IDBPDatabase<AudioCacheDB>> | null = null;
 function getDB(): Promise<IDBPDatabase<AudioCacheDB>> {
   if (!dbPromise) {
     dbPromise = openDB<AudioCacheDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db: IDBPDatabase<AudioCacheDB>) {
         db.createObjectStore(STORE_NAME);
       },
     });
   }
-  return dbPromise;
+  return dbPromise!;
 }
 
 async function computeCacheKey(

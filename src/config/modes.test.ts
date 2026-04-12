@@ -4,7 +4,6 @@ import {
   conversationModes,
   trailsMode,
   allModes,
-  type PracticeMode,
 } from './modes';
 
 describe('exerciseModes', () => {

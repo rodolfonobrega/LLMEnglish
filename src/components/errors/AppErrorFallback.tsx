@@ -1,9 +1,10 @@
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
-export function AppErrorFallback({ error, resetErrorBoundary }: {
-  error: Error;
+export function AppErrorFallback({ error, resetErrorBoundary: _reset }: {
+  error: unknown;
   resetErrorBoundary: () => void;
 }) {
+  const message = error instanceof Error ? error.message : String(error);
   console.error('[AppErrorBoundary]', error);
 
   return (
@@ -13,7 +14,7 @@ export function AppErrorFallback({ error, resetErrorBoundary }: {
           <AlertTriangle className="text-danger" size={32} />
         </div>
         <h2 className="text-2xl font-bold text-foreground">Erro inesperado</h2>
-        <p className="text-muted-foreground">{error.message}</p>
+        <p className="text-muted-foreground">{message}</p>
         <button
           onClick={() => window.location.reload()}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground hover:bg-accent/80 cursor-pointer"

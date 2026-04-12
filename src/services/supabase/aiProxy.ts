@@ -189,8 +189,17 @@ export interface ImageGenerationOptions {
   prompt: string
   model?: string
   source?: Source
+  // OpenAI parameters
   size?: string
+  quality?: string
+  format?: string
+  compression?: number
+  background?: string
+  moderation?: string
+  // Imagen / Gemini parameters
   aspectRatio?: string
+  imageSize?: string
+  personGeneration?: string
   numberOfImages?: number
 }
 
@@ -201,7 +210,14 @@ export async function generateImage(options: ImageGenerationOptions): Promise<st
     model: options.model,
     source: options.source,
     size: options.size,
+    quality: options.quality,
+    format: options.format,
+    compression: options.compression,
+    background: options.background,
+    moderation: options.moderation,
     aspectRatio: options.aspectRatio,
+    imageSize: options.imageSize,
+    personGeneration: options.personGeneration,
     numberOfImages: options.numberOfImages,
   }) as { imageUrl: string } | { imageData: string }
 

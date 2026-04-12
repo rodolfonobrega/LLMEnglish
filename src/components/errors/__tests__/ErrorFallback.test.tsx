@@ -8,7 +8,7 @@ vi.mock('react-router-dom', () => ({
   useNavigate: vi.fn(),
 }));
 
-import { useRouteError, useNavigate } from 'react-router-dom';
+import { useRouteError } from 'react-router-dom';
 import { ErrorFallback } from '../ErrorFallback';
 
 describe('ErrorFallback', () => {

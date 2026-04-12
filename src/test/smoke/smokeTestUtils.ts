@@ -35,7 +35,7 @@ export function getBaseUrl(source: Provider) {
   }
 }
 
-export function getAuthHeaders(source: Exclude<Provider, 'genai'>, title = 'SpeakLab Smoke Test') {
+export function getAuthHeaders(source: Exclude<Provider, 'genai'>, title = 'SpeakLab Smoke Test'): Record<string, string> {
   const keys = getProviderKeys();
   const key = keys[source];
 

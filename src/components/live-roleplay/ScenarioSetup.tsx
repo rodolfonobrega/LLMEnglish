@@ -63,7 +63,6 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
   }, [mode]);
 
   const isCustom = theme === 'custom';
-  const totalSteps = mode === 'everyday' ? 3 : 2;
 
   const getStepIndex = (): number => {
     if (setupStep === 'mode') return 0;

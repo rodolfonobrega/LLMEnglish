@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 Phase: 18
 Plan: Not started
 Status: Executing Phase 17
-Last activity: 2026-04-11
+Last activity: 2026-04-12 - Completed quick task 260411-w6w: Update vertex functions to use Vertex AI express mode with API key
 
 Progress: [██████████] 100%
 
@@ -90,6 +90,7 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260411-ksx | Fix lint errors and wire edge function provider modules | 2026-04-11 | 885e5dc | [260411-ksx](./quick/260411-ksx-fix-lint-errors-and-wire-edge-function-p/) |
+| 260411-w6w | Update vertex functions to use Vertex AI express mode with API key | 2026-04-12 | a65ed40 | [260411-w6w](./quick/260411-w6w-update-vertex-functions-to-use-vertex-ai/) |
 
 ## Session Continuity
 

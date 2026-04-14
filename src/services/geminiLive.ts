@@ -98,6 +98,10 @@ export class GeminiLiveSession implements ILiveSession {
             this.callbacks.onError(`Gemini Live error: ${e.message || 'Unknown error'}`);
           },
           onclose: () => {
+            this.isStreaming = false;
+            this.stopMicrophone();
+            this.stopAllAudio();
+            this.session = null;
             this.callbacks.onConnectionChange(false);
           },
         },

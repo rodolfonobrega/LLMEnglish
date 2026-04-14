@@ -368,22 +368,28 @@ async function openaiTTS(apiKey: string, text: string, voice: string, model: str
  * Gemini TTS
  */
 async function geminiTTS(apiKey: string, text: string, voice: string, model: string): Promise<string> {
-  const { GoogleGenerativeAI } = await import('https://esm.sh/@google/generative-ai@0.21.0')
-  const { Modality } = await import('https://esm.sh/@google/generative-ai@0.21.0')
-
-  const ai = new GoogleGenerativeAI({ apiKey })
-  const response = await ai.models.generateContent({
-    model,
-    contents: { parts: [{ text }] },
-    config: {
-      responseModalities: [Modality.AUDIO],
-      speechConfig: {
-        voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
+        },
       },
-    },
+    }),
   })
 
-  const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Gemini TTS error: ${response.status} - ${error}`)
+  }
+
+  const data = await response.json()
+  const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
   if (!audioData) {
     throw new Error('Gemini TTS returned no audio data')
   }
@@ -453,20 +459,28 @@ async function openaiSTT(apiKey: string, audioBase64: string, mimeType: string, 
  * Gemini STT
  */
 async function geminiSTT(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
-  const { GoogleGenerativeAI } = await import('https://esm.sh/@google/generative-ai@0.21.0')
-
-  const ai = new GoogleGenerativeAI({ apiKey })
-  const response = await ai.models.generateContent({
-    model,
-    contents: {
-      parts: [
-        { inlineData: { mimeType, data: audioBase64 } },
-        { text: 'Transcribe exactly what was said in English. Output ONLY the transcription text, nothing else.' },
-      ],
-    },
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: [{
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType, data: audioBase64 } },
+          { text: 'Transcribe exactly what was said in English. Output ONLY the transcription text, nothing else.' },
+        ],
+      }],
+    }),
   })
 
-  const text = response.text
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Gemini STT error: ${response.status} - ${error}`)
+  }
+
+  const data = await response.json()
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini STT returned no text')
   return text.trim()
 }
@@ -886,12 +900,13 @@ async function vertexImage(apiKey: string, model: string, prompt: string, option
   const isImagenModel = model.startsWith('imagen-')
 
   if (isImagenModel) {
-    const generationConfig: Record<string, unknown> = {
-      responseModalities: ['IMAGE'],
+    const parameters: Record<string, unknown> = {
+      sampleCount: 1,
     }
-    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
-    if (options.numberOfImages) generationConfig.numberOfImages = options.numberOfImages
-    else generationConfig.numberOfImages = 1
+    if (options.aspectRatio) parameters.aspectRatio = options.aspectRatio
+    if (options.imageSize) parameters.imageSize = options.imageSize
+    if (options.personGeneration) parameters.personGeneration = options.personGeneration
+    if (options.numberOfImages) parameters.sampleCount = options.numberOfImages
 
     const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:predict`
 
@@ -903,7 +918,7 @@ async function vertexImage(apiKey: string, model: string, prompt: string, option
       },
       body: JSON.stringify({
         instances: [{ prompt }],
-        parameters: generationConfig,
+        parameters: parameters,
       }),
     })
 
@@ -923,7 +938,6 @@ async function vertexImage(apiKey: string, model: string, prompt: string, option
     const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
     }
-    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
     const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
@@ -1047,14 +1061,13 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
   const isImagenModel = model.startsWith('imagen-')
 
   if (isImagenModel) {
-    const generationConfig: Record<string, unknown> = {
-      responseModalities: ['IMAGE'],
+    const parameters: Record<string, unknown> = {
+      sampleCount: 1,
     }
-
-    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
-    if (options.imageSize) generationConfig.imageSize = options.imageSize
-    if (options.numberOfImages) generationConfig.numberOfImages = options.numberOfImages
-    else generationConfig.numberOfImages = 1
+    if (options.aspectRatio) parameters.aspectRatio = options.aspectRatio
+    if (options.imageSize) parameters.imageSize = options.imageSize
+    if (options.personGeneration) parameters.personGeneration = options.personGeneration
+    if (options.numberOfImages) parameters.sampleCount = options.numberOfImages
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`,
@@ -1063,7 +1076,7 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           instances: [{ prompt }],
-          parameters: generationConfig,
+          parameters,
         }),
       }
     )
@@ -1085,8 +1098,6 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
     const generationConfig: Record<string, unknown> = {
       responseModalities: ['IMAGE'],
     }
-
-    if (options.aspectRatio) generationConfig.aspectRatio = options.aspectRatio
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -1248,11 +1259,9 @@ serve(async (req) => {
 
             content = await vertexChatWithImage(apiKey, model, body.systemPrompt, imageData, mimeType)
           } else if (source === 'genai') {
-            // Handle image with Gemini
+            // Handle image with Gemini — direct REST (same pattern as geminiChat/geminiTTS/geminiSTT)
             const apiKey = await getApiKey(userId, source)
             if (!apiKey) throw new Error('No Gemini API key configured')
-
-            const { GoogleGenerativeAI } = await import('https://esm.sh/@google/generative-ai@0.21.0')
 
             let imageData: string
             let mimeType: string
@@ -1269,23 +1278,32 @@ serve(async (req) => {
               const imgResp = await fetch(body.imageUrl)
               const blob = await imgResp.blob()
               mimeType = blob.type || 'image/png'
-              imageData = await blob.arrayBuffer().then(b => uint8ToBase64(new Uint8Array(b)))
+              imageData = await imgResp.arrayBuffer().then(b => uint8ToBase64(new Uint8Array(b)))
             }
 
-            const ai = new GoogleGenerativeAI({ apiKey })
-            const response = await ai.models.generateContent({
-              model,
-              systemInstruction: body.systemPrompt,
-              contents: [{
-                role: 'user',
-                parts: [
-                  { inlineData: { mimeType, data: imageData } },
-                  { text: 'Please create a question about this image as instructed.' },
-                ],
-              }],
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+            const geminiResp = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+              body: JSON.stringify({
+                system_instruction: { parts: [{ text: body.systemPrompt }] },
+                contents: [{
+                  role: 'user',
+                  parts: [
+                    { inlineData: { mimeType, data: imageData } },
+                    { text: 'Please create a question about this image as instructed.' },
+                  ],
+                }],
+              }),
             })
 
-            content = response.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            if (!geminiResp.ok) {
+              const error = await geminiResp.text()
+              throw new Error(`Gemini error: ${geminiResp.status} - ${error}`)
+            }
+
+            const geminiData = await geminiResp.json()
+            content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
           } else if (source === 'openrouter') {
             const apiKey = await getApiKey(userId, source)
             if (!apiKey) throw new Error('No OpenRouter API key configured')

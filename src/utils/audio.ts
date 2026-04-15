@@ -1,28 +1,4 @@
 /**
- * Convert a Float32Array of audio samples to PCM16 Int16Array.
- */
-export function float32ToPCM16(float32: Float32Array): Int16Array {
-  const pcm16 = new Int16Array(float32.length);
-  for (let i = 0; i < float32.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32[i]));
-    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-  }
-  return pcm16;
-}
-
-/**
- * Convert Int16Array PCM16 to base64 string.
- */
-export function pcm16ToBase64(pcm16: Int16Array): string {
-  const bytes = new Uint8Array(pcm16.buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-/**
  * Convert a Blob to base64 string.
  */
 export function blobToBase64(blob: Blob): Promise<string> {

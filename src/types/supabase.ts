@@ -388,15 +388,3 @@ export interface ErrorSnapshotRow {
 
 export type ErrorSnapshotInsert = Omit<ErrorSnapshotRow, 'id'>
 export type ErrorSnapshotUpdate = Partial<ErrorSnapshotInsert>
-
-// ============================================================================
-// HELPER TYPES
-// ============================================================================
-
-export type Tables = Database['public']['Tables']
-export type TablesInsert = {
-  [K in keyof Tables]: Tables[K]['Insert']
-}
-export type TablesUpdate = {
-  [K in keyof Tables]: Tables[K]['Update']
-}

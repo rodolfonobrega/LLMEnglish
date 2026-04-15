@@ -188,6 +188,42 @@ export async function updateCard(updated: Card): Promise<void> {
         .insert(evalData)
     }
   }
+
+  // Persist reviews (dedup against existing)
+  if (updated.reviews && updated.reviews.length > 0) {
+    const { data: existingReviews } = await supabase
+      .from('card_reviews')
+      .select('date, score')
+      .eq('card_id', updated.id)
+
+    const existingKeys = new Set(
+      (existingReviews || []).map((r: { date: string; score: number }) =>
+        `${r.date}:${r.score}`
+      )
+    )
+
+    const newReviews = updated.reviews.filter(r =>
+      !existingKeys.has(`${r.date}:${r.score}`)
+    )
+
+    if (newReviews.length > 0) {
+      const { error: reviewsError } = await supabase
+        .from('card_reviews')
+        .insert(
+          newReviews.map(r => ({
+            card_id: updated.id,
+            user_id: userId,
+            date: r.date,
+            score: r.score,
+            user_transcription: r.userTranscription,
+          }))
+        )
+
+      if (reviewsError) {
+        console.error('Failed to persist reviews:', reviewsError.message)
+      }
+    }
+  }
 }
 
 export async function deleteCard(id: string): Promise<void> {

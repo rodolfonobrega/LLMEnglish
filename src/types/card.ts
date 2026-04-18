@@ -1,11 +1,18 @@
 export type CardType = 'phrase' | 'text' | 'roleplay' | 'image';
 
+export interface CorrectionItem {
+  tip: string;
+  example?: string;
+}
+
 export interface EvaluationResult {
   score: number;
   userTranscription: string;
   correctedVersion: string;
   betterAlternatives: string[];
-  corrections: string[];
+  highlights?: string[];
+  /** New format: array of {tip, example}. Legacy data may still be string[]. */
+  corrections: CorrectionItem[] | string[];
   // TODO: Reactivate pronunciation feedback when a solid phonetic model is implemented
   /* pronunciationFeedback?: {
     rhythm: string;
@@ -14,6 +21,12 @@ export interface EvaluationResult {
     tips: string[];
   }; */
   overallFeedback: string;
+}
+
+/** Normalize a correction entry (legacy string or new object) into CorrectionItem. */
+export function normalizeCorrectionItem(item: CorrectionItem | string): CorrectionItem {
+  if (typeof item === 'string') return { tip: item };
+  return item;
 }
 
 export interface ReviewEntry {

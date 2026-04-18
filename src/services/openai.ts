@@ -43,14 +43,15 @@ function detectSource(modelId: string): Source {
 export async function chatCompletion(
   systemPrompt: string,
   userMessage: string,
-  modelOverride?: string
+  modelOverride?: string,
+  responseSchema?: Record<string, unknown>,
 ): Promise<string> {
   const config = getRuntimeModelConfig();
   const model = modelOverride || config.chatModel;
   const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
 
   try {
-    return await proxyChat({ source, model, systemPrompt, userMessage });
+    return await proxyChat({ source, model, systemPrompt, userMessage, responseSchema });
   } catch (primaryError) {
     if (!modelOverride && config.chatFallbackModel && config.chatFallbackSource) {
       console.warn('Primary chat failed, trying fallback:', primaryError);
@@ -60,6 +61,7 @@ export async function chatCompletion(
           model: config.chatFallbackModel,
           systemPrompt,
           userMessage,
+          responseSchema,
         });
       } catch {
         throw primaryError;

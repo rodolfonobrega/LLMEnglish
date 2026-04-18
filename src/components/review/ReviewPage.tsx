@@ -7,7 +7,7 @@ import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { ScoreDisplay } from '../shared/ScoreDisplay';
 import { chatCompletion, speechToText } from '../../services/openai';
-import { getEvaluationPrompt, getTutorExplanationPrompt } from '../../utils/prompts';
+import { getEvaluationPrompt, getTutorExplanationPrompt, evaluationResponseSchema } from '../../utils/prompts';
 import { addXP } from '../../services/gamification';
 import { XP_PER_REVIEW } from '../../types/gamification';
 import type { Card, EvaluationResult } from '../../types/card';
@@ -72,7 +72,7 @@ export function ReviewPage() {
     try {
       const transcription = await speechToText(blob);
       const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`, tone);
-      const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
+      const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt, undefined, evaluationResponseSchema);
       let evalResult: EvaluationResult;
       try {
         evalResult = JSON.parse(evalResponse);

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, Check, Play, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { chatCompletion, generateImage } from '../../services/openai';
 import { getImageConfigAuto } from '../../config/images';
-import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt } from '../../utils/prompts';
+import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, scenarioResponseSchema } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { getTrailsForTheme, THEMES_WITH_TRAILS } from '../../utils/roleplayTrails';
 import type { ThemeMeta } from '../../utils/roleplayTrails';
@@ -75,6 +75,8 @@ export function PathsPage() {
       const response = await chatCompletion(
         'You are a world-class creative director who designs immersive role-play scenarios. You create vivid, specific characters with distinct voices and personalities. Respond only with valid JSON.',
         prompt,
+        undefined,
+        scenarioResponseSchema,
       );
 
       const parsed = JSON.parse(cleanJson(response));

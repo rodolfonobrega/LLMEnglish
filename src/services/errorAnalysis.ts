@@ -184,8 +184,9 @@ export async function extractErrorPatterns(
   const patterns: ErrorPattern[] = []
 
   for (const correction of evaluation.corrections) {
-    const category = guessCategory(correction)
-    const pattern = createPatternFromCorrection(correction, category, cardPrompt, evaluation, cardId)
+    const tipText = typeof correction === 'string' ? correction : correction.tip
+    const category = guessCategory(tipText)
+    const pattern = createPatternFromCorrection(tipText, category, cardPrompt, evaluation, cardId)
     if (pattern) patterns.push(pattern)
   }
 

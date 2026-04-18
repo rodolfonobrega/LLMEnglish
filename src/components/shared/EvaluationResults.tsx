@@ -1,8 +1,11 @@
-import { Loader2, Volume2, CheckCircle2, AlertTriangle, Lightbulb, MessageCircle, Star } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, Volume2, CheckCircle2, AlertTriangle, Lightbulb, MessageCircle, Star, ThumbsUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTTS } from '../../hooks/useTTS';
 import type { EvaluationResult } from '../../types/card';
+import { normalizeCorrectionItem } from '../../types/card';
 import { ScoreDisplay } from './ScoreDisplay';
 import { Button } from '../ui/Button';
+import { cn } from '../../utils/cn';
 
 interface EvaluationResultsProps {
   result: EvaluationResult;
@@ -12,6 +15,19 @@ interface EvaluationResultsProps {
 
 export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = true }: EvaluationResultsProps) {
   const { speak, isLoading: ttsLoading } = useTTS();
+  const [expandedExamples, setExpandedExamples] = useState<Set<number>>(new Set());
+
+  const toggleExample = (index: number) => {
+    setExpandedExamples(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const corrections = result.corrections.map(normalizeCorrectionItem);
+  const highlights = result.highlights ?? [];
 
   return (
     <div className="space-y-5">
@@ -30,6 +46,26 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
         </div>
         <p className="text-muted-foreground leading-relaxed">{result.userTranscription || '(nenhuma fala detectada)'}</p>
       </div>
+
+      {/* Highlights */}
+      {highlights.length > 0 && (
+        <div className="bg-card rounded-2xl p-5 border border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="size-6 rounded-full bg-leaf-soft flex items-center justify-center">
+              <ThumbsUp size={12} className="text-leaf" />
+            </div>
+            <h4 className="text-xs font-bold text-leaf uppercase tracking-wide">Mandou Bem!</h4>
+          </div>
+          <ul className="space-y-2">
+            {highlights.map((h, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <span className="flex-shrink-0 text-leaf mt-0.5">✓</span>
+                <span className="text-leaf/90 leading-relaxed">{h}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Corrected version */}
       <div className="bg-card rounded-2xl p-5 border border-border">
@@ -79,7 +115,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
       )}
 
       {/* Corrections */}
-      {result.corrections.length > 0 && (
+      {corrections.length > 0 && (
         <div className="bg-card rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-3">
             <div className="size-6 rounded-full bg-[var(--danger-soft)] flex items-center justify-center">
@@ -87,22 +123,37 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             </div>
             <h4 className="text-xs font-bold text-[var(--danger)] uppercase tracking-wide">Correções</h4>
           </div>
-          <ul className="space-y-2">
-            {result.corrections.map((c, i) => (
-              <li key={i} className="flex items-start gap-2 text-muted-foreground text-sm">
-                <span className="flex-shrink-0 size-5 rounded-full bg-[var(--danger-soft)] text-[var(--danger)] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-                <span className="leading-relaxed">{c}</span>
+          <ul className="space-y-3">
+            {corrections.map((c, i) => (
+              <li key={i} className="space-y-1.5">
+                <div className="flex items-start gap-2 text-muted-foreground text-sm">
+                  <span className="flex-shrink-0 size-5 rounded-full bg-[var(--danger-soft)] text-[var(--danger)] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                  <span className="leading-relaxed flex-1">{c.tip}</span>
+                </div>
+                {c.example && (
+                  <div className="ml-7">
+                    <button
+                      onClick={() => toggleExample(i)}
+                      className={cn(
+                        'flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer',
+                        expandedExamples.has(i) ? 'text-primary' : 'text-muted-foreground hover:text-primary',
+                      )}
+                    >
+                      {expandedExamples.has(i) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      {expandedExamples.has(i) ? 'Esconder exemplo' : 'Ver exemplo'}
+                    </button>
+                    {expandedExamples.has(i) && (
+                      <div className="mt-1.5 bg-muted rounded-lg px-3 py-2 text-sm text-foreground/80 italic leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
+                        "{c.example}"
+                      </div>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         </div>
       )}
-
-      {/* Pronunciation Feedback Oculto Temporariamente
-          TODO: Os modelos testados (como Whisper) não fornecem análise fonêmica precisa/confiável.
-          Eles estavam inventando correções. Manter esta parte do código comentada para
-          reativar quando um modelo de avaliação de pronúncia adequado for integrado.
-      */}`
 
       {/* Overall Feedback */}
       <div className="bg-card rounded-2xl p-5 border border-border">

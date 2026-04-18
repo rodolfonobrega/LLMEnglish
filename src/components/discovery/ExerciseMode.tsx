@@ -13,6 +13,7 @@ import {
   getTextGenerationPrompt,
   getRoleplayGenerationPrompt,
   getEvaluationPrompt,
+  evaluationResponseSchema,
 } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
@@ -175,6 +176,8 @@ export function ExerciseMode({ initialType = 'phrase' }: ExerciseModeProps) {
       const evalResponse = await chatCompletion(
         'You are an expert English language evaluator. Respond only with valid JSON.',
         evalPrompt,
+        undefined,
+        evaluationResponseSchema,
       );
       const cleanResponse = cleanJson(evalResponse);
       const evalResult: EvaluationResult = JSON.parse(cleanResponse);

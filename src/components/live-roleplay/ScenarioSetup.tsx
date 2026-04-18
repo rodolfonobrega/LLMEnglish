@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { chatCompletion, generateImage } from '../../services/openai';
 import { getImageConfigAuto } from '../../config/images';
-import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt } from '../../utils/prompts';
+import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt, scenarioResponseSchema, skillScenarioResponseSchema } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
 import { getConversationTone } from '../../services/storage';
@@ -99,6 +99,7 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
     try {
       let prompt = '';
       let activeTheme = theme;
+      let schema: Record<string, unknown>;
 
       if (mode === 'everyday') {
         let themeForPrompt: string | undefined;
@@ -109,17 +110,21 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
           if (theme !== 'random') themeForPrompt = theme ?? undefined;
         }
         prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc, tone);
+        schema = scenarioResponseSchema;
       } else {
         activeTheme = 'custom';
         prompt = getSkillScenarioPrompt(
           customDescription.trim(),
           tone
         );
+        schema = skillScenarioResponseSchema;
       }
 
       const response = await chatCompletion(
         'You are a world-class creative director who designs immersive role-play scenarios. You create vivid, specific characters with distinct voices and personalities. Respond only with valid JSON.',
         prompt,
+        undefined,
+        schema,
       );
 
       const cleanResponse = cleanJson(response);

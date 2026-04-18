@@ -243,21 +243,29 @@ async function saveApiKey(userId: string, source: string, key: string): Promise<
 /**
  * OpenAI Chat Completion
  */
-async function openaiChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8): Promise<string> {
+async function openaiChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8, responseSchema?: Record<string, unknown>): Promise<string> {
+  const body: Record<string, unknown> = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+    temperature,
+  }
+  if (responseSchema) {
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'scenario', strict: true, schema: responseSchema },
+    }
+  }
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      temperature,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
@@ -276,7 +284,13 @@ async function openaiChat(apiKey: string, model: string, systemPrompt: string, u
 /**
  * Gemini Chat Completion
  */
-async function geminiChat(apiKey: string, model: string, systemPrompt: string, userMessage: string): Promise<string> {
+async function geminiChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, responseSchema?: Record<string, unknown>): Promise<string> {
+  const generationConfig: Record<string, unknown> = { temperature: 0.8 }
+  if (responseSchema) {
+    generationConfig.responseMimeType = 'application/json'
+    generationConfig.responseSchema = responseSchema
+  }
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -285,7 +299,7 @@ async function geminiChat(apiKey: string, model: string, systemPrompt: string, u
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: { temperature: 0.8 },
+        generationConfig,
       }),
     }
   )
@@ -306,21 +320,29 @@ async function geminiChat(apiKey: string, model: string, systemPrompt: string, u
 /**
  * Groq Chat Completion
  */
-async function groqChat(apiKey: string, model: string, systemPrompt: string, userMessage: string): Promise<string> {
+async function groqChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, responseSchema?: Record<string, unknown>): Promise<string> {
+  const body: Record<string, unknown> = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+    temperature: 0.8,
+  }
+  if (responseSchema) {
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'scenario', strict: true, schema: responseSchema },
+    }
+  }
+
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      temperature: 0.8,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
@@ -521,7 +543,22 @@ async function groqSTT(apiKey: string, audioBase64: string, mimeType: string, mo
 /**
  * OpenRouter Chat Completion (OpenAI-compatible format)
  */
-async function openrouterChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8): Promise<string> {
+async function openrouterChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8, responseSchema?: Record<string, unknown>): Promise<string> {
+  const body: Record<string, unknown> = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+    temperature,
+  }
+  if (responseSchema) {
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'scenario', strict: true, schema: responseSchema },
+    }
+  }
+
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -530,14 +567,7 @@ async function openrouterChat(apiKey: string, model: string, systemPrompt: strin
       'HTTP-Referer': 'https://speaklab.app',
       'X-Title': 'SpeakLab',
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      temperature,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
@@ -749,8 +779,14 @@ async function getVertexConfig(userId: string): Promise<{ projectId: string; reg
 /**
  * Vertex AI Chat Completion (express mode with API key)
  */
-async function vertexChat(apiKey: string, model: string, systemPrompt: string, userMessage: string): Promise<string> {
+async function vertexChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, responseSchema?: Record<string, unknown>): Promise<string> {
   const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
+
+  const generationConfig: Record<string, unknown> = { temperature: 0.8 }
+  if (responseSchema) {
+    generationConfig.responseMimeType = 'application/json'
+    generationConfig.responseSchema = responseSchema
+  }
 
   const response = await fetch(url, {
     method: 'POST',
@@ -761,7 +797,7 @@ async function vertexChat(apiKey: string, model: string, systemPrompt: string, u
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-      generationConfig: { temperature: 0.8 },
+      generationConfig,
     }),
   })
 
@@ -1315,27 +1351,28 @@ serve(async (req) => {
           }
         } else {
           // Regular chat
+          const schema = body.responseSchema || undefined
           if (source === 'openai') {
             const apiKey = await getApiKey(userId, source)
             if (!apiKey) throw new Error('No OpenAI API key configured')
-            content = await openaiChat(apiKey, model, body.systemPrompt, body.userMessage, body.temperature)
+            content = await openaiChat(apiKey, model, body.systemPrompt, body.userMessage, body.temperature, schema)
           } else if (source === 'groq') {
             const apiKey = await getApiKey(userId, source)
             if (!apiKey) throw new Error('No Groq API key configured')
-            content = await groqChat(apiKey, model, body.systemPrompt, body.userMessage)
+            content = await groqChat(apiKey, model, body.systemPrompt, body.userMessage, schema)
           } else if (source === 'openrouter') {
             const apiKey = await getApiKey(userId, source)
             if (!apiKey) throw new Error('No OpenRouter API key configured')
-            content = await openrouterChat(apiKey, model, body.systemPrompt, body.userMessage, body.temperature)
+            content = await openrouterChat(apiKey, model, body.systemPrompt, body.userMessage, body.temperature, schema)
           } else if (source === 'vertex') {
             const apiKey = await getApiKey(userId, 'genai')
             if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
-            content = await vertexChat(apiKey, model, body.systemPrompt, body.userMessage)
+            content = await vertexChat(apiKey, model, body.systemPrompt, body.userMessage, schema)
           } else {
             // genai (default)
             const apiKey = await getApiKey(userId, source)
             if (!apiKey) throw new Error('No Gemini API key configured')
-            content = await geminiChat(apiKey, model, body.systemPrompt, body.userMessage)
+            content = await geminiChat(apiKey, model, body.systemPrompt, body.userMessage, schema)
           }
         }
 

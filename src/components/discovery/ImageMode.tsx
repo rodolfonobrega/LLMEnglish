@@ -5,7 +5,7 @@ import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { chatCompletion, chatCompletionWithImage, generateImage, speechToText } from '../../services/openai';
 import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images';
-import { getImageQuestionPrompt, getEvaluationPrompt } from '../../utils/prompts';
+import { getImageQuestionPrompt, getEvaluationPrompt, evaluationResponseSchema } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { createDefaultCard } from '../../services/spacedRepetition';
 import { addCard, getConversationTone } from '../../services/storage';
@@ -65,7 +65,7 @@ export function ImageMode() {
     try {
       const transcription = await speechToText(blob);
       const evalPrompt = getEvaluationPrompt(question, transcription, 'image description', tone);
-      const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt);
+      const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt, undefined, evaluationResponseSchema);
       const cleanResponse = cleanJson(evalResponse);
       const evalResult: EvaluationResult = JSON.parse(cleanResponse);
       evalResult.userTranscription = transcription;

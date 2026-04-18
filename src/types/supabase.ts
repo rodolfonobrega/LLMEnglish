@@ -144,7 +144,8 @@ export interface CardEvaluation {
   user_transcription: string
   corrected_version: string
   better_alternatives: string[] | null
-  corrections: string[] | null
+  highlights: string[] | null
+  corrections: ({ tip: string; example?: string } | string)[] | null
   overall_feedback: string
   created_at: string
 }

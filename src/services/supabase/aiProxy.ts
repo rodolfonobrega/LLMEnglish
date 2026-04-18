@@ -87,6 +87,7 @@ export interface ChatCompletionOptions {
   model?: string
   source?: Source
   temperature?: number
+  responseSchema?: Record<string, unknown>
 }
 
 export async function chatCompletion(options: ChatCompletionOptions): Promise<string> {
@@ -97,6 +98,7 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<st
     model: options.model,
     source: options.source,
     temperature: options.temperature ?? 0.8,
+    ...(options.responseSchema && { responseSchema: options.responseSchema }),
   }) as { content: string }
 
   return result.content

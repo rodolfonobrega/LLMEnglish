@@ -58,6 +58,7 @@ function supabaseCardToLocal(card: SupabaseCard, reviews?: CardReview[], evaluat
       userTranscription: evaluation.user_transcription,
       correctedVersion: evaluation.corrected_version,
       betterAlternatives: evaluation.better_alternatives || [],
+      highlights: evaluation.highlights || undefined,
       corrections: evaluation.corrections || [],
       overallFeedback: evaluation.overall_feedback,
     } : undefined,
@@ -173,6 +174,7 @@ export async function updateCard(updated: Card): Promise<void> {
       user_transcription: updated.latestEvaluation.userTranscription,
       corrected_version: updated.latestEvaluation.correctedVersion,
       better_alternatives: updated.latestEvaluation.betterAlternatives,
+      highlights: updated.latestEvaluation.highlights || null,
       corrections: updated.latestEvaluation.corrections,
       overall_feedback: updated.latestEvaluation.overallFeedback,
     }

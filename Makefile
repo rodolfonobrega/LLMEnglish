@@ -8,7 +8,7 @@ install: ## Install dependencies
 	npm ci
 
 dev: ## Start dev server (hot-reload)
-	npm run dev -- --host 0.0.0.0
+	node scripts/serve-dev.js
 
 build: ## Production build
 	npm run build

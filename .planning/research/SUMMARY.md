@@ -1,168 +1,154 @@
 # Project Research Summary
 
-**Project:** SpeakLab
-**Domain:** React 19 SPA hardening (error boundaries, code splitting, secure storage, Praticar redesign)
-**Researched:** 2026-04-01
+**Project:** SpeakLab -- v1.4 Review Fix, Global Analysis, Library History
+**Domain:** English learning app -- spaced repetition bug fix, teacher-style progress reports, library history with trends
+**Researched:** 2026-04-18
 **Confidence:** HIGH
 
 ## Executive Summary
 
-SpeakLab is a React 19 + Vite English learning SPA that currently has zero error boundaries, eagerly loads all 12 routes (including jspdf at ~200KB and motion at ~80KB), and stores user API keys in plaintext localStorage with a hardcoded encryption fallback. The app works but is fragile: any component crash whitescreens everything, and the initial bundle is unnecessarily heavy.
+SpeakLab v1.4 is a targeted hardening milestone for an existing React 19 + Supabase SPA. It fixes one critical bug (new cards never entering the review queue) and adds three features (teacher-style error analysis, library history, evaluation trends). All four features are achievable with the current stack -- zero new dependencies. The data layer (Supabase tables for `card_reviews`, `error_patterns`, `error_snapshots`, `session_reports`) already contains everything needed; the gaps are in application logic, query filters, and UI rendering.
 
-The recommended approach follows a strict dependency chain. Fix dev mode routing first (it bypasses Layout entirely, making error boundaries untestable locally). Then install layered error boundaries at route level, followed by React.lazy code splitting wrapped by those boundaries. In parallel, fix the existing encryption.ts by removing the hardcoded fallback secret and increasing PBKDF2 iterations. Finally, redesign the Praticar page cards with proper keyboard accessibility and visually distinct proportions from PathCard.
+The recommended approach is a 4-phase build driven by a clear dependency chain: fix the review algorithm first (it is completely broken for new cards), then build evaluation trends (read-only aggregation, no risk), library history (new UI over existing data), and finally the AI-powered teacher report (most complex, benefits from having trends data available). Every phase uses the service-first pattern -- add data logic to services, then consume from UI. Visualizations use CSS bar charts and sparklines already proven in `ErrorDashboard.tsx`, not chart libraries.
 
-The critical risk is the dev mode divergence -- App.tsx renders `<DiscoveryPage />` directly in dev mode, bypassing Layout, Routes, and all navigation. This means error boundaries and code splitting cannot be tested without a Supabase connection. Fixing dev mode routing is the gate for all subsequent hardening work. A secondary risk is the dual storage layer (localStorage vs Supabase) with identical function signatures, which makes consolidation error-prone and requires a rename-first strategy to catch all import paths.
+The primary risks are: (1) fixing the review algorithm without backfilling existing cards leaves current users stuck, (2) generating AI teacher reports eagerly on session end would add 2-5 second delays and scale costs linearly, and (3) showing trends from too few data points produces misleading "improving/worsening" signals. All three have straightforward mitigations documented below.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Only one new production dependency is needed: `react-error-boundary` v6.1.1 for declarative error boundaries with a hooks API. Everything else uses built-in browser APIs (Web Crypto for encryption, React.lazy for code splitting). A dev dependency (`rollup-plugin-visualizer`) is recommended for verifying chunk sizes after splitting.
+No production dependencies need to be installed. All four features are code-only changes to existing modules. Chart libraries (recharts, chart.js, d3) were evaluated and rejected -- the existing CSS bar chart pattern in `ErrorDashboard.tsx` handles the data volumes involved (5-50 data points per card, 100 snapshots max). Date libraries (date-fns, dayjs) are unnecessary since the codebase already uses native `Date` with `toLocaleDateString('pt-BR')`.
 
-**Core technologies:**
-- `react-error-boundary` v6.1.1: declarative error boundaries -- avoids class component boilerplate, provides `useErrorBoundary()` hook for async error throwing
-- `React.lazy` + `Suspense` (built-in): route-level code splitting -- zero dependencies, Vite automatically code-splits dynamic imports
-- Web Crypto API (`crypto.subtle`, built-in): AES-256-GCM encryption -- already in the codebase, needs parameter fixes not a new library
-
-**Critical version note:** `react-error-boundary@6.1.1` is compatible with React 16.8+ through 19.x. No version conflicts.
+**Core technologies leveraged:**
+- **React 19 + Vite 6**: Existing SPA framework -- no changes to build pipeline
+- **Supabase (BaaS)**: All data already in `card_reviews`, `error_patterns`, `error_snapshots`, `session_reports` tables with proper indexes
+- **Tailwind CSS 4 + design tokens**: Use `--mode-*`, `--brand-*` variables and existing UI primitives (`Badge`, `ScoreDisplay`, `Button`)
+- **motion 12.33**: Timeline animations, sparkline reveals, section transitions -- already installed and used throughout
+- **chatCompletion() via Supabase Edge Function proxy**: AI narrative generation for teacher reports -- existing routing handles provider selection and fallback
 
 ### Expected Features
 
 **Must have (table stakes):**
-- Route-level error boundaries with retry fallback -- prevents whitescreen crashes on any component failure
-- Route-based code splitting with loading states -- removes jspdf/motion from initial bundle, essential for mobile performance
-- Chunk load failure recovery -- lazy imports can fail on slow networks; error boundaries around Suspense catch this
-- Encrypted API key storage at rest (fix existing encryption.ts) -- remove hardcoded fallback secret, increase PBKDF2 iterations to 600K
-- Dev mode routing fix -- render Layout + Routes with mock user instead of bypassing the router
-- Global unhandled rejection handler -- async errors are not caught by error boundaries
+- Fix review algorithm -- new cards must appear in review queue immediately (currently broken: `createDefaultCard()` never sets `nextReviewAt`, query excludes NULL)
+- Aggregate progress report with narrative -- users need "you are improving at X, struggling with Y" not just per-error lists
+- Per-card score timeline in library -- users with 5+ reviews want to see improvement on a specific card
+- Per-category trend direction -- "grammar improving 20% this month" is the fundamental question learners ask
 
 **Should have (differentiators):**
-- Preload-on-hover for route chunks -- near-instant navigation when users hover practice mode cards
-- Skeleton placeholders matching page layout -- perceived performance improvement over generic spinner
-- Storage layer unification via StorageAdapter facade -- eliminates import confusion between dual storage services
-- Session-aware key encryption -- derive encryption secret from Supabase access_token hash
+- AI-generated teacher narrative via `chatCompletion()` -- natural, encouraging progress report instead of templated text
+- Weak-area auto-practice suggestions -- "Your verb tenses are slipping, review these 5 cards now"
+- Skill-level streaks and milestone markers -- gamification at the category level
 
 **Defer (v2+):**
-- Smooth route transition animations -- risk of layout jitter, polish item
-- Offline resilience indicator -- step toward PWA but out of scope
-- Full PWA / Service Worker -- fundamentally different app model
-- External error monitoring (Sentry) -- requires account setup and privacy review
-- IndexedDB migration -- localStorage handles current volumes fine
+- Historical audio playback per review (blocked by schema constraint -- only latest recording stored)
+- PDF export of progress reports
+- Predictive "time to mastery" estimates (needs careful framing)
+- Social sharing and comparative analytics
 
 ### Architecture Approach
 
-The hardening work inserts cross-cutting components into the existing layered React SPA without changing the layer structure. A new `LazyRoute` wrapper component combines React.lazy + Suspense + ErrorBoundary into a reusable pattern applied to each route in App.tsx. A new `StorageAdapter` facade centralizes the routing decision between Supabase and localStorage. The existing `encryption.ts` is fixed in-place rather than replaced.
+The architecture follows a service-first pattern: add data functions to existing service modules (`errorAnalysis.ts`, `supabase/storage.ts`), add types to existing type files (`types/errors.ts`, `types/review.ts`), then consume from UI. No new routes, no new pages, no new tables. One new component (`LessonHistoryCard.tsx`) and multiple modifications to existing components.
 
 **Major components:**
-1. `LazyRoute` -- reusable wrapper combining lazy loading, Suspense, and error boundary for each route
-2. `StorageAdapter` -- unified facade routing to Supabase (authed) or localStorage (dev/fallback)
-3. `SecureKeyStore` -- fixes existing encryption.ts: removes hardcoded fallback, increases iterations, adds random salt
-4. `PageSkeleton` -- route-specific skeleton fallback components matching destination page layout
-5. `PracticeHubPage` (redesigned) -- new card layout with image banners, distinct proportions from PathCard
+1. **Storage query layer** (`supabase/storage.ts`) -- Fix `getCardsDueForReview()` to include null `next_review_at` cards; add review history query
+2. **Error analysis service** (`errorAnalysis.ts`) -- Add `generateTeacherReport()` and `getSkillTrends()` functions using existing snapshot data
+3. **Error dashboard** (`ErrorDashboard.tsx`) -- Restructure with teacher report as hero section, skill trends section, per-pattern cards as supporting detail
+4. **Library page** (`LibraryPage.tsx`) -- Add session history section using existing `getSessionReports()` with new `LessonHistoryCard` component
 
 ### Critical Pitfalls
 
-1. **Dev mode routing bypasses Layout and Routes** -- error boundaries and lazy loading cannot be tested locally. Fix dev mode FIRST by rendering Layout + Routes with a mock authenticated user.
-2. **Code splitting without error boundaries makes the app MORE fragile** -- chunk load failures whitescreen the entire app if Suspense is not wrapped by ErrorBoundary. Boundaries MUST be in place before any lazy loading.
-3. **Error recovery infinite loop** -- resetting an error boundary without a new `key` causes immediate re-crash. Always remount with `key={retryCount}` and clear stale runtime state.
-4. **Client-side encryption is security theater** -- the hardcoded fallback secret means encryption is bypassable. Prioritize routing API calls through the Supabase Edge Function proxy instead of adding more client-side encryption.
-5. **Dual storage removal breaks imports silently** -- identical function names in two files means TypeScript won't catch wrong imports. Rename `storage.ts` to `storage.local.ts` FIRST to surface all broken imports as compile errors.
+1. **New cards invisible to review queue** -- `createDefaultCard()` omits `nextReviewAt`; query filters `next_review_at <= NOW()` which excludes NULL. Fix by modifying the query to `.or('next_review_at.lte.${now},next_review_at.is.null')` AND setting `nextReviewAt = now` in card creation. Must also handle existing cards already in the DB with null values.
+
+2. **Review dedup drops legitimate reviews** -- Dedup key is `date:score`; same-day same-score reviews are silently discarded. Change key to include timestamp with milliseconds or UUID per review entry.
+
+3. **AI teacher report generated eagerly on session end** -- Would add 2-5 second delay per session. Generate lazily on page visit instead, cache for 24 hours.
+
+4. **Trends from 3 data points are misleading** -- `calculateTrend()` declares direction with only 3 samples. Require minimum 5 data points and show confidence level.
+
+5. **SM-2 score mapping cliff** -- Scores 0-4 all map to "incorrect" (quality 0-2), score 5+ maps to "correct" (quality 3+). Score 4 (partial knowledge) triggers full reset. Adjust mapping to give partial credit at score 4.
 
 ## Implications for Roadmap
 
-Based on combined research, suggested phase structure:
+Based on combined research, the suggested phase structure:
 
-### Phase 0: Dev Mode Routing Fix
-**Rationale:** The current dev mode bypasses Layout, Routes, and all navigation. Error boundaries and code splitting placed inside the route tree will never execute in dev mode. This is a blocking prerequisite for testing all subsequent hardening work.
-**Delivers:** Dev mode renders the same Layout + Routes structure as production with a mock authenticated user.
-**Addresses:** Enables local testing of all subsequent phases.
-**Avoids:** Pitfall 8 (dev mode divergence hides production bugs).
+### Phase 1: Fix Review Algorithm
+**Rationale:** The review queue is completely broken for new cards -- this is the highest-severity bug and unblocks data generation for all subsequent features.
+**Delivers:** Working review queue for new and existing cards, correct SM-2 score mapping, review dedup fix, review mode persistence.
+**Addresses:** Feature 1 (Fix Review Algorithm) -- all table-stakes items.
+**Avoids:** Pitfalls #1 (null nextReviewAt), #2 (dedup collision), #7 (score mapping cliff), #8 (no backfill), #13 (mode persistence), #14 (intelligent review loads all cards).
+**Files touched:** `spacedRepetition.ts`, `supabase/storage.ts`, `ReviewPage.tsx` -- low risk, query widening.
 
-### Phase 1: Error Boundaries
-**Rationale:** Zero error boundaries exist today. Any component crash whitescreens the entire app. This is the foundational hardening step. Must come before code splitting because lazy-loaded chunks can fail.
-**Delivers:** Layered error boundaries (app-level last resort, route-level isolation, chunk-load specific). Error fallback UI with retry. Global unhandled rejection handler.
-**Addresses:** Route-level error boundaries, error fallback UI with retry, global unhandled error capture, chunk load failure recovery (foundation).
-**Avoids:** Pitfall 1 (granularity mismatch), Pitfall 2 (recovery infinite loop), Pitfall 3 (splitting without boundaries -- prevention).
-**Uses:** `react-error-boundary` v6.1.1
+### Phase 2: Evaluation Improvement Trends
+**Rationale:** Pure read-only aggregation from existing `error_snapshots` data. No AI calls, no new data writes. Can be built and tested independently. Provides trend data that enriches the teacher report in Phase 4.
+**Delivers:** Per-category trend visualization with delta indicators, trend confidence levels, skill summary card.
+**Addresses:** Feature 4 (Evaluation Trends) -- table-stakes items.
+**Uses:** Existing `errorAnalysis.ts` functions (`calculateTrend`, `loadSnapshots`, `getProgressSummary`), existing `ErrorDashboard.tsx` CSS bar chart pattern.
+**Implements:** New `SkillTrend` type, `getSkillTrends()` service function, skill trends section in ErrorDashboard.
+**Avoids:** Pitfall #6 (too few data points) via minimum sample enforcement; Pitfall #11 (category false positives) via confidence filtering.
 
-### Phase 2: Code Splitting
-**Rationale:** Depends on Phase 1 for chunk failure handling. Without error boundaries, lazy loading makes the app MORE fragile, not less. With boundaries in place, code splitting safely reduces initial bundle size.
-**Delivers:** All 12 routes converted to React.lazy imports. LazyRoute wrapper component. Skeleton fallbacks with correct dimensions. Vite manualChunks for heavy vendors (jspdf, motion).
-**Addresses:** Route-based code splitting, loading states for lazy routes.
-**Avoids:** Pitfall 3 (missing boundary on lazy routes), Pitfall 4 (layout shift from empty Suspense fallbacks).
-**Uses:** React.lazy, Suspense, rollup-plugin-visualizer (dev)
+### Phase 3: Library History
+**Rationale:** New UI consuming existing `session_reports` data via existing `getSessionReports()` API. Independent of error analysis features. Requires lazy loading to avoid performance issues.
+**Delivers:** Session history timeline in library with per-lesson scores, duration, type badges, and expandable details.
+**Addresses:** Feature 3 (Library History) -- table-stakes items (score timeline, review stats, next review countdown).
+**Uses:** Existing `SessionReport` type, `getSessionReports()` from storage facade, `LessonHistoryCard` new component.
+**Avoids:** Pitfall #5 (loading all cards/reviews into memory) via lazy loading; Pitfall #10 (audio memory leaks) via shared audio player with cleanup.
 
-### Phase 3: Secure Storage Fix
-**Rationale:** Independent of phases 1-2 but should not be attempted while the dual storage layer is about to be consolidated. Fix encryption.ts first, then build StorageAdapter on top of the corrected encryption.
-**Delivers:** Fixed encryption.ts (no hardcoded fallback, 600K PBKDF2 iterations, random salt). SecureKeyStore wrapper. Session-aware key derivation from Supabase access_token.
-**Addresses:** Encrypted API key storage at rest, session-aware key encryption.
-**Avoids:** Pitfall 5 (client-side encryption as security theater -- partially; full fix requires proxy expansion).
-**Uses:** Web Crypto API (crypto.subtle), existing encryption.ts
-
-### Phase 4: Storage Consolidation
-**Rationale:** Depends on Phase 3 being complete so consolidation targets the secure storage path. High-risk refactor that touches the data layer of the entire app. Requires dedicated phase with thorough testing.
-**Delivers:** StorageAdapter facade unifying Supabase and localStorage routing. Old `storage.ts` deprecated and removed. All import sites updated.
-**Addresses:** Storage layer unification.
-**Avoids:** Pitfall 6 (dual storage removal breaks import chains -- via rename-first strategy).
-
-### Phase 5: Praticar Redesign
-**Rationale:** Purely visual work, fully independent of hardening phases. Can run in parallel with phases 3-4 if desired. Placed last because it benefits from the consolidated storage layer.
-**Delivers:** Redesigned PracticeHubPage with vertical image-banner cards. Visually distinct proportions from PathCard. Keyboard-accessible card components.
-**Addresses:** Consistent card design across hub pages.
-**Avoids:** Pitfall 7 (Praticar redesign breaks navigation semantics).
+### Phase 4: Global Error Analysis (Teacher Reports)
+**Rationale:** Most complex feature -- requires AI prompt engineering, JSON schema parsing, and ErrorDashboard restructure. Benefits from having trend data (Phase 2) available. Touching ErrorDashboard once (after Phase 2 adds its section) avoids merge conflicts.
+**Delivers:** AI-generated teacher-style progress report as ErrorDashboard hero section, per-category recommendations, consolidated pattern view.
+**Addresses:** Feature 2 (Global Error Analysis) -- all table-stakes and differentiator items.
+**Uses:** `chatCompletion()` via Supabase Edge Function proxy, new `getTeacherReportPrompt()` in prompts.ts, trend data from Phase 2.
+**Implements:** `TeacherReport` type, `generateTeacherReport()` service function, ErrorDashboard restructure.
+**Avoids:** Pitfall #3 (fragmented patterns) via category-level aggregation; Pitfall #4 (eager AI calls) via lazy generation; Pitfall #9 (contradictory report vs dashboard) via shared data queries.
 
 ### Phase Ordering Rationale
 
-- Phase 0 is a gate: nothing else can be tested locally without it
-- Phase 1 must precede Phase 2: code splitting without error boundaries increases fragility
-- Phase 3 should precede Phase 4: consolidate into the secure path, not the old localStorage path
-- Phase 5 is independent but benefits from the consolidated storage from Phase 4
-- The dependency chain is: 0 -> 1 -> 2, and 3 -> 4, with 5 parallel to 3-4
+- Phase 1 must come first because the review queue produces the data all other features consume. Without fixed reviews, library history has no data and trends are unreliable.
+- Phase 2 (trends) and Phase 3 (library history) have no dependencies on each other and could run in parallel. Phase 2 is placed second because it is simpler (read-only aggregation) and its output enriches Phase 4.
+- Phase 4 is last because it synthesizes data from all previous phases and has the highest risk (AI prompt engineering, JSON parsing, latency management). It also touches `ErrorDashboard.tsx`, which Phase 2 also modifies -- sequencing avoids conflicts.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 3 (Secure Storage):** Need to audit all AI provider call paths to determine which ones already use the Edge Function proxy and which bypass it. The proxy expansion scope is unclear.
-- **Phase 4 (Storage Consolidation):** Need a complete grep audit of all import sites referencing the old `storage.ts` vs `supabase/storage.ts`. Full impact analysis required before work begins.
-- **Phase 5 (Praticar Redesign):** Visual design decisions (exact card proportions, layout grid) are subjective. May benefit from a design review or mockup before implementation.
+- **Phase 4:** AI prompt engineering for teacher-style reports needs iterative testing. The prompt structure and JSON schema for structured output require validation against actual error data volumes. Also needs caching strategy research (localStorage vs Supabase, staleness window).
+- **Phase 1:** The SM-2 score mapping adjustment needs verification against existing card data to ensure no regression for cards already on correct schedules.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 0 (Dev Mode Fix):** Straightforward routing change, no external APIs or libraries involved
-- **Phase 1 (Error Boundaries):** Well-documented React pattern, `react-error-boundary` has clear API docs
-- **Phase 2 (Code Splitting):** React.lazy + Vite automatic splitting is standard, well-documented
+- **Phase 1:** Well-understood query fix with clear codebase evidence. SM-2 algorithm is correct; only initialization is broken.
+- **Phase 2:** Pure aggregation from existing data. Follows the service-first pattern established in the codebase.
+- **Phase 3:** Standard React component consuming existing API. Lazy loading pattern is well-documented.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Only one new dependency (`react-error-boundary`). All other tech is built-in or already in codebase. npm versions verified. |
-| Features | HIGH | Feature list derived from direct codebase analysis. All code references verified (App.tsx routes, encryption.ts line numbers, storage.ts signatures). |
-| Architecture | HIGH | Component boundaries and data flows are first-hand analysis. LazyRoute and StorageAdapter patterns are standard React/Vite patterns. |
-| Pitfalls | HIGH | Eight pitfalls identified, all grounded in codebase analysis. Phase ordering rationale is consistent across all four research files. |
+| Stack | HIGH | Zero new dependencies. All data already in Supabase tables with indexes. Verified by direct codebase analysis of every relevant source file. |
+| Features | HIGH | Root cause of review bug confirmed in code. All other features have clear data sources and implementation paths. No unknowns. |
+| Architecture | HIGH | Service-first pattern is established in codebase. All integration points verified. Dependency graph is straightforward. |
+| Pitfalls | HIGH | 15 pitfalls identified from code analysis. All have concrete prevention strategies and recovery steps. Phase-specific warnings are actionable. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Proxy coverage audit:** It is unclear which AI provider call paths (OpenAI, Gemini, Groq) already route through the Edge Function proxy and which make direct client-side calls. This determines the real scope of Pitfall 5 (encryption theater). Must be audited during Phase 3 planning.
-- **Storage import audit:** The full list of files importing from `storage.ts` vs `supabase/storage.ts` needs a complete grep before Phase 4 begins. Research identified the pattern but not every call site.
-- **Gemini Live WebSocket constraint:** Gemini Live requires a direct WebSocket connection, meaning the API key must be exposed client-side regardless of proxy coverage. This is an accepted risk that needs clear user-facing documentation. Scope this during Phase 3.
-- **Preload-on-hover interaction with React.lazy:** Whether `React.preload()` (React 19) makes the onMouseEnter preload pattern redundant needs testing. Flag for Phase 2 implementation.
+- **Teacher report prompt quality:** The AI prompt for generating teacher-style reports has not been tested against actual error data. Validation during Phase 4 implementation is essential -- generate a few sample reports early to tune the prompt.
+- **SM-2 score mapping regression:** Changing the 0-10 to 0-5 mapping could affect existing cards on correct schedules. Add logging during Phase 1 to track score-to-quality distribution and verify no regression for cards already being reviewed successfully.
+- **Error pattern consolidation:** The fragmented pattern IDs (Pitfall #3) need a concrete clustering strategy. The recommendation is category-level aggregation for the teacher report, but individual pattern deduplication is deferred. Decide during Phase 4 whether pattern consolidation is needed or category-level aggregation is sufficient.
+- **Performance baseline:** No existing performance measurements for Library page load or ErrorDashboard render time. Establish baselines before Phase 3/4 to verify lazy loading and on-demand report generation meet the <2s target.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Codebase analysis: `src/App.tsx`, `src/utils/encryption.ts`, `src/services/storage.ts`, `src/services/supabase/storage.ts`, `src/services/runtimeState.ts`, `src/components/practice/PracticeHubPage.tsx`, `src/components/ui/custom/PathCard.tsx`, `src/components/shared/ModeCard.tsx`, `vite.config.ts`, `package.json`
-- React official docs: Error Boundaries (`react.dev/reference/react/Component`), React.lazy (`react.dev/reference/react/lazy`)
-- Vite docs: Dynamic Import code splitting (`vite.dev/guide/features`)
-- MDN Web Docs: SubtleCrypto, AES-GCM, PBKDF2
-- OWASP Password Storage Cheat Sheet: PBKDF2 iteration guidance (600K for SHA-256)
+- Direct codebase analysis of: `src/services/spacedRepetition.ts`, `src/services/supabase/storage.ts`, `src/services/errorAnalysis.ts`, `src/utils/prompts.ts`, `src/types/card.ts`, `src/types/errors.ts`, `src/types/review.ts`, `src/types/gamification.ts`, `src/components/review/ReviewPage.tsx`, `src/components/errors/ErrorDashboard.tsx`, `src/components/library/LibraryPage.tsx`, `src/components/library/CardDetail.tsx`
+- Database schema: `supabase/migrations/20260324221155_initial_schema.sql` -- verified table structures and indexes
 
 ### Secondary (MEDIUM confidence)
-- `react-error-boundary` library: community standard by Brian Vaughn (React team), v6.1.1 verified on npm
-- Vite `manualChunks` configuration: Rollup docs for vendor bundle separation
-- Web search results were unavailable during research; some pattern recommendations based on training data verified against npm versions and codebase state
+- SM-2 algorithm specification: Piotr Wozniak, SuperMemo (original paper) -- confirms algorithm implementation is correct
+- Anki open-source codebase: common SM-2 implementation bugs -- informed pitfall identification
+
+### Tertiary (LOW confidence)
+- AI prompt engineering for educational feedback: inferred from existing prompt patterns in `src/utils/prompts.ts`, not yet validated against actual error data
 
 ---
-*Research completed: 2026-04-01*
+*Research completed: 2026-04-18*
 *Ready for roadmap: yes*

@@ -1,348 +1,409 @@
 # Architecture Patterns
 
-**Domain:** React SPA hardening -- error boundaries, code splitting, secure storage, Praticar redesign
-**Researched:** 2026-04-01
-**Confidence:** HIGH (patterns are well-established; codebase analysis is first-hand)
+**Domain:** Review algorithm fix, global error analysis, library history, evaluation trends
+**Researched:** 2026-04-18
+**Confidence:** HIGH (based on direct codebase analysis of all relevant source files)
 
 ## Recommended Architecture
 
-The existing architecture is a layered React 19 SPA with Vite. The hardening work does not change the layer structure -- it inserts new cross-cutting components into the existing layers. The diagram below shows what gets added and where.
+### Current System Map
 
 ```
-                    Browser
-                      |
-                 main.tsx
-                    |
-              +--App.tsx--+
-              |            |
-         BrowserRouter   AuthProvider
-              |
-         ErrorBoundary (NEW - app-level)
-              |
-         Suspense (NEW - route-level)
-              |
-         Layout ── Outlet
-              |
-    ┌─────────┼──────────┐───────────┐
-    Route     Route      Route       Route
-  (lazy)    (lazy)     (lazy)     (lazy)
-    |         |          |           |
-  Page      Page       Page       PracticeHub
-  comps     comps      comps      (REDESIGNED)
-
-
-  Storage Layer (CONSOLIDATED):
-  ┌─────────────────────────────────────┐
-  │         storageAdapter.ts (NEW)      │
-  │  unified API, routes to Supabase     │
-  │  or localStorage based on auth state │
-  └──────┬────────────────────┬─────────┘
-         |                    |
-   supabase/storage.ts   storage.ts (legacy)
-         |                    |
-   Supabase Client       localStorage
-                              |
-                    keys encrypted via
-                    Web Crypto (FIXED)
+┌─────────────────────────────────────────────────────────────────┐
+│                        Browser (SPA)                            │
+│                                                                 │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
+│  │ ReviewPage│  │ErrorDash │  │LibraryPage│  │ HistoryPage   │  │
+│  │(review/) │  │(errors/) │  │(library/) │  │ (history/)    │  │
+│  └────┬─────┘  └────┬─────┘  └────┬──────┘  └──────┬────────┘  │
+│       │             │              │                 │           │
+│  ┌────▼─────────────▼──────────────▼─────────────────▼────────┐ │
+│  │                    Storage Facade                           │ │
+│  │              (src/services/storage.ts)                      │ │
+│  └──────────────────────┬────────────────────────────────────┘ │
+│                         │                                       │
+│  ┌──────────┐  ┌───────▼────────┐  ┌──────────────────────┐   │
+│  │spacedRep │  │ errorAnalysis  │  │ runtimeState         │   │
+│  │.ts       │  │ .ts            │  │ .ts (in-memory cache) │   │
+│  └──────────┘  └───────┬────────┘  └──────────────────────┘   │
+│                        │                                       │
+│  ┌─────────────────────▼─────────────────────────────────────┐ │
+│  │          Supabase Storage (supabase/storage.ts)           │ │
+│  │  Tables: cards, card_reviews, card_evaluations,           │ │
+│  │  error_patterns, error_snapshots, session_reports,        │ │
+│  │  live_sessions, gamification, path_progress               │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Component Boundaries
+---
 
-| Component | Layer | Responsibility | Communicates With |
-|-----------|-------|----------------|-------------------|
-| `AppErrorBoundary` | Presentation (new) | Catches unhandled errors from any route; shows fallback UI instead of whitescreen | App.tsx renders it; it wraps Routes |
-| `RouteErrorBoundary` | Presentation (new) | Catches errors from individual lazy-loaded routes; allows other routes to keep working | Wrapped around each `<Route>` element |
-| `ChunkLoadErrorBoundary` | Presentation (new) | Detects chunk-load failures (stale deployments) and offers page reload | Wraps Suspense boundaries |
-| `LazyRoute` wrapper | Presentation (new) | Combines `React.lazy` + `Suspense` + `ErrorBoundary` into a reusable pattern | Used by App.tsx for each route |
-| `StorageAdapter` | Service (new) | Unified facade over Supabase storage and localStorage; eliminates duplicate function signatures | Called by runtimeState.ts, gamification.ts, errorAnalysis.ts, any service that reads/writes data |
-| `SecureKeyStore` | Service (new) | Encrypts API keys at rest using Web Crypto AES-GCM; replaces plaintext localStorage writes | Called by runtimeState.ts for getApiKey/setApiKey |
-| `PracticeHubPage` (redesigned) | Presentation (modified) | New card layout with image banners, different proportions from PathCard | Uses same data sources (modes config, images config) |
-| `ModeCard` | Presentation (modified or replaced) | Either redesigned in-place or replaced by new card component for Praticar | Used exclusively by PracticeHubPage |
+## Feature 1: Fix Review Algorithm
 
-### Data Flow
+**Root cause analysis (HIGH confidence):**
 
-**Current flow (unchanged for most operations):**
-```
-User action -> Page component -> Hook (optional) -> Service function -> StorageAdapter (NEW) -> Supabase or localStorage
+The SM-2 algorithm in `spacedRepetition.ts` is correct. The bug is a query gap in the data layer.
+
+The `getCardsDueForReview()` function in `supabase/storage.ts` (line 248) queries:
+```typescript
+.lte('next_review_at', now)
 ```
 
-**New error boundary flow:**
+This returns only cards where `next_review_at IS NOT NULL AND <= now`. Cards that have **never been reviewed** have `next_review_at = null` and are **never returned**. The `createDefaultCard()` function in `spacedRepetition.ts` (line 49) creates cards with no `nextReviewAt` field at all.
+
+The "intelligent" mode (`getPrioritizedReviewCards` in `errorAnalysis.ts` line 390) loads ALL cards and sorts by priority, which accidentally works around the null issue. But standard review mode is broken because new cards never appear.
+
+**Fix strategy (modify only, no new components):**
+
+| File | Change | Type |
+|------|--------|------|
+| `src/services/supabase/storage.ts` | Fix `getCardsDueForReview()` to include cards where `next_review_at IS NULL` using an OR filter | MODIFY |
+| `src/components/review/ReviewPage.tsx` | Minor: ensure empty state handles the case where all cards are "new" (never reviewed) | MODIFY |
+
+**Data flow after fix:**
+
 ```
-Component throws -> Nearest ErrorBoundary catches it -> Fallback UI renders
-                                              |
-                                     If chunk-load error -> offer reload
-                                     If render error -> show error + retry button
-                                     Log to console (future: Sentry)
+ReviewPage.loadDueCards('standard')
+  -> getCardsDueForReview()
+    -> supabase query:
+         next_review_at <= now    (cards due for review)
+         OR next_review_at IS NULL (new cards, never reviewed)
+    -> returns union of due + new cards
+  -> ReviewPage renders them
+
+ReviewPage.loadDueCards('intelligent')
+  -> getPrioritizedReviewCards(20)  (no change needed)
+    -> getCards() -> sort by priority -> slice(20)
 ```
 
-**New secure storage flow:**
-```
-setRuntimeApiKey(key):
-  1. runtimeState.ts calls SecureKeyStore.encrypt(key)
-  2. SecureKeyStore derives AES-256-GCM key from user ID + session secret
-  3. Ciphertext stored in localStorage (or Supabase if authenticated)
-  4. Plaintext never touches localStorage
+**No new types, no new tables, no new routes, no algorithm changes needed.**
 
-getRuntimeApiKey():
-  1. runtimeState.ts calls SecureKeyStore.decrypt()
-  2. Decrypted value held in-memory only (runtimeState singleton)
-  3. Re-encrypted on next write
+---
+
+## Feature 2: Global Error Analysis (Teacher Reports)
+
+**Current state:** `ErrorDashboard.tsx` shows per-pattern error listings with category breakdowns. `errorAnalysis.ts` already has `getProgressSummary()` and `getProgressTimeline()` that aggregate across sessions. The `error_snapshots` table already captures cross-session data with `by_category`, `average_score`, etc.
+
+**What needs to change:** Replace the per-pattern drill-down UX with a higher-level "teacher report" view. This is primarily a **UI restructure** of `ErrorDashboard.tsx`, plus one new AI-powered service function that synthesizes data into natural language.
+
+**Changes needed:**
+
+| File | Change | Type |
+|------|--------|------|
+| `src/types/errors.ts` | Add `TeacherReport` type with sections: overallAssessment, strengths, areasForImprovement, recommendedExercises, weeklyGoal | MODIFY |
+| `src/services/errorAnalysis.ts` | Add `generateTeacherReport(stats, timeline, weakAreas)` -- calls AI via `chatCompletion` to produce a structured natural-language report | MODIFY |
+| `src/utils/prompts.ts` | Add `getTeacherReportPrompt()` -- structured prompt that sends error stats, timeline data, and asks for teacher-style feedback in JSON format | MODIFY |
+| `src/components/errors/ErrorDashboard.tsx` | Major UI restructure: teacher report as hero section, per-pattern cards as supporting detail behind expand/toggle | MODIFY |
+
+**Data flow:**
+
+```
+ErrorDashboard mounts
+  -> loadStats() fetches:
+       getErrorStats()
+       identifyWeakAreas()
+       getProgressTimeline()
+       getProgressSummary()
+  -> generateTeacherReport(stats, timeline, weakAreas)
+    -> formats data into prompt via getTeacherReportPrompt()
+    -> chatCompletion(prompt) -> AI generates structured JSON report
+    -> parse into TeacherReport type
+  -> ErrorDashboard renders:
+       Teacher report as hero section (top)
+       Skill trends section (Feature 4)
+       Category breakdown (existing, repositioned)
+       Per-pattern cards (existing, behind toggle)
 ```
 
-**New code splitting flow:**
+**Constraint check:** AI call goes through existing `chatCompletion` which routes through the Supabase Edge Function proxy. No new backend needed. Report is generated on-demand and held in component state only -- never persisted to DB (reports are views of current data and would become stale).
+
+---
+
+## Feature 3: Library History
+
+**Current state:** `LibraryPage.tsx` shows a flat card list with basic review stats (`computeReviewStats`). `CardDetail.tsx` shows individual card review history (last 5 reviews). No lesson-level aggregation exists.
+
+**Key insight:** The `SessionReport` type (`src/types/gamification.ts`) already tracks `date`, `type`, `scores`, `averageScore`, `exercisesCompleted`, `timeSpentSeconds`, `improvements`. These are stored in the `session_reports` Supabase table. The data already exists -- the Library page just does not display it.
+
+**"Lesson history" means:** Aggregating `SessionReport` data into a timeline view within the Library, showing each practice session with its scores, time spent, and improvement notes.
+
+**Changes needed:**
+
+| File | Change | Type |
+|------|--------|------|
+| `src/types/review.ts` | Add `LessonHistory` type: session type, date, scores, average, time spent, improvements | MODIFY |
+| `src/components/library/LessonHistoryCard.tsx` | New component: renders a single session's history with score indicator, duration, type badge, expandable details | NEW |
+| `src/components/library/LibraryPage.tsx` | Add session history section below card list: load session reports via `getSessionReports()`, group by date, render LessonHistoryCards | MODIFY |
+
+**Data flow:**
+
 ```
-User navigates to /live
-  -> React Router matches route
-  -> React.lazy() triggers dynamic import()
-  -> Vite loads chunk (e.g., LiveRoleplayPage-[hash].js)
-  -> Suspense shows PageSkeleton fallback
-  -> Chunk loads, component renders
-  -> If chunk fails -> ErrorBoundary shows retry UI
+LibraryPage mounts
+  -> loadCards() (existing)
+  -> loadSessionHistory() (NEW)
+    -> getSessionReports() (already exposed by storage facade)
+    -> group by date (day-level granularity)
+    -> map to LessonHistory[]
+  -> Render layout:
+       Card list (existing, top)
+       Lesson history section (new, below)
+         -> Each LessonHistoryCard shows:
+              Session type badge (exercise/review/live-roleplay)
+              Date and time
+              Average score with color-coded indicator
+              Duration
+              Expandable: individual exercise scores, improvement notes
 ```
+
+**No new Supabase tables needed.** `session_reports` already has all required data. `MAX_SESSION_REPORTS = 200` caps the data volume.
+
+---
+
+## Feature 4: Evaluation Improvement Trends
+
+**Current state:** `errorAnalysis.ts` already calculates per-pattern trends (`calculateTrend` function at line 144) and per-category improvement/worsening in `getProgressSummary()`. `ErrorDashboard` shows these at the pattern level. But there is no **skill-level** trend view with week-over-week deltas.
+
+**What is needed:** Aggregate evaluation scores by skill category over time, compute week-over-week deltas, and display as a clear trend visualization.
+
+**Changes needed:**
+
+| File | Change | Type |
+|------|--------|------|
+| `src/types/errors.ts` | Add `SkillTrend` type: category, currentScore, previousScore, delta, trend direction, dataPoints count | MODIFY |
+| `src/services/errorAnalysis.ts` | Add `getSkillTrends()` -- loads snapshots, partitions into this-week vs last-week, computes per-category deltas | MODIFY |
+| `src/components/errors/ErrorDashboard.tsx` | Add skill trends section with visual delta indicators per category | MODIFY |
+
+**Data flow:**
+
+```
+getSkillTrends()
+  -> loadSnapshots() (existing, error_snapshots table)
+  -> partition snapshots: this-week (last 7 days) vs last-week (7-14 days ago)
+  -> for each ErrorCategory:
+       - avg by_category count this week vs last week
+       - compute delta = thisWeek - lastWeek
+       - determine trend: improving (delta < -0.5), stable, worsening (delta > 0.5)
+  -> return SkillTrend[]
+
+ErrorDashboard renders SkillTrend[] as a section:
+  - Each skill gets a row: category icon + name + delta arrow + percentage change
+  - Color coded: green (improving), amber (stable), red (worsening)
+```
+
+**Reuses existing `error_snapshots` data.** No new tables. Capped at 100 snapshots per user.
+
+---
+
+## Component Boundaries Summary
+
+### Modified Components
+
+| Component | Feature | What Changes | Risk |
+|-----------|---------|-------------|------|
+| `src/services/supabase/storage.ts` | Review fix | `getCardsDueForReview()` adds OR filter for null next_review_at | LOW |
+| `src/components/review/ReviewPage.tsx` | Review fix | Minor empty-state handling for new cards | LOW |
+| `src/types/errors.ts` | Teacher report, Trends | Add `TeacherReport`, `SkillTrend` types | LOW |
+| `src/services/errorAnalysis.ts` | Teacher report, Trends | Add `generateTeacherReport()`, `getSkillTrends()` | MEDIUM |
+| `src/utils/prompts.ts` | Teacher report | Add `getTeacherReportPrompt()` | LOW |
+| `src/components/errors/ErrorDashboard.tsx` | Teacher report, Trends | Major UI restructure with new sections | MEDIUM |
+| `src/types/review.ts` | Library history | Add `LessonHistory` type | LOW |
+| `src/components/library/LibraryPage.tsx` | Library history | Add session history section | LOW |
+
+### New Components
+
+| Component | Feature | Purpose |
+|-----------|---------|---------|
+| `src/components/library/LessonHistoryCard.tsx` | Library history | Renders a single lesson's history entry with score, duration, expandable details |
+
+### Unchanged Components
+
+| Component | Why No Change Needed |
+|-----------|---------------------|
+| `src/services/storage.ts` (facade) | Already exposes `getSessionReports()`, `getCardsDueForReview()` and all other needed functions |
+| `src/services/spacedRepetition.ts` | Algorithm is correct; bug is in the query layer |
+| `src/services/runtimeState.ts` | No state changes for these features |
+| `src/services/gamification.ts` | Gamification continues working as-is |
+| `src/App.tsx` | No new routes needed |
+| `src/types/card.ts` | Card type is sufficient |
+| `src/types/gamification.ts` | SessionReport type is sufficient |
+| `src/components/history/HistoryPage.tsx` | Separate concern (live roleplay sessions only, not exercise sessions) |
+| `src/components/library/CardDetail.tsx` | Individual card detail stays the same |
+
+---
 
 ## Patterns to Follow
 
-### Pattern 1: LazyRoute Component (code splitting + error recovery)
-
-**What:** A reusable wrapper that combines `React.lazy`, `Suspense`, and `ErrorBoundary` for each route. Each route gets its own boundary so a failure in one route does not take down others.
-
-**When:** Used for every page route in App.tsx.
-
+### Pattern 1: Service-First Feature Addition
+**What:** Add data logic to services first, then consume from UI.
+**When:** All four features follow this pattern.
 **Example:**
 ```typescript
-// src/components/shared/LazyRoute.tsx
-import { Component, lazy, Suspense, type ReactNode } from 'react'
-
-interface LazyRouteProps {
-  loader: () => Promise<{ default: React.ComponentType }>
-  fallback: ReactNode
+// 1. Add to errorAnalysis.ts
+export async function getSkillTrends(): Promise<SkillTrend[]> {
+  const snapshots = await loadSnapshots();
+  // ... compute trends
 }
 
-export function LazyRoute({ loader, fallback }: LazyRouteProps) {
-  const LazyComponent = lazy(loader)
-  return (
-    <ChunkErrorBoundary>
-      <Suspense fallback={fallback}>
-        <LazyComponent />
-      </Suspense>
-    </ChunkErrorBoundary>
-  )
-}
+// 2. Consume in ErrorDashboard.tsx
+const [skillTrends, setSkillTrends] = useState<SkillTrend[]>([]);
+useEffect(() => {
+  void (async () => {
+    const trends = await getSkillTrends();
+    setSkillTrends(trends);
+  })();
+}, []);
 ```
 
-**Usage in App.tsx:**
-```typescript
-import { LazyRoute } from './components/shared/LazyRoute'
-
-// Inside Routes:
-<Route path="live" element={
-  <LazyRoute
-    loader={() => import('./components/live-roleplay/LiveRoleplayPage')}
-    fallback={<PageSkeleton />}
-  />
-} />
-```
-
-**Why this pattern:** Vite automatically code-splits any `import()` call. Wrapping in Suspense + ErrorBoundary gives loading states and failure recovery. One wrapper component keeps App.tsx clean.
-
-### Pattern 2: StorageAdapter Facade (storage consolidation)
-
-**What:** A single module that provides the storage API surface. Internally routes to Supabase (when authenticated) or localStorage (fallback/dev mode). Consumers import from one place.
-
-**When:** Any service that reads or writes persisted data.
-
+### Pattern 2: AI-Augmented Analysis via Existing Proxy
+**What:** Use `chatCompletion` from `openai.ts` for AI-generated teacher reports. This routes through the Supabase Edge Function proxy, respecting the security architecture.
+**When:** Teacher report generation.
 **Example:**
 ```typescript
-// src/services/storageAdapter.ts
-import * as supabaseStorage from './supabase/storage'
-import * as localStorage from './storage'
-
-function isAuthed(): boolean {
-  // Check if Supabase session exists
-  return !!supabase.getClient().auth.session()
-}
-
-export const storageAdapter = {
-  getCards: () => isAuthed() ? supabaseStorage.getCards() : localStorage.getCards(),
-  saveCards: (cards: Card[]) => isAuthed() ? supabaseStorage.saveCards(cards) : localStorage.saveCards(cards),
-  // ... mirror all shared operations
-}
+const reportText = await chatCompletion(
+  'You are an expert English teacher providing a progress report.',
+  getTeacherReportPrompt(stats, timeline, weakAreas),
+  undefined,
+  teacherReportResponseSchema  // JSON schema for structured output
+);
 ```
 
-**Why this pattern:** Today, `runtimeState.ts` imports from `supabase/storage` while `storage.ts` (localStorage) exposes duplicate signatures. Importing the wrong one is easy. A single facade eliminates that class of bug. The facade is a thin routing layer -- no business logic.
+### Pattern 3: No-Schema Data Aggregation
+**What:** Compute derived data from existing tables rather than adding new tables. All aggregations happen client-side from `error_snapshots`, `session_reports`, and `card_reviews`.
+**When:** Library history (from `session_reports`), skill trends (from `error_snapshots`).
+**Why:** Respects the client-side-only constraint. No migration files, no schema changes, no Supabase admin access needed.
 
-### Pattern 3: SecureKeyStore (encrypted at-rest storage)
-
-**What:** Replaces plaintext `localStorage.setItem('el_openai_key', key)` with AES-256-GCM encryption using Web Crypto. Derives the encryption key from user ID + a session-derived secret.
-
-**When:** Any time API keys are written to or read from localStorage.
-
-**Key derivation:**
+### Pattern 4: Query-Level Bug Fixes
+**What:** Fix the review bug at the query layer, not the algorithm layer. The SM-2 algorithm is mathematically correct; the issue is that the Supabase query does not return cards that have never been scheduled.
+**When:** Review algorithm fix.
+**Implementation:** Use Supabase's `.or()` filter method:
 ```typescript
-// Derive key from userId + session token hash
-const key = await crypto.subtle.deriveKey(
-  { name: 'PBKDF2', salt: userIdSalt, iterations: 600000, hash: 'SHA-256' },
-  keyMaterial,
-  { name: 'AES-GCM', length: 256 },
-  false,
-  ['encrypt', 'decrypt']
-)
+const { data, error } = await supabase
+  .from('cards')
+  .select(`*, card_reviews(*), card_evaluations(*)`)
+  .eq('user_id', userId)
+  .or(`next_review_at.lte.${now},next_review_at.is.null`)
+  .order('next_review_at', { ascending: true, nullsFirst: true })
 ```
 
-**Important note on the existing encryption.ts:** The file already exists with AES-GCM + PBKDF2. However, it has two problems:
-1. The PBKDF2 iteration count is 100,000 -- OWASP 2023 recommends 600,000+.
-2. The `getSessionSecret()` fallback is a hardcoded string `'fallback-secret-change-in-production'`.
-3. The salt derivation is deterministic from userId only (no randomness).
-
-The fix is to harden these parameters, not rewrite the module. The Web Crypto calls are correct.
-
-### Pattern 4: Layered Error Boundaries
-
-**What:** Three tiers of error boundaries, each catching a different scope of failure.
-
-**When:** Always active.
-
-```
-App-level boundary (broadest) -- catches anything not caught below
-  |
-  Route-level boundary -- catches render errors in a specific page
-    |
-    Chunk-load boundary -- catches dynamic import failures
-```
-
-**Example:**
-```typescript
-// App-level: wraps entire Routes block
-<AppErrorBoundary fallback={<AppCrashScreen />}>
-  <Routes>...</Routes>
-</AppErrorBoundary>
-
-// Route-level: per route
-<RouteErrorBoundary fallback={<PageError onRetry={() => window.location.reload()} />}>
-  <Suspense fallback={<PageSkeleton />}>
-    <LazyComponent />
-  </Suspense>
-</RouteErrorBoundary>
-```
-
-**Why layered:** A single top-level boundary means every error shows the same crash screen. Per-route boundaries let users navigate away from a broken page. Chunk-load boundaries specifically detect stale-deployment scenarios and offer reload.
+---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Single Top-Level Error Boundary Only
+### Anti-Pattern 1: Adding New Supabase Tables or Migrations
+**What:** Creating new migration files for data that can be derived from existing tables.
+**Why bad:** Violates the client-side-only constraint. Creates migration complexity and requires schema changes.
+**Instead:** Use client-side aggregation from `session_reports`, `error_snapshots`, `card_reviews`.
 
-**What:** Wrapping the entire app in one error boundary.
-**Why bad:** Any component crash whitescreens the entire app, including navigation. Users cannot recover without refreshing.
-**Instead:** Per-route boundaries with a top-level boundary as last resort.
+### Anti-Pattern 2: Storing AI-Generated Reports in the Database
+**What:** Saving teacher reports to a new table for retrieval.
+**Why bad:** Reports are ephemeral views of current data. Stale reports would be misleading and waste storage.
+**Instead:** Generate on-demand when ErrorDashboard loads. Cache in component state only. Add a "Regenerate" button.
 
-### Anti-Pattern 2: Suspense Without Error Boundary
+### Anti-Pattern 3: Modifying the SM-2 Algorithm Itself
+**What:** Changing the interval/easeFactor formulas in `spacedRepetition.ts`.
+**Why bad:** The algorithm is mathematically correct SM-2. Changing it risks introducing new bugs in a system that works for already-reviewed cards.
+**Instead:** Fix `getCardsDueForReview()` to include cards with `next_review_at IS NULL`. The algorithm does not need to change.
 
-**What:** Using `React.lazy` + `Suspense` but no error boundary around it.
-**Why bad:** If a chunk fails to load (network error, stale deployment), React throws an unhandled error that propagates to the nearest boundary -- which may not exist, crashing the whole app.
-**Instead:** Always pair Suspense with ErrorBoundary. The LazyRoute wrapper enforces this.
+### Anti-Pattern 4: Mixing Library History with Live Session History
+**What:** Combining exercise session data into `HistoryPage.tsx` (which shows live roleplay sessions only).
+**Why bad:** Different data shapes (SessionReport vs LiveSession), different user mental models (exercise sessions vs roleplay conversations), different navigation context.
+**Instead:** Add lesson history to `LibraryPage.tsx`. Keep `HistoryPage.tsx` for live roleplay only.
 
-### Anti-Pattern 3: Encryption Key Stored Alongside Ciphertext
+### Anti-Pattern 5: Over-Engineering the Skill Trends Visualization
+**What:** Building a custom charting library or pulling in a chart library dependency.
+**Why bad:** The existing codebase uses simple CSS bar charts (see ErrorDashboard progress-over-time section). Adding a chart library violates the "no new framework additions" constraint.
+**Instead:** Use the same CSS-based bar/indicator pattern already in `ErrorDashboard.tsx` for skill trends. Simple colored bars with delta arrows are sufficient.
 
-**What:** Storing the encryption key or passphrase in localStorage next to the encrypted data.
-**Why bad:** An attacker with access to localStorage gets both the key and the ciphertext, making encryption useless.
-**Instead:** Derive the key from the user's session token (which comes from Supabase auth, not localStorage). If a session token hash must be stored, it should be derived -- not the raw token.
+---
 
-### Anti-Pattern 4: Over-Splitting Small Components
+## Suggested Build Order
 
-**What:** Using `React.lazy` for tiny utility components or shared UI primitives.
-**Why bad:** Each chunk adds HTTP request overhead. For components under ~10KB, the latency cost exceeds the bundle savings.
-**Instead:** Only lazy-load page-level routes. Shared components (Button, Card, Badge) stay in the main bundle. Heavy libraries (jspdf, motion/framer-motion) should be isolated to the pages that use them.
+### Phase 1: Fix Review Algorithm
+**Rationale:** This is a bug fix that unblocks the review flow. Zero risk of regression since it only widens the query. No dependencies on other features. Should ship first because users cannot use the review feature at all right now.
 
-### Anti-Pattern 5: Forking Storage Logic in Consumers
+**Files touched:**
+- `src/services/supabase/storage.ts` -- fix `getCardsDueForReview()` query
+- `src/components/review/ReviewPage.tsx` -- minor empty-state adjustment
 
-**What:** Having each consumer (runtimeState, gamification, etc.) independently decide "use Supabase or localStorage."
-**Why bad:** Duplicates the routing logic. Easy to get out of sync. One consumer updates its routing and another does not.
-**Instead:** Centralize the decision in `storageAdapter.ts`. Consumers call one API.
+**Dependencies:** None
+**Risk:** LOW (widening a query, no algorithm change)
 
-## Build Order (Dependencies Between Components)
+### Phase 2: Evaluation Improvement Trends
+**Rationale:** Pure data aggregation from existing `error_snapshots`. No AI calls needed. Extends existing error types and service. Can be built and tested independently. Low risk because it only adds a read-only aggregation function.
 
-This ordering reflects what must be built before what, based on data flow dependencies.
+**Files touched:**
+- `src/types/errors.ts` -- add `SkillTrend` type
+- `src/services/errorAnalysis.ts` -- add `getSkillTrends()`
+- `src/components/errors/ErrorDashboard.tsx` -- add skill trends section
+
+**Dependencies:** None
+**Risk:** LOW (read-only aggregation from existing data)
+
+### Phase 3: Library History
+**Rationale:** Consumes existing `session_reports` data. New UI component but no service changes beyond what already exists (`getSessionReports()` is already in the storage facade). Independent of error analysis features.
+
+**Files touched:**
+- `src/types/review.ts` -- add `LessonHistory` type
+- `src/components/library/LessonHistoryCard.tsx` -- new component
+- `src/components/library/LibraryPage.tsx` -- add history section
+
+**Dependencies:** None
+**Risk:** LOW (new UI consuming existing data via existing API)
+
+### Phase 4: Global Error Analysis (Teacher Reports)
+**Rationale:** Most complex feature. Depends on AI call which needs prompt engineering and JSON schema parsing. Should be last because it synthesizes data that the other features produce. The AI-generated report quality benefits from having skill trends data (Phase 2) available. Also the largest UI change (ErrorDashboard restructure), so doing it last means we touch that file once for both Phase 2 and Phase 4 changes.
+
+**Files touched:**
+- `src/types/errors.ts` -- add `TeacherReport` type
+- `src/utils/prompts.ts` -- add `getTeacherReportPrompt()`
+- `src/services/errorAnalysis.ts` -- add `generateTeacherReport()`
+- `src/components/errors/ErrorDashboard.tsx` -- major restructure
+
+**Dependencies:** Phase 2 (trends data enriches the teacher report)
+**Risk:** MEDIUM (AI prompt engineering, JSON parsing, latency on dashboard load)
+
+---
+
+## Dependency Graph
 
 ```
-Phase 1: Error Boundaries (no dependencies, immediate risk reduction)
-  1a. Create ChunkErrorBoundary component
-  1b. Create RouteErrorBoundary component  
-  1c. Create AppErrorBoundary component
-  1d. Create PageSkeleton fallback component
-  1e. Wire all three into App.tsx
-  Estimated scope: ~4 new files, 1 modified file (App.tsx)
+Phase 1: Review Fix
+    (no dependencies, ships immediately)
 
-Phase 2: Code Splitting (depends on Phase 1 -- needs ErrorBoundaries in place)
-  2a. Create LazyRoute wrapper component
-  2b. Convert all 10 page route imports to lazy imports
-  2c. Add Vite manualChunks config for heavy vendor libs (jspdf, motion)
-  2d. Verify chunk sizes with build analysis
-  Estimated scope: 1 new file, 2 modified files (App.tsx, vite.config.ts)
+Phase 2: Skill Trends
+    (no dependencies, can run in parallel with Phase 1)
 
-Phase 3: Secure Storage (independent of 1-2, but do after to avoid merge conflicts in services/)
-  3a. Fix encryption.ts (iterations 100k -> 600k, remove hardcoded fallback)
-  3b. Create SecureKeyStore wrapper around encryption.ts
-  3c. Create StorageAdapter facade (unified Supabase/localStorage routing)
-  3d. Refactor runtimeState.ts to use StorageAdapter + SecureKeyStore
-  3e. Remove direct localStorage key writes from storage.ts
-  Estimated scope: 2 new files, 3 modified files
+Phase 3: Library History
+    (no dependencies, can run in parallel with Phase 1 and 2)
 
-Phase 4: Praticar Redesign (independent of 1-3, can parallel)
-  4a. Design new card proportions (different from PathCard)
-  4b. Create/modify PracticeCard component with image banner
-  4c. Redesign PracticeHubPage layout to use grid of vertical cards
-  4d. Wire up mode images from config/images.ts
-  Estimated scope: 1-2 new files, 1-2 modified files
+Phase 4: Teacher Reports
+    depends on Phase 2 (consumes getSkillTrends() data)
+    also benefits from touching ErrorDashboard once (after Phase 2 adds its section)
 ```
 
-**Dependency graph:**
-```
-Phase 1 (Error Boundaries)
-    |
-    v
-Phase 2 (Code Splitting) -- requires boundaries before adding lazy loads
-
-Phase 3 (Secure Storage) -- independent but touches same files as Phase 2 in services/
-
-Phase 4 (Praticar Redesign) -- fully independent, can run in parallel
-```
+---
 
 ## Scalability Considerations
 
-| Concern | At current scale (SPA, <12 routes) | At 50+ routes | At multi-team |
-|---------|-------------------------------------|----------------|---------------|
-| Bundle size | Lazy-route splitting sufficient | Add nested Suspense for sub-routes, consider route-based manualChunks | Module federation or micro-frontends |
-| Error isolation | Per-route boundary sufficient | Add per-section boundaries within pages (sidebar, main content, widgets) | Error boundaries per team's domain |
-| Storage complexity | Single adapter sufficient | May need IndexedDB for large datasets, cache layers | Read models + event sourcing |
-| Key management | Web Crypto AES-GCM sufficient | Consider hardware-backed keys (WebAuthn) or backend-only storage | HSM-backed key management service |
+| Concern | At 100 users | At 10K users | Notes |
+|---------|--------------|--------------|-------|
+| Review query with null OR clause | Fine -- Supabase handles it with standard index | Fine -- `next_review_at` is already queried; null check is cheap | Consider adding composite index on `(user_id, next_review_at)` if latency appears |
+| AI teacher report generation | Fine -- one call per dashboard load | Could hit AI rate limits on rapid reloads | Cache report in component state; add "Regenerate" button instead of auto-calling on every mount |
+| Session report aggregation (library history) | Fine -- client-side from 200 max reports | Fine -- `MAX_SESSION_REPORTS` caps at 200 | No change needed |
+| Error snapshot loading for trends | Fine -- 100 max snapshots | Fine -- capped at 100 in `recordSessionSnapshot()` | No change needed |
+| Supabase query count per page load | 4-6 queries on ErrorDashboard | Same -- all are indexed reads | Could batch with Promise.all (already done for initial load) |
 
-## Vite Configuration Changes
-
-The current `vite.config.ts` has no `build.rollupOptions`. Add manual chunks for heavy dependencies:
-
-```typescript
-build: {
-  rollupOptions: {
-    output: {
-      manualChunks: {
-        'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-        'vendor-supabase': ['@supabase/supabase-js'],
-        // jspdf and motion will auto-split because they are
-        // only imported inside lazy-loaded page components
-      },
-    },
-  },
-}
-```
-
-Vite automatically creates a separate chunk for any module imported only via dynamic `import()`. So if `jspdf` is only used inside `HistoryPage` (a lazy route), it will be in its own chunk without any manual config. The manual chunks above are for vendor code shared across many routes (React, Supabase).
+---
 
 ## Sources
 
-- React documentation on Error Boundaries: https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
-- React documentation on lazy and Suspense: https://react.dev/reference/react/lazy
-- Vite code splitting (dynamic import): https://vite.dev/guide/features#dynamic-import
-- OWASP PBKDF2 iteration guidance (2023): https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
-- Web Crypto API AES-GCM: https://developer.mozilla.org/en-US/docs/Web/API/AesGcmParams
-- `react-error-boundary` library: https://github.com/bvaughn/react-error-boundary (considered but not recommended -- a simple class component is fewer dependencies for this scope)
-- Codebase analysis: first-hand reading of App.tsx, main.tsx, Layout.tsx, vite.config.ts, runtimeState.ts, storage.ts, encryption.ts
+- Direct codebase analysis of all relevant source files (HIGH confidence)
+- `src/services/spacedRepetition.ts` -- SM-2 algorithm implementation (confirmed correct)
+- `src/services/supabase/storage.ts` lines 248-270 -- `getCardsDueForReview()` query (bug identified: null filter missing)
+- `src/services/errorAnalysis.ts` -- error pattern tracking, progress timeline, weak areas
+- `src/components/review/ReviewPage.tsx` -- review flow consumer, two modes (standard/intelligent)
+- `src/components/errors/ErrorDashboard.tsx` -- current error analysis UI (to be restructured)
+- `src/components/library/LibraryPage.tsx` -- current library UI (to be extended with history)
+- `src/components/library/CardDetail.tsx` -- individual card detail (unchanged)
+- `src/types/card.ts`, `src/types/errors.ts`, `src/types/gamification.ts`, `src/types/review.ts` -- type definitions
+- `src/App.tsx` -- route definitions (no changes needed)

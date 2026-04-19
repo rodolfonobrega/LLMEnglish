@@ -1,123 +1,245 @@
 # Feature Landscape
 
-**Domain:** React 19 SPA hardening and UI redesign for an English learning app
-**Researched:** 2026-04-01
+**Domain:** English learning app -- review algorithm fix, global error analysis, library history, evaluation trends
+**Researched:** 2026-04-18
 
-## Table Stakes
+## Overview
 
-Features users expect in a well-hardened SPA. Missing = app feels broken or unreliable.
+This milestone covers one bug fix (review algorithm) and three new features (global error analysis, library history, evaluation trends). All build on existing infrastructure: SM-2 fields on `Card`, `errorAnalysis.ts` service, `SessionReport` type, and Supabase tables (`error_patterns`, `error_snapshots`, `card_reviews`, `card_evaluations`).
+
+---
+
+## Feature 1: Fix Review Algorithm
+
+**Type:** Bug fix
+**Priority:** Critical -- cards never appear in review queue, making the entire review system non-functional for new cards.
+
+### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Route-level Error Boundaries | Any component crash currently whitescreens the entire app. Users lose all navigation. Other pages remain usable if boundaries isolate failures. | Low | Currently zero error boundaries exist. Each route in App.tsx needs its own boundary. Use `react-error-boundary` (community standard, works with React 19 functional components). |
-| Error fallback UI with retry | A broken page must show something actionable, not a blank screen. Users need to know what happened and how to recover. | Low | Fallback component with: error message, "Try Again" button (calls resetErrorBoundary), and "Go Home" link. Match existing design tokens (card, rounded-2xl, text-muted-foreground). |
-| Route-based code splitting | All 12 page components are eagerly loaded. `jspdf` (~200KB) and `motion` (~80KB) are imported even for users who never visit those pages. Fast initial load is table stakes. | Low-Med | React.lazy + Suspense at route level. Vite automatically code-splits dynamic imports. Wrap each `<Route element={...}>` with Suspense. Heavy targets: LiveRoleplayPage (websocket deps), LibraryPage (jspdf for PDF export), PathsPage (motion animations). |
-| Loading state for lazy routes | When a chunk is being fetched (slow network, cold cache), users need visual feedback, not a blank screen. | Low | Skeleton loader matching the page layout shape. Reuse existing `Skeleton` component from `src/components/ui/Skeleton.tsx`. Spinner fallback already exists in App.tsx (line 32-36). |
-| Encrypted API key storage at rest | Keys currently stored plaintext in localStorage (`el_openai_key`, `el_gemini_key`, `el_groq_key` in storage.ts). Anyone opening DevTools sees them. Basic protection is expected. | Medium | Encryption utilities already exist in `src/utils/encryption.ts` (AES-256-GCM, PBKDF2 key derivation). The problem: `getSessionSecret()` on line 186 falls back to hardcoded `'fallback-secret-change-in-production'`. Fix: derive secret from Supabase session token (already partially implemented via `storeSessionToken`). Remove plaintext localStorage path entirely. |
-| Chunk load failure recovery | When a user is offline or a CDN fails, dynamic import throws. Error boundary must catch this and offer retry. | Low | Error boundary around Suspense boundary catches chunk load failures. Retry button triggers re-import. Separate from general render errors. |
-| Global unhandled error capture | Promise rejections and async errors are NOT caught by Error Boundaries. Without a global handler, these fail silently. | Low | `window.addEventListener('unhandledrejection', ...)` at app root. Log to console (future: external monitoring). Show a toast or inline message. |
-| Consistent card design across hub pages | The Praticar page uses horizontal `ModeCard` while Trilhas uses vertical `PathCard` with image banner. Visual inconsistency between hub pages feels unfinished. | Low-Med | Redesign ModeCard or create new component for Praticar page: vertical cards with h-24 to h-28 image banner (shorter than PathCard's h-32 to maintain visual distinction). Reuse existing image paths from `config/modes.ts`. |
+| New cards available for review immediately | Cards created via exercises must enter the review queue right away. Users who save a card expect to review it. Without this, the review feature is broken. | Low | **Root cause confirmed:** `createDefaultCard()` in `spacedRepetition.ts` does NOT set `nextReviewAt`. New cards get `nextReviewAt: undefined`. The query in `getCardsDueForReview()` filters `next_review_at <= now`, which excludes NULL values. Cards only get `nextReviewAt` set AFTER their first review via `updateCardSchedule()`, but they must first be found as "due" to be reviewed -- a chicken-and-egg deadlock. |
+| "Intelligent Review" includes new cards | The intelligent review mode (`getPrioritizedReviewCards`) uses a priority score system without the `nextReviewAt` filter. It works for new cards but is hidden behind a toggle most users never click. | Low | Not a bug per se, but once standard review is fixed, intelligent review should also be audited to ensure consistent behavior. |
 
-## Differentiators
+### The Fix
 
-Features that elevate the app from "works" to "feels premium." Not expected, but valued.
+```typescript
+// spacedRepetition.ts — createDefaultCard()
+// BEFORE (broken): no nextReviewAt set
+// AFTER (fix): set nextReviewAt to now so card enters review queue immediately
+export function createDefaultCard(partial: ...): Card {
+  const now = new Date().toISOString();
+  return {
+    ...partial,
+    id: crypto.randomUUID(),
+    easeFactor: 2.5,
+    interval: 0,
+    repetitions: 0,
+    reviews: [],
+    createdAt: now,
+    nextReviewAt: now,  // <-- THE FIX
+  };
+}
+```
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Preload-on-hover for route chunks | When a user hovers a practice mode card, the target route chunk starts loading. Near-instant navigation on click. Noticeable speed improvement. | Low | Attach `onMouseEnter` to ModeCard/PathCard that calls `import('./path/to/Page')`. Cache the promise. React.lazy resolves instantly on actual navigation. |
-| Skeleton placeholders matching page layout | Instead of a generic spinner, show gray rectangles matching the target page structure (header, cards, sidebar). Creates perception of faster load. | Medium | Create per-route skeleton components. `PracticeHubPage` skeleton = section headers + 3 card shapes. `PathsPage` skeleton = grid of card shapes with image areas. |
-| Storage layer unification (localStorage + Supabase) | Two parallel storage services exist (`services/storage.ts` for localStorage, `services/supabase/storage.ts` for Supabase) with identical function signatures. Import confusion causes subtle bugs. Unifying eliminates an entire class of errors. | High | The Supabase layer is already feature-complete. The localStorage layer is used directly in storage.ts and through runtimeState.ts. Strategy: make Supabase storage the single source, keep localStorage only as offline cache/fallback. Requires updating all import sites. |
-| Session-aware key encryption | Current encryption derives keys from `userId + sessionSecret`, but the session secret fallback is hardcoded. Making it truly session-bound means keys are only decryptable during an active session. | Medium | After Supabase auth, hash the access_token and use it as the PBKDF2 secret. On logout, clear the derived key from memory. Existing `storeSessionToken()` already does the hashing part. Wire it into the auth flow properly and remove the fallback. |
-| Smooth route transition animations | Animated page transitions when navigating between routes. Makes the SPA feel native-app-like. | Medium | Requires motion library (already imported). Wrap route outlet with AnimatePresence + motion.div. Keep subtle (fade + slight slide, 200ms). Must not conflict with existing card animations. |
-| Offline resilience indicator | Detect when navigator.onLine is false and show a subtle banner. Prevent destructive actions (saving to Supabase) and queue them. | Medium | `window.addEventListener('online'/'offline')`. Show non-intrusive banner. Queue writes to localStorage, replay when back online. Adds resilience without full PWA conversion. |
+Additionally, a **migration** is needed for existing cards that already have `nextReviewAt: null` in the database. Two options:
+1. **Supabase SQL migration** (violates "no backend schema changes" constraint) -- can run a one-time update via Supabase dashboard
+2. **Client-side fix** -- add a function that detects and repairs orphaned cards on load. Run once in `getCards()` or as a one-time migration in `runtimeState.ts`.
 
-## Anti-Features
+**Recommendation:** Use option 2 (client-side repair). A lightweight `fixOrphanedCards()` function that sets `nextReviewAt = createdAt` for any card where `nextReviewAt` is null and `reviews.length > 0` (cards that have been reviewed but lost their scheduling). For cards with zero reviews, set `nextReviewAt = now`.
 
-Features to explicitly NOT build in this milestone.
+### Anti-Features
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Server-side key management / proxy for all API calls | Full backend proxy would require rewriting all AI service calls. Out of scope for a client-side hardening milestone. The app is designed for user-provided keys. | Encrypt at rest on the client. The current Edge Function approach for Supabase storage is sufficient. Focus on removing the hardcoded fallback secret. |
-| Full PWA / Service Worker | Offline-first architecture is a fundamentally different app model. Too broad for this milestone. IndexedDB caching, background sync, install prompts are separate milestone territory. | Focus on chunk caching (Vite does this) and a simple online/offline indicator. |
-| External error monitoring (Sentry, Datadog) | Requires account setup, billing, and privacy considerations. Not a client-side code concern. | Log errors to console with structured data. Add a global unhandled rejection handler. Monitoring integration can be a future milestone. |
-| Component-level error boundaries (every widget) | Wrapping every small component is over-engineering. Makes debugging harder. Too many fallback UIs create visual chaos. | Route-level boundaries only. One boundary per route page. One app-level boundary as last resort. Feature-level only for isolated widgets (e.g., the audio recorder). |
-| Heavy state management library (Redux, Zustand) | The app uses React Context + singleton module (runtimeState). It works for the current scale. Adding a state management library is a refactor, not a hardening. | Keep the existing pattern. Consolidate the dual storage layer instead. |
-| Full accessibility audit and remediation | Flagged as out of scope in PROJECT.md. Too broad, would dominate the milestone. | Ensure new components (error fallbacks, card redesign) use semantic HTML and keyboard support. No more than that. |
-| Key rotation UX (automatic expiration prompts) | API keys from providers (OpenAI, Gemini, Groq) don't expire on a schedule. Users manage their own keys. Adding rotation prompts is unnecessary complexity. | Handle key validation errors gracefully (show "invalid key" message in Settings). That's sufficient. |
-| IndexedDB migration for large datasets | The dual-storage problem is about architecture, not storage limits. localStorage handles current data volumes fine for a learning app. | Unify to Supabase as primary. Keep localStorage as transient cache. Don't add IndexedDB as a third storage layer. |
+| Switch to FSRS or Anki-style scheduler | Complete rewrite of scheduling logic. The SM-2 implementation is correct -- only the initialization is broken. | Fix the initialization bug. SM-2 is well-understood and sufficient for this app's scale. |
+| Add card states (new/learning/review/relearning) | Anki-style state machine is more robust but over-engineering for the current Card type. Would require schema changes. | Keep the current `repetitions` counter as the implicit state. 0 = new, 1+ = learning/review. |
+| Server-side scheduled review generation | Would require cron jobs or Supabase triggers. Overkill for a user-driven review flow. | Client computes `nextReviewAt` on review completion. Works fine once initialized. |
 
-## Feature Dependencies
+### Dependencies
+
+- Existing: `Card` type has SM-2 fields, `updateCardSchedule()` computes correct next intervals, `getCardsDueForReview()` query works correctly for non-null `nextReviewAt`.
+- Existing: Library page has a manual `handleScheduleReview()` workaround (line 74-76) that sets `nextReviewAt = now`. This confirms the team already knows cards need this field but missed the creation path.
+
+---
+
+## Feature 2: Global Error Analysis (Teacher-Style Progress Reports)
+
+**Type:** New feature -- replaces per-sentence AI feedback with holistic progress report
+**Priority:** High -- current error analysis is per-sentence and lacks the "teacher report" perspective
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Aggregate progress report across sessions | Language learners expect to see "you are improving at X, struggling with Y" -- not just individual error lists. The current `ErrorDashboard` shows patterns but lacks narrative synthesis. | Medium | Infrastructure exists: `ProgressSummary.text` already generates a short text summary, `ProgressTimeline` tracks scores over time, `ErrorStats.byCategory` has per-category counts. What's missing is a richer, teacher-style report. |
+| Skill-level breakdown with narrative | Users want to know "Your verb tenses are improving but articles still need work" with specific examples, not just numbers. | Medium | `getProgressSummary()` already computes `improvingCategories` and `worseningCategories`. Extend this with: (1) AI-generated narrative using `chatCompletion()`, (2) specific examples from `ErrorPattern.examples`, (3) actionable recommendations per category. |
+| Visual summary (report card style) | A "report card" view that summarizes overall progress in a scannable format. Not just lists of errors. | Medium | Build on existing `ErrorDashboard` structure. Add a new "Report Card" section or create a separate `/report` route. Use existing design tokens: `rounded-2xl` cards, color-coded categories, trend icons. |
+| Period comparison (this week vs last week) | "Am I better than last week?" is the fundamental question. Current `getProgressSummary()` does 7-day vs previous-7-day comparison already. | Low | Already implemented in `errorAnalysis.ts` lines 518-535. May need to surface this more prominently in the UI and add month-over-month. |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| AI-generated teacher narrative | Instead of templated text ("You've improved in X"), use `chatCompletion()` to generate a natural, encouraging teacher-style paragraph that synthesizes all the error data. Feels like personal tutoring. | Medium | Send the `ErrorStats` + `ProgressTimeline` data as context to the AI. Use a system prompt like "You are an encouraging English teacher writing a weekly progress report for a Brazilian student." Cache the result for 24 hours to avoid repeated AI calls. |
+| Per-skill radar/spider chart | Visual representation of proficiency across all 10 error categories. Instantly shows strengths and weaknesses. | Medium | No charting library currently in the project. Options: (1) pure CSS/SVG radar chart (no dependency), (2) lightweight chart lib like `recharts` (~45KB gzipped). Given the "no new framework additions" constraint, build a simple CSS-based radar or bar visualization using existing Tailwind utilities. |
+| Actionable recommendations per category | "Practice prepositions with food vocabulary" instead of "You make preposition errors." Links to specific cards or exercises. | Medium | `getCategoryFocus()` already has generic focus text. Enhance with: cross-reference weak categories with available cards via `getCardsForWeakArea()`, generate specific exercise suggestions. |
+
+### Anti-Features
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Real-time streaming progress report | Teacher-style report doesn't need to stream. It's generated after session completion. | Generate on-demand, show loading spinner, cache result. |
+| PDF export of progress report | `jspdf` already exists for this, but generating PDFs of rich HTML is fragile. Not core value. | Let users screenshot. Or add later as polish. |
+| Comparative analytics (vs other users) | Requires backend aggregation, privacy considerations, and sufficient user base. | Self-comparison only (this week vs last week). |
+| Per-sentence error feedback replacement | Don't remove per-sentence feedback entirely -- it's useful during exercises. The "global" report is additive. | Keep per-sentence feedback in exercises. Add a separate "Progress Report" view accessible from the error dashboard. |
+
+### Dependencies
+
+- Existing: `errorAnalysis.ts` has all data-fetching functions (`getErrorStats`, `getProgressTimeline`, `getProgressSummary`, `identifyWeakAreas`).
+- Existing: `ErrorDashboard.tsx` is the current UI -- extend or create companion component.
+- Existing: `chatCompletion()` in `openai.ts` for AI-generated narrative.
+- New: Teacher report prompt in `utils/prompts.ts` for structured AI narrative generation.
+- New: Caching mechanism for generated reports (localStorage or Supabase, avoid re-generating on every page load).
+
+---
+
+## Feature 3: Library History
+
+**Type:** New feature -- per-card history view with recordings, scores, and progress over time
+**Priority:** Medium -- enhances existing CardDetail with richer historical data
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Score timeline per card | Users who review a card 5+ times want to see if they're improving on THAT card specifically. Current `CardDetail` shows a list of recent reviews but no trend visualization. | Low-Medium | Data exists: `Card.reviews` array has `{ date, score, userTranscription }`. Build a simple bar/line chart showing scores over time. Pure CSS bars (like the existing progress bars in `ErrorDashboard`) are sufficient -- no chart library needed. |
+| Play back past recordings | Users want to hear how they sounded on previous attempts. Currently only the latest `userAudioBlob` is stored. | Medium | **Problem:** `Card.userAudioBlob` stores only the latest recording. Past recordings are overwritten. To show history, either: (1) store recordings per review (requires schema change to `card_reviews` table), or (2) accept that only the latest recording is available and show the score timeline without historical audio. **Recommendation:** Option 2 for this milestone. Historical audio storage is a schema change that violates the constraint. |
+| Review count and streak per card | "I've reviewed this card 8 times and got it right 3 times in a row" -- basic stats. | Low | `computeReviewStats()` already computes `totalReviews`, `correctCount`, `averageScore`. Add: current streak (consecutive scores >= 7 from most recent), longest streak, and first/last review dates. |
+| Next review countdown | "This card will be reviewed again in 3 days" -- makes the SRS scheduling visible. | Low | `Card.nextReviewAt` already exists. Display as relative time ("in 3 days", "overdue by 2 days") using simple date math. No library needed. |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Score trend indicator on library list | Show a small up/down arrow next to each card in the library list indicating if the user is improving on that card. Quick visual scan of progress. | Low | Compute trend from last 3 reviews vs previous 3 reviews (same logic as `calculateTrend()` in `errorAnalysis.ts`). Show as colored arrow icon in `LibraryPage` card list. |
+| Review history with transcript comparison | For each past review, show what the user said vs what was correct. Currently only in the expandable `ErrorPatternCard` examples, not in the card's own history. | Low-Medium | `ReviewEntry` only has `{ date, score, userTranscription }`. It does NOT have `correctedVersion` or `corrections`. To show transcript comparison per review, either: (1) enhance `ReviewEntry` to include corrections (requires extending the type and storage), or (2) link reviews to evaluation history. **Recommendation:** Extend `ReviewEntry` to include optional `correctedVersion` and `score` fields. The `updateCard` path already saves reviews -- just add the correction data when saving. |
+
+### Anti-Features
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Full audio recording history | Would require storing blobs per review, exploding storage costs. Supabase free tier has limits. | Show score timeline. Only play back the latest recording. |
+| Export card history as CSV/PDF | Nice-to-have but not core value. | Defer to future milestone. |
+| Social sharing of progress | Requires social integration, privacy controls. | Not in scope. Self-tracking only. |
+
+### Dependencies
+
+- Existing: `Card.reviews` array provides historical score data.
+- Existing: `CardDetail.tsx` is the current detail view -- extend it.
+- Existing: `computeReviewStats()` in `types/review.ts`.
+- Existing: `LibraryPage.tsx` card list can be enhanced with trend indicators.
+- New: Small trend computation utility (can reuse `calculateTrend` pattern from `errorAnalysis.ts`).
+- Constraint: No Supabase schema changes. This limits what historical data can be stored per review.
+
+---
+
+## Feature 4: Evaluation Improvement Trends
+
+**Type:** New feature -- track whether user is getting better at specific skills over time
+**Priority:** Medium -- extends existing error pattern tracking with longitudinal trend analysis
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Per-category trend over time | "Your grammar has improved 20% this month, but vocabulary is declining." Users expect to see directional trends, not just current state. | Medium | `ErrorPattern.trend` already exists ('improving'/'stable'/'worsening') but is computed per-pattern, not per-category. `getProgressSummary()` already compares 7-day windows. Need to: (1) compute category-level trends (aggregate all patterns in a category), (2) show trend direction and magnitude, (3) show over multiple time periods (week, month, all-time). |
+| Trend visualization per skill | Visual representation of each error category over time. Not just text. | Medium | `ProgressTimeline.snapshots` already has `byCategory` counts per session. Build a multi-line or stacked visualization showing category trends. Use the same CSS bar approach as the existing "Progresso ao Longo do Tempo" section in `ErrorDashboard`, but per-category. |
+| Milestone markers | "You resolved your first article error!" or "Verb tenses improving for 2 weeks straight." Gamification-style positive reinforcement. | Low-Medium | Track when categories transition from 'worsening' to 'stable' to 'improving'. Store these transitions. Show as badges or timeline markers. Can leverage existing `GamificationState.badges` infrastructure. |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Predictive "time to mastery" estimate | "At your current rate, you'll master prepositions in about 2 weeks." Highly motivating. | Medium-High | Requires fitting a trend line to `recentScores` per category. Simple linear regression on the last N snapshots. Show estimated date when average score will reach 7+. Use with caution -- frame as encouragement, not promise. |
+| Weak-area auto-practice suggestions | When a category trend is 'worsening', automatically suggest practicing those cards. "Your verb tenses are slipping -- review these 5 cards now." | Low-Medium | `getCardsForWeakArea()` already finds cards for a given category. Add a "Practice Now" button on worsening categories that navigates to review with those cards pre-loaded. Would need a way to pass card IDs to the review page (URL state or runtime state). |
+| Category-level streaks | "You've scored 7+ on grammar for 5 consecutive reviews." Streak motivation at the skill level, not just daily practice streak. | Low | Compute from `SessionSnapshot.byCategory` data. If error count for a category stays at 0 or decreasing for N consecutive snapshots, that's a skill streak. |
+
+### Anti-Features
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Machine learning model for prediction | Overkill. The user base and data volume don't warrant ML. Simple linear regression or moving average is sufficient. | Use simple statistical methods (moving average, linear regression on recent data). |
+| Detailed linguistic analysis (phonemes, morphemes) | Requires specialized NLP/phonetic models. The current `guessCategory()` is keyword-based and sufficient for the app's granularity. | Keep the 10-category system. It maps well to learner perception. |
+| External benchmarking (CEFR levels, IELTS scores) | Would require calibrated assessments, not just exercise performance data. | Show relative improvement (percentages, trend arrows). Not absolute levels. |
+
+### Dependencies
+
+- Existing: `error_patterns` table with `trend` and `recentScores` fields.
+- Existing: `error_snapshots` table with `byCategory` counts and `date`.
+- Existing: `ProgressTimeline` and `SessionSnapshot` types.
+- Existing: `calculateTrend()` function in `errorAnalysis.ts`.
+- New: Category-level trend aggregation function (combine patterns per category).
+- New: Simple trend line visualization (CSS-based, no chart library).
+- Consider: Adding more granular snapshot frequency (currently one per review session). Could add snapshots at exercise completion too for richer data.
+
+---
+
+## Cross-Feature Dependencies
 
 ```
-Route-level Error Boundaries
-  -> Error fallback UI with retry (fallback component is required by boundary)
-  -> Chunk load failure recovery (boundary catches lazy import failures)
+Feature 1 (Review Algorithm Fix)
+  -> Feature 3 (Library History): Review history data is only generated when cards enter the review queue. Fixing the algorithm is a prerequisite for meaningful history.
+  -> Feature 4 (Evaluation Trends): Trends are computed from review scores. More reviews = better trend data.
 
-Route-based Code Splitting (React.lazy)
-  -> Loading state for lazy routes (Suspense fallback required)
-  -> Chunk load failure recovery (boundary needed around Suspense)
-  -> Preload-on-hover (enhances lazy routes, depends on them existing)
-  -> Skeleton placeholders (enhances Suspense fallback, depends on splitting)
+Feature 2 (Global Error Analysis)
+  -> Feature 4 (Evaluation Trends): The teacher report should incorporate trend data. Trends make the report more insightful.
+  -> Uses: chatCompletion() for AI narrative
 
-Encrypted API Key Storage
-  -> Session-aware key encryption (encryption.ts exists, needs session wiring)
-  -> Storage layer unification (removes plaintext localStorage path)
+Feature 3 (Library History)
+  -> Feature 4 (Evaluation Trends): Per-card score timeline feeds into category-level trends.
+  -> Depends on: Feature 1 being fixed (cards must be reviewed to have history)
 
-Practice Hub Redesign (Praticar page)
-  -> Consistent card design (depends on PathCard pattern being established)
-  -> Preload-on-hover (can be added during card redesign)
+Feature 4 (Evaluation Trends)
+  -> Depends on: Features 1, 2, 3 for rich data
+  -> Extends: errorAnalysis.ts existing functions
 ```
 
-Dependency order for implementation:
+## Implementation Order Recommendation
 
-1. **Error boundaries + fallback UI** (foundational, no deps)
-2. **Code splitting + loading states** (depends on error boundaries for chunk failures)
-3. **Encrypted key storage** (independent of 1-2, can run in parallel)
-4. **Storage layer consolidation** (depends on encrypted storage being correct)
-5. **Practice hub redesign** (visual, independent, can run in parallel)
-6. **Polish features** (preload-on-hover, skeletons, transitions) - build on top of 1-5
+1. **Feature 1: Fix Review Algorithm** (Low effort, Critical priority)
+   - Fix `createDefaultCard()` to set `nextReviewAt = now`
+   - Add `fixOrphanedCards()` for existing data
+   - Unblocks everything else
 
-## MVP Recommendation
+2. **Feature 3: Library History** (Low-Medium effort)
+   - Extend `CardDetail` with score timeline
+   - Add trend indicators to library list
+   - Pure UI work, no schema changes
 
-Prioritize in this order:
+3. **Feature 2: Global Error Analysis** (Medium effort)
+   - Add teacher report component
+   - Create AI narrative prompt
+   - Extend `ErrorDashboard` or add companion route
 
-1. **Route-level error boundaries with retry fallback** -- Prevents whitescreen crashes. Highest impact on perceived reliability. Zero boundaries exist today.
-2. **Route-based code splitting with loading spinners** -- Reduces initial bundle size. jspdf and motion are the biggest wins. Use generic spinner first.
-3. **Encrypted key storage (fix the hardcoded fallback)** -- Security fix. encryption.ts exists, just needs the session wiring fixed.
-4. **Practice hub page redesign** -- Visual polish. User-visible improvement.
-
-Defer:
-- **Storage consolidation**: High complexity, affects many files. Do as a separate focused pass.
-- **Skeleton placeholders**: Nice-to-have, generic spinner is sufficient for MVP.
-- **Route transitions**: Requires careful timing, can introduce layout jitter. Polish later.
-
-## Complexity Matrix
-
-| Feature | Code Changes | Risk | Time Estimate |
-|---------|-------------|------|---------------|
-| Error boundaries | Add ~50 lines (boundary wrapper + fallback component), modify App.tsx | Low | 2-3 hours |
-| Code splitting | Modify App.tsx imports (~12 routes), add Suspense wrappers | Low | 1-2 hours |
-| Loading states | Create generic PageLoader component, reuse existing spinner | Low | 1 hour |
-| Encrypted key storage fix | Fix getSessionSecret() in encryption.ts, wire into auth flow | Medium | 3-4 hours |
-| Practice hub redesign | New PracticeModeCard component, modify PracticeHubPage layout | Medium | 3-4 hours |
-| Storage consolidation | Update all import sites, deprecate localStorage functions | High | 6-8 hours |
-| Preload-on-hover | Add onMouseEnter handlers to navigation cards | Low | 1-2 hours |
-| Skeleton placeholders | Per-route skeleton components | Medium | 2-3 hours |
-
-## Sources
-
-- Direct codebase analysis: `src/App.tsx`, `src/utils/encryption.ts`, `src/services/storage.ts`, `src/services/supabase/storage.ts`, `src/services/runtimeState.ts`, `src/components/practice/PracticeHubPage.tsx`, `src/components/ui/custom/PathCard.tsx`, `src/components/shared/ModeCard.tsx`, `src/config/modes.ts`, `src/components/settings/SettingsPage.tsx`, `vite.config.ts`, `package.json`
-- React 19 error boundary patterns: community documentation on `react-error-boundary` library, React official docs on Error Boundaries
-- Vite code splitting: Vite automatic chunk splitting for dynamic imports, Rollup `manualChunks` configuration
-- Web Crypto API: MDN documentation on AES-GCM, PBKDF2 key derivation
+4. **Feature 4: Evaluation Trends** (Medium effort)
+   - Add category-level trend aggregation
+   - Build trend visualizations
+   - Add weak-area auto-practice suggestions
+   - Depends on accumulated data from Features 1-3
 
 ## Confidence Assessment
 
 | Area | Confidence | Reason |
 |------|------------|--------|
-| Error boundary placement | HIGH | Well-established React pattern. Codebase analysis confirms zero boundaries exist. |
-| Code splitting targets | HIGH | package.json confirms jspdf and motion as heavy deps. Vite handles splitting automatically. |
-| Key storage fix | HIGH | encryption.ts code reviewed directly. Hardcoded fallback on line 190 is the clear problem. Fix path is obvious. |
-| Storage consolidation scope | MEDIUM | Need to audit all import sites for dual imports. Codebase analysis shows two parallel files but full impact requires grep across all consumers. |
-| Practice hub redesign | MEDIUM | Visual direction is clear (match PathCard pattern). Exact proportions and layout decisions are subjective, not a technical question. |
-| Preload-on-hover | LOW-MEDIUM | Pattern is well-known but interaction with React.lazy's internal caching needs testing. Vite's module preload behavior may make this redundant. |
+| Review algorithm bug root cause | HIGH | Confirmed by direct code analysis. `createDefaultCard()` lacks `nextReviewAt`. Query excludes NULL. Clear chicken-and-egg deadlock. |
+| Global error analysis feasibility | HIGH | All data infrastructure exists (`errorAnalysis.ts`, Supabase tables). Only needs UI component and AI prompt. |
+| Library history scope | MEDIUM | Score timeline is straightforward. Historical audio is blocked by schema constraint. Trend indicators are low-complexity. |
+| Evaluation trends | MEDIUM | Data exists in snapshots. Category aggregation is straightforward. "Time to mastery" prediction is a nice-to-have that needs careful framing. |
+| No-schema-changes constraint impact | MEDIUM | Review history enrichment (adding `correctedVersion` to `ReviewEntry`) can be done client-side. Audio history is blocked. Teacher report caching can use localStorage. |
+
+## Sources
+
+- Direct codebase analysis: `src/services/spacedRepetition.ts`, `src/types/card.ts`, `src/services/supabase/storage.ts`, `src/services/errorAnalysis.ts`, `src/types/errors.ts`, `src/components/review/ReviewPage.tsx`, `src/components/library/LibraryPage.tsx`, `src/components/library/CardDetail.tsx`, `src/components/errors/ErrorDashboard.tsx`, `src/types/gamification.ts`, `src/types/review.ts`
+- SM-2 algorithm reference: SuperMemo official documentation, Anki implementation notes
+- Existing review workaround: `LibraryPage.tsx` line 74-76 (`handleScheduleReview`) confirms manual scheduling is a known workaround

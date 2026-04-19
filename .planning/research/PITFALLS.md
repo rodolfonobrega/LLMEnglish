@@ -1,326 +1,445 @@
-# Pitfalls Research
+# Domain Pitfalls
 
-**Domain:** React SPA hardening (error boundaries, code splitting, secure storage, storage consolidation, UI redesign) for an English learning app
-**Researched:** 2026-04-01
-**Confidence:** HIGH (grounded in codebase analysis + React documentation; web search was unavailable but domain is well-established)
+**Domain:** Adding review algorithm fix, global error analysis, library history, and evaluation trends to an existing English learning React SPA
+**Researched:** 2026-04-18
+**Confidence:** HIGH (grounded in direct codebase analysis of relevant modules; SM-2 algorithm pitfalls well-established in literature)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Error Boundary Granularity Mismatch
+### Pitfall 1: New Cards Never Become Due Because `nextReviewAt` Is Never Initialized
 
 **What goes wrong:**
-A single error boundary at the app root means any component crash (even a trivial one in a sidebar widget) replaces the entire screen with an error fallback. Users lose all context and must reload. Conversely, wrapping every individual component in its own boundary creates massive boilerplate and makes error recovery confusing -- users see tiny error boxes embedded in otherwise functional pages.
+Cards created via `createDefaultCard()` in `spacedRepetition.ts` (line 49) set `interval: 0` and `repetitions: 0` but do NOT set `nextReviewAt`. The card is stored in Supabase with `next_review_at: null`. The due-card query in `supabase/storage.ts` (line 260) filters with `.lte('next_review_at', now)`, which excludes `null` values entirely. These cards are permanently invisible to the review queue.
 
 **Why it happens:**
-Error boundaries are class components, which feel foreign in a function-component codebase. Teams default to either "one big boundary at the root" (easiest) or "use a library wrapper everywhere" (cargo-culting). SpeakLab currently has zero error boundaries, so the first implementation is the riskiest -- there is no existing pattern to follow, and the placement decision will set the convention for the entire app.
+The SM-2 algorithm in `updateCardSchedule()` (spacedRepetition.ts) only computes `nextReviewAt` AFTER a review. The design assumes cards get reviewed once first, then scheduled. But the query requires `nextReviewAt <= now` to surface cards at all -- a chicken-and-egg problem. The LibraryPage "Schedule Review" button (line 74-76) is a manual workaround that sets `nextReviewAt` to `now()`, but most users never discover it.
 
-**How to avoid:**
-Place boundaries at meaningful **feature sections**, not per-component and not per-app. For SpeakLab specifically:
-- One boundary wrapping the `<Layout>` route content area (catches page-level crashes while preserving sidebar/navigation)
-- One boundary around the live roleplay session area (crashes here should not lose the entire page)
-- One boundary around AI-generated content display areas (unpredictable content is the most likely crash source)
+**Consequences:**
+- All newly created cards are invisible to the standard review queue forever
+- Users accumulate cards in their library that never appear for review
+- The review page shows "Tudo em dia!" (all caught up) even when the user has dozens of unreviewed cards
+- Only "intelligent review" mode surfaces these cards (via `getPrioritizedReviewCards` which loads ALL cards), masking the bug
 
-Use `react-error-boundary` library for a hooks-friendly API. Keep fallback UI extremely simple -- no complex rendering, no lazy-loaded dependencies.
+**Prevention:**
+1. Set `nextReviewAt` to `new Date().toISOString()` in `createDefaultCard()` so new cards are immediately due
+2. Alternatively, modify the `getCardsDueForReview()` Supabase query to also include cards where `next_review_at IS NULL` (using `.is('next_review_at', null)` combined with the existing filter via `.or()`)
+3. Do NOT rely on the LibraryPage manual "schedule review" button as the primary path
+4. Add a database migration or one-time script to backfill `next_review_at` for existing cards where it is null
 
-**Warning signs:**
-- Error fallback UI itself crashes (too complex)
-- Users report "the whole app went white" after a minor glitch (boundary too high)
-- Error boundaries wrapping every single component import (boundary too granular)
-- Error state resets but the component immediately re-crashes in a loop (no key-based remount)
+**Detection:**
+- Query Supabase for cards where `next_review_at IS NULL` -- if any exist, the bug is active
+- New user saves cards from exercises, goes to Review page, sees "all caught up" immediately
 
-**Phase to address:**
-Phase 1 (Error Boundaries). This is the foundational hardening step -- everything else builds on top of the app not whitescreening.
+**Phase to address:** Phase 1 (Review Algorithm Fix). This is the root cause of the entire broken review flow.
 
 ---
 
-### Pitfall 2: Error Recovery Infinite Loop
+### Pitfall 2: Review Deduplication Key Collision Silently Drops Reviews
 
 **What goes wrong:**
-After an error boundary catches a crash and the user clicks "Try Again", the boundary resets its `hasError` state and re-renders the children. But if the underlying cause hasn't changed (e.g., malformed data in state, a null reference from a missing prop), the component immediately throws again, resetting again, in an infinite loop. The UI flickers rapidly between the error fallback and the crashing component.
+In `supabase/storage.ts` `updateCard()` (lines 196-209), review deduplication uses a composite key of `date:score`. If a user reviews the same card twice on the same day and gets the same score both times, the second review is silently dropped. The dedup check (`existingKeys.has(`${r.date}:${r.score}`)`) treats these as duplicates even though they represent distinct review events with different transcriptions.
 
 **Why it happens:**
-`getDerivedStateFromError` / `resetErrorBoundary` simply toggles a boolean. The component tree remounts with the same props and state that caused the original crash. This is especially likely in SpeakLab because `runtimeState.ts` uses a mutable global singleton (`let state`) that may contain stale or malformed data from a previous failed operation.
+The dedup key was designed to prevent accidental double-writes (e.g., network retry), but it conflates legitimate same-day same-score reviews with duplicates. A user practicing the same card twice in a session with score 7 both times will have only one review persisted.
 
-**How to avoid:**
-- Always remount the recovered component tree with a new `key` on reset (e.g., `key={retryCount}`). This forces React to destroy and recreate the component with fresh state.
-- For data-related crashes, clear the relevant runtime state slice before retrying. Never retry with the same data that caused the crash.
-- Log the error to `console.error` with `errorInfo.componentStack` (not just the error message) so developers can diagnose the root cause.
+**Consequences:**
+- Review history is incomplete, making trend analysis unreliable
+- SM-2 `repetitions` counter increments in memory but the corresponding review record is lost
+- `computeReviewStats()` reports fewer reviews than actually occurred
+- Evaluation improvement trends (milestone feature #4) will show incorrect data
 
-**Warning signs:**
-- Rapid flickering between error UI and content after clicking "Try Again"
-- Browser CPU spike after error recovery attempt
-- Error boundary's `componentDidCatch` firing multiple times per second
+**Prevention:**
+1. Change the dedup key to include `userTranscription` or use a UUID per review entry
+2. Better: add an `id` field to `ReviewEntry` type and use that for dedup
+3. Short-term fix: use the full ISO timestamp (with milliseconds) instead of just date, making collisions extremely unlikely
 
-**Phase to address:**
-Phase 1 (Error Boundaries). Recovery behavior is part of the boundary implementation, not an afterthought.
+**Detection:**
+- Review a card twice in one session with the same score; check if both reviews appear in the CardDetail history
+- Database query: cards with `card_reviews` count not matching the `repetitions` field value
+
+**Phase to address:** Phase 1 (Review Algorithm Fix). Fix the dedup logic alongside the `nextReviewAt` initialization fix.
 
 ---
 
-### Pitfall 3: Code Splitting Without Error Boundaries on Lazy Routes
+### Pitfall 3: Error Pattern IDs Are Unstable, Causing Duplicate Patterns
 
 **What goes wrong:**
-`React.lazy()` + `Suspense` is added to route components. When a user navigates to a route and the chunk fails to load (network timeout, CDN issue, deploy during active session), React throws a chunk load error. Without an error boundary wrapping the `<Suspense>`, this error propagates up and whitescreens the entire app -- the exact same failure mode the error boundaries were supposed to prevent.
+`createPatternFromCorrection()` in `errorAnalysis.ts` (line 244) generates pattern IDs from `category_${correction.slice(0, 30)}`. This means the same grammatical mistake described with slightly different wording by the AI produces different pattern IDs. For example, "Use 'in' instead of 'on'" and "Use 'in' rather than 'on'" create two separate patterns that should be one. Over time, the error_patterns table accumulates near-duplicate rows that fragment the occurrence count and make trend analysis noisy.
 
 **Why it happens:**
-Code splitting and error boundaries are typically implemented in separate tasks. The person adding `React.lazy()` wraps it in `<Suspense fallback={<Loading />}>` but forgets that Suspense handles loading states, not error states. Chunk load failures are not "suspended" -- they are thrown errors.
+The pattern ID is derived from the raw correction text, which comes from AI-generated evaluations. LLM responses are non-deterministic -- the same underlying error will be described differently across sessions. The system treats each wording variation as a distinct pattern.
 
-**How to avoid:**
-Every `<Suspense>` wrapping a `React.lazy()` component MUST be wrapped by an error boundary. In SpeakLab's `App.tsx`, the `<Route>` elements currently import components directly. When converting to lazy imports, wrap each route's element in both `<Suspense>` AND an error boundary:
+**Consequences:**
+- Error dashboard shows many near-identical patterns instead of one consolidated pattern
+- Occurrence counts are diluted across duplicates, hiding truly critical patterns
+- "Critical errors" (occurrences >= 3, trend = 'worsening') may not trigger because no single pattern reaches the threshold
+- Global error analysis reports (milestone feature #2) will be fragmented and confusing
 
-```tsx
-// WRONG:
-<Route path="settings" element={<Suspense fallback={<Loading />}><LazySettings /></Suspense>} />
+**Prevention:**
+1. For the global error analysis feature: consolidate patterns at query time by clustering similar corrections (same category + overlapping keywords)
+2. Consider generating pattern IDs from a normalized form (lowercased, punctuation stripped, stop words removed) rather than raw correction text
+3. When recording patterns, fuzzy-match against existing patterns in the same category before creating a new one
+4. For the teacher-style report: generate it from aggregated category stats rather than individual pattern records to avoid the fragmentation problem entirely
 
-// RIGHT:
-<Route path="settings" element={
-  <ErrorBoundary fallback={<ChunkErrorFallback />}>
-    <Suspense fallback={<Loading />}>
-      <LazySettings />
-    </Suspense>
-  </ErrorBoundary>
-} />
-```
+**Detection:**
+- Query error_patterns for patterns in the same category with >50% text similarity
+- User sees multiple near-identical entries in the error dashboard
 
-**Warning signs:**
-- Lazy-loaded routes work in development (chunks load instantly from disk) but fail in production on slow networks
-- Error boundary wrapping Layout but not individual routes (a chunk failure still takes down the entire route area)
-- No test for chunk-load failure scenarios
-
-**Phase to address:**
-Phase 1 (Error Boundaries) and Phase 2 (Code Splitting) must be coordinated. Error boundaries MUST be in place before any lazy loading is added. If code splitting is implemented first, the app becomes MORE fragile, not less.
+**Phase to address:** Phase 2 (Global Error Analysis). Address as part of building the consolidated report generation.
 
 ---
 
-### Pitfall 4: Layout Shift from Empty Suspense Fallbacks
+### Pitfall 4: Global Error Analysis Becomes an Expensive AI Call on Every Session End
 
 **What goes wrong:**
-`<Suspense fallback={null}>` or `<Suspense fallback={<div>Loading...</div>}>` causes the page to render as empty or minimal while the chunk loads, then snap to full content. This creates visible Cumulative Layout Shift (CLS). For SpeakLab, this is especially bad on the Praticar page where image-banner cards loading in would push content down, making the page feel janky.
+Building a "teacher-style progress report" is likely to be implemented as an AI chat completion call that takes all the user's error data and generates a narrative report. If this call happens on every session end (like `recordSessionSnapshot()` currently does in ReviewPage line 143), it adds a slow, expensive AI API call to the session completion flow. The user sees a loading spinner after every practice session while the report generates, even if they will not view it immediately.
 
 **Why it happens:**
-Developers use `null` or minimal text as fallback because creating proper skeleton UI feels like premature polish. But layout shift is a core web vital -- Google penalizes it, and users perceive it as broken.
+The existing `recordSessionSnapshot()` already runs on session completion. Adding report generation alongside it feels natural. But `recordSessionSnapshot()` is a cheap database write, while an AI-powered report is a multi-second API call that costs tokens.
 
-**How to avoid:**
-- Every `<Suspense>` fallback MUST reserve the same spatial dimensions as the content it replaces. Use skeleton components (pulsing rectangles) with explicit heights.
-- For route-level suspense in SpeakLab: use a full-page skeleton that matches the Layout structure (sidebar space + content area skeleton).
-- For the Praticar page specifically: if ModeCards are lazy-loaded, the skeleton should match the card grid dimensions, not just show a spinner.
+**Consequences:**
+- Session completion feels slow (2-5 second delay added)
+- API costs scale linearly with sessions
+- If the AI call fails, it could block or crash the session completion flow
+- Reports generated immediately after a session may be too granular and not useful -- teacher reports are more valuable as weekly summaries
 
-**Warning signs:**
-- Content "pops in" visually when navigating between routes
-- Lighthouse CLS score above 0.1
-- Blank white flash between route transitions
+**Prevention:**
+1. Generate teacher-style reports LAZILY -- only when the user navigates to the report page, not on session completion
+2. Cache generated reports with a staleness window (e.g., regenerate if older than 24 hours)
+3. Keep `recordSessionSnapshot()` as the eager data-collection step (cheap write)
+4. The report generation is a separate async action triggered by page visit, not by session end
+5. If real-time updates are desired, generate a lightweight summary from local data (no AI call) and only call AI for the full report on demand
 
-**Phase to address:**
-Phase 2 (Code Splitting). Skeletons should be built alongside lazy loading, not added later.
+**Detection:**
+- Session completion takes >2 seconds after adding report generation
+- AI API usage spikes proportional to session count
+- Users report "it feels slow after I finish reviewing"
+
+**Phase to address:** Phase 2 (Global Error Analysis). Design the report generation as on-demand, not eager.
 
 ---
 
-### Pitfall 5: Client-Side Encryption as Security Theater
+### Pitfall 5: Library History Feature Loads All Cards and All Reviews Into Memory
 
 **What goes wrong:**
-The milestone calls for "encrypt API keys at rest." The codebase already has `encryption.ts` using AES-256-GCM via Web Crypto API -- but the encryption key is derived from `userId + sessionSecret`, where `sessionSecret` falls back to the hardcoded string `'fallback-secret-change-in-production'` (line 190 of encryption.ts). This means the encryption is bypassable by anyone who reads the source code. Adding more client-side encryption does not meaningfully improve security -- it just adds complexity and a false sense of safety.
+The current `getCards()` in the storage facade loads ALL user cards with ALL their reviews in a single query. Adding per-lesson history (recordings, scores, progress over time) means displaying historical data for each card. If a user has 200 cards with 10 reviews each, that is 2,000 review entries loaded at once. The LibraryPage does not paginate -- it renders all cards in a flat list. Adding history detail for each card amplifies the data volume and render cost.
 
 **Why it happens:**
-Client-side encryption is fundamentally limited because the decryption key must also be available client-side. There is no way to store a secret in the browser that JavaScript cannot access. The existing code even acknowledges this: `getSessionSecret()` tries localStorage, then sessionStorage, then gives up and uses a plaintext fallback.
+The existing `getCards()` query in `supabase/storage.ts` (lines 77-97) eagerly joins `card_reviews(*)` and `card_evaluations(*)` for every card. This was acceptable when the library only showed the latest score and review count. But a history feature that displays timelines, audio playback, and score progression per card multiplies the amount of data the user expects to see per card.
 
-**How to avoid:**
-- Accept the architectural reality: client-side encryption is obfuscation, not security. Document it honestly.
-- The REAL fix is routing all AI API calls through the Supabase Edge Function proxy (`aiProxy.ts`), which already exists. The proxy holds server-side keys that never reach the browser.
-- For Gemini Live (which requires a direct WebSocket and thus exposes the key): document this as an accepted risk, scope the key to Gemini Live endpoints only, and warn users that this specific mode sends their API key to the browser.
-- Do NOT invest time in "improving" client-side encryption (better key derivation, rotating salts, etc.) -- that effort should go into expanding proxy coverage.
-- Remove the hardcoded fallback secret entirely. `getSessionSecret()` should throw or return `null` when no session exists, not silently fall back to a known string.
+**Consequences:**
+- Library page takes 3-5 seconds to load for users with many cards
+- Large JSON responses from Supabase (potentially MB-scale with audio blobs)
+- Audio blobs (`userAudioBlob` base64 strings) are especially expensive -- each can be 100KB+
+- Browser memory pressure from holding all card data in React state
 
-**Warning signs:**
-- PR descriptions say "encrypts API keys" without mentioning that the decryption key is also client-side
-- Tests only verify that encryption/decryption round-trips, not that an attacker couldn't also decrypt
-- The fallback secret string still exists in the codebase after "hardening"
+**Prevention:**
+1. Do NOT load `userAudioBlob` in the card list query -- only load it when the user opens a specific card's detail/history
+2. Paginate the library card list (load 20 at a time with "load more")
+3. For the history timeline, load reviews lazily per card rather than eagerly for all cards
+4. Consider a lightweight `getCardSummaries()` query that returns card metadata + stats without the full review/evaluation payloads
+5. Audio blobs should use a separate storage mechanism (Supabase Storage buckets) instead of base64 in the database, but this is out of scope for this milestone -- the immediate fix is lazy loading
 
-**Phase to address:**
-Phase 3 (Secure Storage). This phase should be scoped as "route API calls through proxy + remove hardcoded secrets" not "add more client-side encryption."
+**Detection:**
+- Library page load time exceeds 2 seconds for users with 50+ cards
+- Browser DevTools Memory tab shows large retained heap from Card objects
+- Network tab shows response sizes >1MB from the cards query
+
+**Phase to address:** Phase 3 (Library History). Build with lazy loading from the start; do not add history to the eager `getCards()` query.
 
 ---
 
-### Pitfall 6: Dual Storage Removal Breaks Import Chains
+### Pitfall 6: Evaluation Trends Computed From Too Few Data Points Produce Misleading Results
 
 **What goes wrong:**
-The milestone calls for consolidating the dual storage layer (`src/services/storage.ts` localStorage vs `src/services/supabase/storage.ts` Supabase). Both export identical function names (`getCards`, `saveCards`, `getApiKey`, etc.). Removing `storage.ts` without auditing every import path causes silent failures where components import from the deleted module, get `undefined` at runtime, and crash -- but only in specific code paths.
+The existing trend calculation in `errorAnalysis.ts` `calculateTrend()` (lines 144-158) requires only 3 data points to declare a trend. For the new evaluation improvement trends feature, showing a user "You're improving in verb tenses!" based on 3 exercises can be wildly inaccurate. A single good session after a bad one reads as "improving," and vice versa. Users make decisions about what to practice based on these signals.
 
 **Why it happens:**
-`runtimeState.ts` imports from `./supabase/storage`, but the old `storage.ts` still exists and may be imported directly by other files or tests. JavaScript module resolution doesn't warn when an import path becomes ambiguous -- it just resolves to whichever file the import statement specifies. A global find-replace of import paths can miss dynamic imports, re-exports, or barrel files.
+Statistical significance is not considered. The `calculateTrend` function compares averages of recent vs. older scores with a 0.5-point threshold. With small samples, random variance easily exceeds 0.5 points on a 0-10 scale. The function also treats all time periods equally -- 3 reviews over 2 months vs. 3 reviews in one day get the same treatment.
 
-**How to avoid:**
-1. Before deleting `storage.ts`, grep for ALL imports of it: `from '../services/storage'`, `from '../../services/storage'`, `from './storage'` (without `supabase/` prefix).
-2. Rename `storage.ts` to `storage.local.ts` FIRST (or `storage.deprecated.ts`) -- this breaks nothing but makes incorrect imports immediately visible as TypeScript errors (module not found).
-3. Fix all broken imports to point to `./supabase/storage`.
-4. Only after all imports are verified, delete the old file.
-5. Run the full app in dev mode AND with Supabase connected. Exercise every feature.
+**Consequences:**
+- Users see wild trend swings early in their learning journey ("improving" one day, "worsening" the next)
+- The trends feature loses credibility quickly
+- Users may over-practice a "worsening" area that is actually stable, neglecting other skills
+- Teacher-style reports may contain misleading claims about progress direction
 
-**Warning signs:**
-- After removing `storage.ts`, TypeScript compiles without errors but runtime crashes with "is not a function" on storage calls
-- Features work in dev mode (no Supabase) but break in authenticated mode (the Supabase path was never tested)
-- Import paths like `from './storage'` still exist alongside `from './supabase/storage'`
+**Prevention:**
+1. Require a minimum of 5 data points before showing any trend (show "Insufficient data" otherwise)
+2. Use confidence intervals or rolling averages instead of raw recent-vs-older comparison
+3. Add a "confidence" level to trends: "Likely improving (5 samples)", "Possibly worsening (3 samples, more data needed)"
+4. Weight recent data more heavily than older data using exponential moving average
+5. Do not show trends at all for the first week of usage; show raw scores only
 
-**Phase to address:**
-Phase 4 (Storage Consolidation). This MUST be done as a dedicated phase with thorough manual testing, because it touches the data layer of the entire app.
+**Detection:**
+- User completes 2-3 exercises and immediately sees trend indicators
+- Trend direction flips between sessions with small sample sizes
+- A user with 3 reviews sees the same trend confidence as a user with 30 reviews
+
+**Phase to address:** Phase 4 (Evaluation Trends). Build statistical safeguards into the trend calculation from the start.
 
 ---
 
-### Pitfall 7: Praticar Redesign Breaks Navigation Semantics
+### Pitfall 7: SM-2 Score Mapping From 0-10 to 0-5 Loses Precision at the Threshold
 
 **What goes wrong:**
-The current `ModeCard` is a `<button>` element with `onClick` navigation. Redesigning to image-banner cards similar to `PathCard` (which is a `<div>` with `onClick`) changes the element semantics. Screen readers and keyboard users lose the ability to activate cards via Enter/Space. Additionally, if the new card layout uses different grid proportions than PathCard but shares similar visual language, users may confuse the Praticar page with the Trilhas page and navigate to the wrong section.
+`updateCardSchedule()` in `spacedRepetition.ts` (line 9) maps the 0-10 evaluation score to a 0-5 SM-2 quality via `Math.round((score / 10) * 5)`. This means scores of 5 and 6 both map to quality 3 (the "correct" threshold). A score of 5 (mediocre) gets the same SM-2 treatment as a score of 6 (decent). Conversely, scores 0-4 all map to quality 0-2 ("incorrect"), causing the algorithm to reset repetitions and interval even for a score of 4 (which is arguably partial knowledge).
 
 **Why it happens:**
-Visual redesign focuses on appearance, not interaction semantics. `PathCard` uses a `<div>` with `onClick` -- not a `<button>` or `<a>`. Copying this pattern for the redesigned Praticar cards perpetuates an accessibility regression. The current `ModeCard` actually has better accessibility (it is a `<button>` with `focus-visible` styles).
+SM-2 was designed for self-assessment on a 0-5 scale. The app uses AI-evaluated scores on a 0-10 scale. The linear mapping creates uneven bins: quality 0 = scores 0-1, quality 1 = scores 2-3, quality 2 = scores 4, quality 3 = scores 5-6, quality 4 = scores 7-8, quality 5 = scores 9-10.
 
-**How to avoid:**
-- The redesigned Praticar card MUST use `<button>` or `<a>` semantics (or `role="button"` + `tabIndex={0}` + keyboard handlers at minimum).
-- Maintain the `focus-visible` ring styles that the current `ModeCard` already has.
-- Use visually distinct proportions from `PathCard` -- not just different images, but different card heights, border radius, or layout direction. The milestone says "different proportions" -- make this an explicit design decision, not an afterthought.
-- Test that Tab navigation reaches all practice mode cards and Enter/Space activates them.
+**Consequences:**
+- A user scoring 4/10 (partial knowledge) is treated the same as scoring 0/10 (complete failure) -- both reset the card
+- The transition from "reset" to "advance" happens abruptly at score 5, creating a cliff effect
+- Cards that users partially know get excessively harsh scheduling, making review sessions feel punitive
 
-**Warning signs:**
-- New cards are `<div>` elements with only `onClick` (no keyboard support)
-- Cards look identical to Trilhas cards at first glance
-- Tab navigation skips over the redesigned cards
+**Prevention:**
+1. Adjust the mapping so scores >= 4 map to quality >= 3 (partial credit advances the schedule): `const quality = Math.min(5, Math.max(0, Math.round(((score - 2) / 8) * 5)))`
+2. Or keep the current mapping but adjust the quality >= 3 threshold in `updateCardSchedule` to quality >= 2, so scores of 4+ advance
+3. Add logging to track the score-to-quality distribution to verify the mapping feels right
+4. When fixing this, re-evaluate existing cards that may have been incorrectly reset
 
-**Phase to address:**
-Phase 5 (Praticar Redesign). Build accessibility into the new card component from the start, not as a retrofit.
+**Detection:**
+- User scores 4/10 and the card interval resets to 1 day despite having been on a 6-day interval
+- Most reviews result in either full advancement or full reset, with no middle ground
+- Cards with many reviews but `repetitions` stays at 0 or 1 (constantly being reset)
+
+**Phase to address:** Phase 1 (Review Algorithm Fix). Fix the mapping alongside the `nextReviewAt` initialization.
 
 ---
 
-### Pitfall 8: Dev Mode Divergence Hides Production Bugs
+### Pitfall 8: Fixing the Review Algorithm Without Backfilling Existing Cards
 
 **What goes wrong:**
-`App.tsx` lines 22-28 show that dev mode (`import.meta.env.DEV`) renders `<DiscoveryPage />` directly, bypassing both authentication AND the `<Layout>` wrapper. This means no sidebar, no navigation, and no protected routes in dev mode. Any developer working on SettingsPage, ReviewPage, LiveRoleplayPage, or any other protected route cannot navigate to their page in dev mode.
-
-More critically: when adding error boundaries or code splitting, the dev-mode code path is completely different from the production code path. Error boundaries placed inside `<Layout>` will never fire in dev mode. Lazy-loaded routes inside the `<Routes>` block will never be tested in dev mode. Features that work perfectly in dev mode will behave differently in production.
+After fixing `createDefaultCard()` to set `nextReviewAt`, all NEW cards will work correctly. But every existing card in the database that was created with `nextReviewAt: null` remains broken. The fix only helps future cards, leaving the existing user base with a library full of invisible review cards. Users who have been using the app for weeks/months will not see any improvement until they manually schedule each old card.
 
 **Why it happens:**
-The dev bypass was added for convenience (skip auth, show UI fast). But it creates two separate app architectures that diverge over time. Each new feature added to the main route structure is invisible in dev mode.
+The fix is applied to the card creation code path. Existing persisted data is not touched. Since the app constraint says "no Supabase migration or backend schema changes," there is no database migration to fix existing rows.
 
-**How to avoid:**
-- Fix dev mode to render the SAME `<Layout>` + `<Routes>` structure as production, but with a mock authenticated user.
-- If auth-skipping is needed for DX, inject a fake user into `AuthProvider` rather than bypassing the entire router structure.
-- This fix should be Phase 0 or part of Phase 1 -- before adding error boundaries and code splitting that will be untestable in dev mode otherwise.
+**Consequences:**
+- Bug appears "fixed" for new users but persists for existing users
+- QA tests with fresh accounts pass; production users continue to experience the bug
+- Support burden as users report "review still not working" after the fix ships
 
-**Warning signs:**
-- Developers say "it works on my machine" but production has errors
-- Dev mode shows a completely different page structure than production
-- New features (error boundaries, lazy loading) are only testable by deploying or connecting to Supabase
+**Prevention:**
+1. Add a one-time client-side backfill: on app load or first library visit, detect cards where `nextReviewAt` is null and set it to `createdAt` (making them immediately due)
+2. Add this to the existing `getCards()` or `getCardsDueForReview()` flow as a post-processing step
+3. Track whether the backfill has run (e.g., `localStorage` flag or Supabase user metadata) to avoid re-running on every load
+4. Alternative: modify the Supabase query to `.or('next_review_at.lte.${now},next_review_at.is.null')` so null cards are always included as due -- this is the simplest fix that handles both new and existing data
 
-**Phase to address:**
-Phase 1 (Error Boundaries). Fix dev mode routing FIRST so that error boundaries and lazy loading can be tested locally.
+**Detection:**
+- After deploying the fix, check if the user's existing cards appear in the review queue
+- Query production: `SELECT COUNT(*) FROM cards WHERE next_review_at IS NULL` -- should be 0 after backfill
+
+**Phase to address:** Phase 1 (Review Algorithm Fix). The backfill or query fix MUST be part of the same phase as the creation fix.
 
 ---
 
-## Technical Debt Patterns
+## Moderate Pitfalls
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| One root-level error boundary | Quick fix, 5 minutes | Entire app whitescreens for minor widget failures | First hour of Phase 1, then replace with granular boundaries |
-| `Suspense fallback={null}` | Less code, no skeleton to build | Layout shift, perceived jank, CLS penalty | Never in production routes |
-| Keep both storage.ts files during migration | Nothing breaks during transition | Import confusion persists, bugs fixed in one file but not the other | Acceptable only during Phase 4, must remove by end of phase |
-| Hardcoded encryption fallback | App doesn't crash when session is missing | Encryption is meaningless, false security | Never -- throw an error instead |
-| Skip dev mode Layout fix | Save time, focus on "real" features | Error boundaries and lazy loading untestable locally | Never -- this blocks testing of all other hardening work |
+### Pitfall 9: Teacher-Style Report Shows Different Information Than the Error Dashboard
+
+**What goes wrong:**
+The global error analysis report and the existing ErrorDashboard component both draw from `errorAnalysis.ts` but present data differently. If the teacher report generates narrative text via AI while the dashboard shows raw stats, users may see contradictory information ("Your report says grammar is improving, but the dashboard shows grammar as your #1 weakness"). This erodes trust in both features.
+
+**Prevention:**
+Use the same underlying data queries for both views. The teacher report should explicitly reference the same stats shown in the dashboard. If using AI to generate the report narrative, pass the raw stats as structured context and instruct the AI to be consistent with them.
+
+**Phase to address:** Phase 2 (Global Error Analysis).
+
+---
+
+### Pitfall 10: Library History Audio Playback Creates Memory Leaks
+
+**What goes wrong:**
+The CardDetail component already handles audio playback with `audioRef` and cleanup in `useEffect`. But if the library history feature adds multiple playable recordings per card (one per review session), and the component creates audio elements for each without proper cleanup, memory leaks accumulate. Each `playAudioUrl()` creates a new `Audio` element; if these are not properly dereferenced, the browser retains the decoded audio data.
+
+**Prevention:**
+1. Use a single shared audio player state rather than creating audio elements per recording
+2. Always revoke object URLs created via `base64ToAudioUrl` after playback ends
+3. Test with a card that has 10+ reviews with recordings; check memory before and after playing each
+
+**Phase to address:** Phase 3 (Library History).
+
+---
+
+### Pitfall 11: `guessCategory()` False Positives Skew Trend Analysis
+
+**What goes wrong:**
+The `guessCategory()` function in `errorAnalysis.ts` (lines 196-234) uses keyword matching to classify errors. Words like "tense", "past", "present" trigger "verb-tense" classification even when the correction is about something else entirely (e.g., "Don't use past tense in this context -- it should be present" might classify as verb-tense when the real issue is about narrative consistency). These misclassifications pollute category-level trend analysis, making the new trends feature unreliable.
+
+**Prevention:**
+1. For the trends feature, surface category-level trends ONLY when there are enough patterns in that category to be statistically meaningful
+2. Allow the AI evaluation prompt to explicitly categorize corrections rather than relying on keyword matching
+3. Add a confidence score to category guesses and filter low-confidence classifications from trend calculations
+
+**Phase to address:** Phase 2 (Global Error Analysis) -- improve the categorization as part of building the report. Phase 4 (Trends) -- add confidence filtering for trend calculations.
+
+---
+
+### Pitfall 12: New History/Trend UI Components Do Not Follow Existing Design Tokens
+
+**What goes wrong:**
+New components for library history timelines, trend charts, and teacher report cards are built with hardcoded colors or new CSS classes instead of using the existing design token system (`--mode-*`, `--brand-*`, semantic color variables in `src/index.css`). The new UI looks subtly different from the rest of the app -- inconsistent border radii, shadow styles, spacing patterns.
+
+**Why it happens:**
+Developers building new features often reach for quick styling without checking the existing token system. The CLAUDE.md explicitly warns against hardcoding colors.
+
+**Prevention:**
+1. Use existing design tokens (`text-foreground`, `bg-card`, `border-border`, `text-muted-foreground`, `text-primary`, `bg-primary-soft`)
+2. Use existing UI components (`Badge`, `ScoreDisplay`, `Button`, `Card`) as building blocks
+3. Match the existing card layout pattern (`bg-card rounded-2xl p-6 border border-border`)
+4. For trend indicators, use the same icon pattern as ErrorDashboard (`TrendingUp`, `TrendingDown`, `Minus` from lucide-react)
+
+**Phase to address:** All phases. Enforce during code review.
+
+---
+
+## Minor Pitfalls
+
+### Pitfall 13: Review Mode Toggle Does Not Persist Across Sessions
+
+**What goes wrong:**
+ReviewPage stores `reviewMode` ('standard' | 'intelligent') in component state. When the user leaves and returns, it resets to 'standard'. If the user primarily uses intelligent review, they must toggle it every time.
+
+**Prevention:** Persist the mode choice to `localStorage` or Supabase user metadata.
+
+**Phase to address:** Phase 1 (Review Algorithm Fix) -- small quality-of-life improvement alongside the main fix.
+
+---
+
+### Pitfall 14: `getPrioritizedReviewCards` Loads All Cards Even When Few Are Due
+
+**What goes wrong:**
+The "intelligent review" mode calls `getPrioritizedReviewCards()` which calls `getCards()` -- loading ALL user cards into memory just to sort and take the top 20. For users with hundreds of cards, this is wasteful when only 5 cards are actually due.
+
+**Prevention:** Add a pre-filter to the query (e.g., only load cards with `next_review_at` in the past week or with low recent scores) before doing the priority sort in-memory.
+
+**Phase to address:** Phase 1 (Review Algorithm Fix). Optimize alongside the main query fix.
+
+---
+
+### Pitfall 15: Session Snapshot Timestamp Granularity Causes Duplicate Snapshots
+
+**What goes wrong:**
+`recordSessionSnapshot()` creates a snapshot with `date: new Date().toISOString()`. If the user completes two short sessions within the same minute, two nearly-identical snapshots are created. The snapshot pruning logic (lines 478-486) keeps the last 100, so this is not catastrophic, but it inflates snapshot counts and makes timeline comparisons noisier.
+
+**Prevention:** Round snapshot dates to the day level, or check for an existing snapshot within the last hour before creating a new one.
+
+**Phase to address:** Phase 2 (Global Error Analysis).
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Review algorithm fix | Fixing creation but not backfilling existing cards (#8) | Modify query to include null `next_review_at` OR add client-side backfill |
+| Review algorithm fix | Score mapping cliff at threshold 5 (#7) | Adjust mapping to give partial credit at score 4 |
+| Review algorithm fix | Review dedup drops same-day same-score reviews (#2) | Change dedup key to include timestamp or UUID |
+| Global error analysis | AI report call on every session end (#4) | Generate report lazily on page visit, not eagerly on session end |
+| Global error analysis | Fragmented patterns from unstable IDs (#3) | Cluster patterns at query time or normalize pattern IDs |
+| Global error analysis | Contradictory info between report and dashboard (#9) | Share underlying data queries between both views |
+| Library history | Loading all cards + reviews + audio blobs at once (#5) | Paginate cards, lazy-load history per card, skip audio blobs in list query |
+| Library history | Audio memory leaks from multiple recordings (#10) | Use a shared audio player with proper cleanup |
+| Evaluation trends | Trend from 3 data points is misleading (#6) | Require minimum 5 samples, show confidence level, use rolling averages |
+| Evaluation trends | `guessCategory()` false positives pollute trends (#11) | Add confidence filtering; require multiple patterns per category for trends |
+| Cross-cutting | New components use hardcoded colors (#12) | Enforce design token usage in code review; use existing UI primitives |
+
+## Technical Debt Relevant to This Milestone
+
+| Existing Debt | Impact on This Milestone | Workaround |
+|---------------|--------------------------|------------|
+| Sequential N+1 writes in `saveCards` | Bulk card operations (backfill, history queries) will be slow | Avoid `saveCards` for bulk ops; batch update cards individually with parallel promises |
+| Gemini Live needs client-side API key | Review of Live roleplay sessions in library history may expose key in audio URLs | Ensure library history does not store or display Live session API details |
+| `runtimeState` window events on every change | Adding trend/reactivity features that listen to state changes will amplify re-renders | Use targeted subscriptions, not global window event listeners |
+| No React Error Boundary for feature components | New features (history, trends, report) can crash and take down the whole page | Wrap each new feature section in an error boundary |
 
 ## Integration Gotchas
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| `react-error-boundary` + `React.lazy()` | Wrapping `<Suspense>` without an error boundary | Every `<Suspense>` for lazy components needs a sibling `<ErrorBoundary>` |
-| Supabase Edge Function proxy | Forgetting to update `openai.ts` dispatch to use proxy for new providers | After expanding proxy coverage, audit ALL direct API call paths in `openai.ts` |
-| Web Crypto API `deriveKey` | Using `false` for `extractable` parameter then trying to export the key | Decide upfront whether the key needs to be exportable; for encryption-only keys, `false` is correct |
-| React Router lazy routes | Forgetting that `<Route element={...}>` does not re-mount on param changes | Add `key` based on route params when needed for forced remount |
-| Tailwind dark mode | Using hardcoded color classes instead of CSS variables in new card components | Use `hsl(var(--mode-*))` pattern from existing `ModeCard`, not hardcoded hex colors |
-
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Eagerly loading all route chunks | Initial bundle >500KB, slow first paint on mobile | Lazy-load ALL route components except the index/landing route | Immediate -- SpeakLab already ships jspdf and motion in the initial bundle |
-| Lazy-loading above-the-fold content | Visible loading flash on the landing page | Keep the landing/index route eagerly loaded; only lazy-load secondary routes | Immediately noticeable on 3G connections |
-| No prefetching on hover | Navigation to lazy routes always shows a loading state | Use `React.preload()` (React 19) on link hover to prefetch chunks | Noticeable when users click through pages quickly |
-| Skeleton fallback has wrong dimensions | Content shifts when real component loads | Match skeleton dimensions exactly to real content; use same grid layout | Visible as layout "jump" on every route transition |
-| `runtimeState` window events on every state change | Broad re-renders across many components after any state update | When consolidating storage, also audit `emitRuntimeUpdate()` listeners | Gets worse as component count grows |
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Keeping the `'fallback-secret-change-in-production'` string | Any attacker who reads the source can decrypt all "encrypted" API keys | Remove the fallback entirely; throw an error when no session token exists |
-| Adding more client-side encryption instead of expanding proxy use | Wastes development time on security theater; real keys still accessible via XSS | Prioritize routing API calls through the Supabase Edge Function proxy |
-| Forgetting that Gemini Live exposes the raw key to the client | Users may not realize this mode sends their API key into browser memory | Document the risk clearly in the UI; warn before enabling Gemini Live mode |
-| Groq direct path still exists in production builds | If the Edge Function fallback fails, raw Groq key could be exposed | Ensure `GROQ_BASE = '/api/groq'` only works in dev mode; production must use proxy |
-| Plaintext localStorage keys remain during migration | Dual storage means some keys are still in plaintext even after "encryption" is added | Remove localStorage API key storage entirely; proxy is the only secure path |
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Generic "Something went wrong" error screen | User doesn't know if their progress was saved or what to do next | Contextual error messages: "Your practice session had an error. Your progress was saved. Tap to retry." |
-| Full-page loading spinner on route transitions | App feels slow and unresponsive; users think it froze | Route-specific skeletons that match the destination page layout |
-| Praticar cards identical to Trilhas cards | Users navigate to the wrong section; confusion about where they are | Use distinct proportions (e.g., shorter height, horizontal layout option, different border radius) |
-| Error recovery resets user's work | User fills out a long form, a crash occurs, and all input is lost | Preserve critical user state (form input, audio recording) outside the error boundary's component tree |
-| Dev mode shows different UI than production | Developers build features that look right in dev but broken in production | Dev mode must use the same Layout and routing structure as production |
+| Integration Point | Common Mistake | Correct Approach |
+|-------------------|----------------|-------------------|
+| `updateCardSchedule` + Supabase persist | Computing schedule in memory but not awaiting the `updateCard()` call | Ensure `await updateCard(updatedCard)` in ReviewPage line 96 actually completes before session ends |
+| Error analysis + Library history | Tightly coupling error patterns to card IDs that may change | Use stable card IDs; do not cascade delete error patterns when cards are deleted |
+| Trend calculation + session snapshots | Computing trends from snapshots that were recorded with different schema versions | Version the snapshot data format; ignore snapshots from before the format change |
+| Audio playback in history list | Creating blob URLs without revoking them | Revoke `URL.createObjectURL` URLs when component unmounts or audio changes |
+| Teacher report + existing ErrorDashboard | Two features computing "trend" differently | Use the single `calculateTrend()` function for both, or explicitly document the difference |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Error Boundaries:** Often missing recovery mechanism -- verify "Try Again" button actually remounts with a new `key`, not just toggles state
-- [ ] **Error Boundaries:** Often missing `errorInfo.componentStack` logging -- verify errors are logged with component trace, not just message
-- [ ] **Code Splitting:** Often missing error boundary around Suspense -- verify chunk-load failures are caught, not just loading states
-- [ ] **Code Splitting:** Often missing skeleton fallbacks with correct dimensions -- verify CLS score is not worse after splitting
-- [ ] **Secure Storage:** Often "encrypts" but keeps the decryption key client-side -- verify the proxy path actually works end-to-end for ALL AI providers
-- [ ] **Secure Storage:** Often removes localStorage keys but forgets to update `runtimeState.ts` `envKeys` fallback -- verify keys come from proxy, not `import.meta.env`
-- [ ] **Storage Consolidation:** Often removes old file but misses import paths -- verify TypeScript compilation catches all broken imports (rename file first)
-- [ ] **Praticar Redesign:** Often copies PathCard's `<div>` + `onClick` pattern -- verify new cards are keyboard-accessible (`<button>` or `role="button"`)
-- [ ] **Praticar Redesign:** Often looks identical to Trilhas -- verify cards have visually distinct proportions, not just different images
-- [ ] **Dev Mode Fix:** Often fixes auth bypass but forgets Layout wrapper -- verify sidebar and navigation appear in dev mode
+- [ ] **Review fix:** Cards created after fix appear in review, but do cards created BEFORE fix also appear? Verify backfill/query fix works for existing data.
+- [ ] **Review fix:** Score 4/10 is treated as "partial knowledge" not "complete failure"? Verify the mapping change produces correct intervals for edge scores.
+- [ ] **Review dedup:** Reviewing same card twice in one day with same score persists both reviews? Verify dedup key includes more than date+score.
+- [ ] **Error report:** Report narrative is consistent with dashboard stats? Verify both use the same underlying data.
+- [ ] **Error report:** Report generation does not block session completion? Verify the AI call is lazy, not eager.
+- [ ] **Library history:** Page loads in <2 seconds for users with 100+ cards? Verify lazy loading and pagination.
+- [ ] **Library history:** Audio recordings play without memory leaks after navigating away? Verify blob URL cleanup.
+- [ ] **Trends:** No trend shown for categories with fewer than 5 data points? Verify minimum sample enforcement.
+- [ ] **Trends:** Trend direction does not flip between page visits with the same data? Verify deterministic calculation.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Root-level error boundary too broad | LOW | Add inner boundaries around feature sections; no code removal needed |
-| Error recovery infinite loop | MEDIUM | Add key-based remount + clear stale runtime state on retry |
-| Missing error boundary on lazy routes | LOW | Wrap existing Suspense with ErrorBoundary; additive change |
-| Empty Suspense fallbacks | LOW | Replace `null`/text with skeleton components; no structural change |
-| Client-side encryption as security theater | HIGH | Must refactor API call paths through Edge Function proxy; touches `openai.ts` dispatch logic |
-| Dual storage removal breaks imports | HIGH | Revert deletion, rename file to surface broken imports, fix one by one |
-| Praticar redesign breaks accessibility | MEDIUM | Add semantic elements and keyboard handlers; may require component rewrite |
-| Dev mode routing divergence | LOW | Fix ProtectedApp to render Layout + Routes with mock user |
+| Cards never due (null nextReviewAt) | LOW | Modify query to include null; no data migration needed |
+| Review dedup key collision | MEDIUM | Add timestamp to dedup key; no data loss for future reviews, old duplicates unrecoverable |
+| Error pattern fragmentation | MEDIUM | Write one-time consolidation script to merge near-duplicate patterns; runs client-side on page load |
+| Eager AI report generation | LOW | Move to lazy generation; delete any stored eager reports |
+| Library loading all data | LOW | Add pagination and lazy loading; no data changes needed |
+| Misleading trends from few points | LOW | Add minimum sample threshold; existing trend data remains but display is suppressed |
+| Score mapping cliff | MEDIUM | Change mapping; existing card intervals may need re-evaluation over time |
+| No backfill for existing cards | LOW | Modify query OR add client-side backfill; no schema change needed |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Dev mode routing divergence | Phase 1 (before error boundaries) | Dev mode shows sidebar + all routes navigable |
-| Error boundary granularity | Phase 1 | Trigger error in live roleplay widget; sidebar stays visible |
-| Error recovery infinite loop | Phase 1 | Click "Try Again" on error; component remounts cleanly, no flicker |
-| Missing boundary on lazy routes | Phase 2 (after Phase 1) | Disable network mid-navigation; chunk error shows fallback, not whitescreen |
-| Layout shift from Suspense fallbacks | Phase 2 | Lighthouse CLS score < 0.1 on all route transitions |
-| Client-side encryption theater | Phase 3 | All AI calls route through proxy; no hardcoded fallback secret in codebase |
-| Dual storage removal breaks imports | Phase 4 | TypeScript compiles zero errors; all features work in both dev and auth modes |
-| Praticar redesign accessibility | Phase 5 | Tab navigation reaches all cards; Enter/Space activates them; cards visually distinct from Trilhas |
+| Cards never due (null nextReviewAt) | Phase 1 (Review Fix) | Create card, immediately check review queue -- card appears |
+| Review dedup collision | Phase 1 (Review Fix) | Review same card twice same day same score -- both persisted |
+| Score mapping cliff | Phase 1 (Review Fix) | Score 4/10 produces advancing schedule, not full reset |
+| No backfill for existing cards | Phase 1 (Review Fix) | Existing cards with null nextReviewAt appear in review queue after fix |
+| Fragmented error patterns | Phase 2 (Error Analysis) | Report shows consolidated patterns, not near-duplicates |
+| Eager AI report generation | Phase 2 (Error Analysis) | Session completion time unchanged after adding report feature |
+| Report contradicts dashboard | Phase 2 (Error Analysis) | Report narrative matches dashboard numbers |
+| Snapshot timestamp noise | Phase 2 (Error Analysis) | No duplicate snapshots within same hour |
+| Library loads all data | Phase 3 (Library History) | Library page loads in <2s with 100+ cards |
+| Audio memory leaks | Phase 3 (Library History) | Memory stable after playing 10 recordings sequentially |
+| Trends from too few points | Phase 4 (Trends) | No trend indicator shown until 5+ data points exist |
+| Category false positives | Phase 4 (Trends) | Low-confidence category guesses excluded from trend display |
+| Design token inconsistency | All phases | Code review checklist; no hardcoded colors in new components |
+| Review mode not persisted | Phase 1 (Review Fix) | Intelligent mode persists across page navigation |
+| Intelligent review loads all cards | Phase 1 (Review Fix) | Query pre-filters before in-memory sort |
 
 ## Phase Ordering Rationale
 
-The pitfalls reveal a strict dependency chain:
+The pitfalls reveal a clear dependency chain:
 
-1. **Dev mode fix** must come first because error boundaries and code splitting cannot be tested locally without proper routing.
-2. **Error boundaries** must come before code splitting because lazy-loaded chunks can fail, and without boundaries, chunk failures whitescreen the app (making it MORE fragile than before).
-3. **Code splitting** comes next because it depends on both the dev mode fix (for testing) and error boundaries (for chunk failure handling).
-4. **Secure storage** is independent of the above but should not be attempted while the dual storage layer exists (you'd be "securing" a layer that's about to be removed).
-5. **Storage consolidation** comes after secure storage because you want to consolidate into the SECURE path, not the old localStorage path.
-6. **Praticar redesign** is last because it's purely visual and does not depend on any of the hardening work (though it should use the consolidated storage).
+1. **Phase 1 (Review Algorithm Fix)** must come first because:
+   - The review queue is completely broken for new cards -- this is the highest-severity bug
+   - The fix (initializing `nextReviewAt`) affects the data model that all other features build on
+   - Library history and evaluation trends both depend on having correct review data
+   - Score mapping fix changes the data that trends will analyze -- trends should see correct data from the start
+
+2. **Phase 2 (Global Error Analysis)** comes second because:
+   - It builds on the corrected review data from Phase 1
+   - The teacher report should analyze accurate review/score data
+   - Error pattern consolidation (Pitfall #3) makes the trend feature in Phase 4 more reliable
+
+3. **Phase 3 (Library History)** comes third because:
+   - It depends on accurate review data (Phase 1) and error analysis (Phase 2) being available to display
+   - It requires new data loading patterns (lazy loading) that should not be built until the data model is stable
+
+4. **Phase 4 (Evaluation Trends)** comes last because:
+   - It synthesizes data from all previous phases (review scores, error patterns, session history)
+   - Statistical safeguards (minimum sample sizes) need to reference the data volume created by Phases 1-3
+   - It is the most sensitive to data quality issues, so it should see the most corrected data
 
 ## Sources
 
-- React documentation: Error Boundaries (`react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary`)
-- React documentation: `React.lazy()` and code splitting (`react.dev/reference/react/lazy`)
-- `react-error-boundary` library by Brian Vaughn (React team): recommended for function-component ergonomics
-- Codebase analysis: `src/App.tsx`, `src/utils/encryption.ts`, `src/services/storage.ts`, `src/services/runtimeState.ts`, `src/components/shared/ModeCard.tsx`, `src/components/ui/custom/PathCard.tsx`
-- Project concerns audit: `.planning/codebase/CONCERNS.md`
+- Codebase analysis: `src/services/spacedRepetition.ts`, `src/services/storage.ts`, `src/services/supabase/storage.ts`, `src/services/errorAnalysis.ts`, `src/types/card.ts`, `src/types/review.ts`, `src/types/errors.ts`, `src/components/review/ReviewPage.tsx`, `src/components/library/LibraryPage.tsx`, `src/components/library/CardDetail.tsx`
+- SM-2 algorithm specification: Piotr Wozniak, SuperMemo (original SM-2 paper)
+- SM-2 common implementation bugs: Anki open-source codebase, community forums
+- Project context: `.planning/PROJECT.md` v1.4 milestone definition
 
 ---
-*Pitfalls research for: SpeakLab React SPA Hardening*
-*Researched: 2026-04-01*
+*Pitfalls research for: SpeakLab v1.4 Review, Analysis & Library*
+*Researched: 2026-04-18*

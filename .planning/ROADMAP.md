@@ -128,7 +128,11 @@ Plans:
   2. Cards that previously had no next review date (orphaned cards) automatically become available for review without any manual intervention
   3. A score of 3 or 4 out of 10 is recognized as "partial" knowledge rather than "incorrect" — the card does not get fully reset
   4. Two reviews on the same day with the same score are both preserved in review history, not silently dropped
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Three-tier SM-2 algorithm + createDefaultCard nextReviewAt + tests (REVI-01, REVI-03)
+- [ ] 20-02-PLAN.md — Orphan card query via .or() + dedup removal insert-last-only + tests (REVI-02, REVI-04)
 
 ### Phase 21: Evaluation Trends
 **Goal**: Users can see whether their skills are improving or declining over time with clear directional indicators
@@ -189,7 +193,7 @@ Phases execute in numeric order: 13 → ... → 19 → 20 → 21 → 22 → 23
 | 17. Retry Exercise | v1.3 | 2/2 | Complete | 2026-04-11 |
 | 18. Fix Student Data Flow | v1.3 | 1/1 | Complete | 2026-04-11 |
 | 19. Fix TTS MIME Type | v1.3 | 0/1 | Pending | — |
-| 20. Review Algorithm Fix | v1.4 | 0/? | Not started | - |
+| 20. Review Algorithm Fix | v1.4 | 0/2 | Planned | - |
 | 21. Evaluation Trends | v1.4 | 0/? | Not started | - |
 | 22. Library History | v1.4 | 0/? | Not started | - |
 | 23. Teacher-Style Error Analysis | v1.4 | 0/? | Not started | - |

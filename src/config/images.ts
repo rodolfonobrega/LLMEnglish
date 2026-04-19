@@ -46,9 +46,9 @@ export const IMAGE_CONFIG = {
     // ── OpenAI (GPT Image) ────────────────────────────────────
     openai: {
       size: '1024x1024',
-      quality: 'medium',
-      format: 'png',
-      compression: undefined,
+      quality: 'low',
+      format: 'jpeg',
+      compression: 80,
       background: 'opaque',
       moderation: 'auto',
     },
@@ -69,9 +69,9 @@ export const IMAGE_CONFIG = {
     // ── OpenAI (GPT Image) ────────────────────────────────────
     openai: {
       size: '1024x1024',
-      quality: 'medium',
-      format: 'png',
-      compression: undefined,
+      quality: 'low',
+      format: 'jpeg',
+      compression: 80,
       background: 'opaque',
       moderation: 'auto',
     },

@@ -24,7 +24,7 @@ export function PracticeModeCard({ mode, onClick, className }: PracticeModeCardP
       )}
       aria-label={`${mode.label}: ${mode.description}`}
     >
-      <div className="h-40 w-full overflow-hidden bg-muted">
+      <div className="h-28 w-full overflow-hidden bg-muted">
         {mode.image && !imgError ? (
           <img
             src={mode.image}

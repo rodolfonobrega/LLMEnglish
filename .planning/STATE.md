@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Review, Analysis & Library
-status: defining
+status: roadmap_created
 last_updated: "2026-04-18"
 last_activity: 2026-04-18
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,26 +19,49 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-04-18)
 
-**Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Defining requirements for v1.4
+**Core value:** A reliable, polished practice experience — the app shouldn't crash, secrets shouldn't leak, and every page should feel cohesive
+**Current focus:** Phase 20 — Review Algorithm Fix
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-04-18 — Milestone v1.4 started
+Phase: 20 of 23 (Review Algorithm Fix)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-04-18 — Roadmap created for v1.4
 
 Progress: [          ] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0 (v1.4)
+- Average duration: —
+- Total execution time: —
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 20. Review Algorithm Fix | 0 | — | — |
+| 21. Evaluation Trends | 0 | — | — |
+| 22. Library History | 0 | — | — |
+| 23. Teacher-Style Error Analysis | 0 | — | — |
+
+**Recent Trend:**
+- Last 5 plans: —
+- Trend: —
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
 
-- [Phase 13]: Removed imageSize from Gemini native (:generateContent) path since it is an Imagen-only parameter
-- [Phase 13]: Switched imageMode and exerciseMode OpenAI configs from PNG to JPEG with compression 80 for reduced base64 payload
+- [v1.4 roadmap]: Phase ordering is REVI first (critical bug), then TREN (enriches ANAL), then LIBR (independent), then ANAL last (consumes TREN data)
+- [v1.4 roadmap]: No new dependencies needed — all features are code-only changes to existing modules
 
 ### Pending Todos
 
@@ -46,11 +69,11 @@ None.
 
 ### Blockers/Concerns
 
-- Gemini Live WebSocket constraint: API key must be exposed client-side for direct WebSocket connection. Accepted risk that needs user-facing documentation.
+- Gemini Live WebSocket constraint: API key must be exposed client-side for direct WebSocket connection. Accepted risk.
+- Phase 19 (v1.3 TTS MIME fix) is still pending — must complete before v1.4 phases begin
 
-### Quick Tasks Completed
+## Session Continuity
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260411-ksx | Fix lint errors and wire edge function provider modules | 2026-04-11 | 885e5dc | [260411-ksx](./quick/260411-ksx-fix-lint-errors-and-wire-edge-function-p/) |
-| 260411-w6w | Update vertex functions to use Vertex AI express mode with API key | 2026-04-12 | a65ed40 | [260411-w6w](./quick/260411-w6w-update-vertex-functions-to-use-vertex-ai/) |
+Last session: 2026-04-18
+Stopped at: Roadmap created for v1.4 (Phases 20-23), ready for plan-phase
+Resume file: None

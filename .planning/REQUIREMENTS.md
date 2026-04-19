@@ -62,25 +62,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REVI-01 | — | Pending |
-| REVI-02 | — | Pending |
-| REVI-03 | — | Pending |
-| REVI-04 | — | Pending |
-| ANAL-01 | — | Pending |
-| ANAL-02 | — | Pending |
-| ANAL-03 | — | Pending |
-| LIBR-01 | — | Pending |
-| LIBR-02 | — | Pending |
-| LIBR-03 | — | Pending |
-| TREN-01 | — | Pending |
-| TREN-02 | — | Pending |
-| TREN-03 | — | Pending |
+| REVI-01 | Phase 20 | Pending |
+| REVI-02 | Phase 20 | Pending |
+| REVI-03 | Phase 20 | Pending |
+| REVI-04 | Phase 20 | Pending |
+| TREN-01 | Phase 21 | Pending |
+| TREN-02 | Phase 21 | Pending |
+| TREN-03 | Phase 21 | Pending |
+| LIBR-01 | Phase 22 | Pending |
+| LIBR-02 | Phase 22 | Pending |
+| LIBR-03 | Phase 22 | Pending |
+| ANAL-01 | Phase 23 | Pending |
+| ANAL-02 | Phase 23 | Pending |
+| ANAL-03 | Phase 23 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-18 after milestone v1.4 kickoff*
+*Last updated: 2026-04-18 after roadmap creation*

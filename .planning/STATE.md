@@ -1,72 +1,35 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: — Image, Data & UX Improvements
-status: executing
-stopped_at: Phase 17 UI-SPEC approved
-last_updated: "2026-04-11T20:44:17.937Z"
-last_activity: 2026-04-11
+milestone: v1.4
+milestone_name: Review, Analysis & Library
+status: defining
+last_updated: "2026-04-18"
+last_activity: 2026-04-18
 progress:
-  total_phases: 7
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-02)
+See: .planning/PROJECT.md (updated 2026-04-18)
 
 **Core value:** A reliable, polished practice experience — no crashes, no leaks, cohesive design
-**Current focus:** Phase 17 — retry-exercise
+**Current focus:** Defining requirements for v1.4
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
-Status: Executing Phase 17
-Last activity: 2026-04-12 - Completed quick task 260411-w6w: Update vertex functions to use Vertex AI express mode with API key
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-18 — Milestone v1.4 started
 
-Progress: [██████████] 100%
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 28
-- Average duration: ~5min
-- Total execution time: ~43min across 8 plans
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01 | 1 | 5min | 5min |
-| 02 | 1 | 13min | 13min |
-| 03 | 1 | 5min | 5min |
-| 04 | 2 | 6min | 3min |
-| 05 | 2 | 10min | 5min |
-| 06 | 1 | 4min | 4min |
-| 09 | 2 | - | - |
-| 08 | 1 | - | - |
-| 10 | 3 | - | - |
-| 11 | 1 | - | - |
-| 12 | 1 | - | - |
-| 13 | 3 | - | - |
-| 14 | 1 | - | - |
-| 16 | 1 | - | - |
-| 18 | 1 | - | - |
-| 17 | 2 | - | - |
-
-**Recent Trend:**
-
-- Last 8 plans: avg ~5min each
-- Trend: Consistent velocity
-
-| Phase 13 P02 | 4min | 3 tasks | 5 files |
+Progress: [          ] 0%
 
 ## Accumulated Context
 
@@ -91,9 +54,3 @@ None.
 |---|-------------|------|--------|-----------|
 | 260411-ksx | Fix lint errors and wire edge function provider modules | 2026-04-11 | 885e5dc | [260411-ksx](./quick/260411-ksx-fix-lint-errors-and-wire-edge-function-p/) |
 | 260411-w6w | Update vertex functions to use Vertex AI express mode with API key | 2026-04-12 | a65ed40 | [260411-w6w](./quick/260411-w6w-update-vertex-functions-to-use-vertex-ai/) |
-
-## Session Continuity
-
-Last session: 2026-04-11T01:05:13.660Z
-Stopped at: Phase 17 UI-SPEC approved
-Resume file: .planning/phases/17-retry-exercise/17-UI-SPEC.md

@@ -38,7 +38,10 @@ A reliable, polished practice experience — the app shouldn't crash, secrets sh
 
 ### Active
 
-(None — awaiting v1.1 requirements definition)
+- [ ] Fix review algorithm — cards never become available for spaced repetition review
+- [ ] Global error analysis — teacher-style progress reports instead of per-sentence feedback
+- [ ] Library history — show recordings, scores, and progress per lesson over time
+- [ ] Evaluation improvement trends — track whether user is getting better at specific skills
 
 ### Out of Scope
 
@@ -101,5 +104,15 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
+## Current Milestone: v1.4 Review, Analysis & Library
+
+**Goal:** Fix broken review flow, upgrade error analysis to teacher-style reports, and add lesson history/progress to the Library.
+
+**Target features:**
+- Fix review algorithm so cards become available for spaced repetition review
+- Replace per-sentence error feedback with global progress analysis (teacher report style)
+- Library shows history per lesson: recordings, scores, progress over time
+- Evaluations show improvement trends
+
 ---
-*Last updated: 2026-04-11 after Phase 17 (retry exercise) completion*
+*Last updated: 2026-04-18 after milestone v1.4 kickoff*

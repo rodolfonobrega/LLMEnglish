@@ -348,5 +348,17 @@ export async function updateLearnerModel(
     console.warn('[Master.update_model] save failed (swallowed):', err);
   }
 
+  // Wave 6 Stage A — fire the dry-run lesson trigger evaluator. Non-blocking.
+  // Dynamic import so Stage A can be rolled back without touching this file:
+  // if the module is absent at runtime, the import throws and we swallow.
+  void (async () => {
+    try {
+      const mod = await import('./lessonTriggers');
+      await mod.evaluateAndRecordTriggers(nextModel);
+    } catch (err) {
+      console.warn('[Master.update_model] lessonTriggers dispatch failed (swallowed):', err);
+    }
+  })();
+
   return { nextModel, patches, reason, source, forcedByFrustration };
 }

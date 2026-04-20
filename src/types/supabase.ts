@@ -51,6 +51,8 @@ export interface Database {
       learner_models: TableDefinition<LearnerModelRow, LearnerModelInsert, LearnerModelUpdate>
       learner_model_history: TableDefinition<LearnerModelHistoryRow, LearnerModelHistoryInsert, LearnerModelHistoryUpdate>
       master_usage: TableDefinition<MasterUsageRow, MasterUsageInsert, MasterUsageUpdate>
+      lessons: TableDefinition<LessonRow, LessonInsert, LessonUpdate>
+      lesson_offers: TableDefinition<LessonOfferRow, LessonOfferInsert, LessonOfferUpdate>
     }
     Views: {
       [_ in never]: never
@@ -459,3 +461,78 @@ export interface MasterUsageRow {
 
 export type MasterUsageInsert = Omit<MasterUsageRow, 'id' | 'created_at'>
 export type MasterUsageUpdate = Partial<MasterUsageInsert>
+
+/**
+ * Wave 6 Stage A — lessons table.
+ * In Stage A only rows with status='dry_run' are written. Stage B adds
+ * 'planned'|'offered'|'active'|'completed'|'abandoned' flows.
+ */
+export type LessonStatus =
+  | 'planned'
+  | 'offered'
+  | 'active'
+  | 'completed'
+  | 'abandoned'
+  | 'dry_run'
+
+export interface LessonRow {
+  id: string
+  user_id: string
+  lesson_plan: Json
+  target_canonical_pattern: string
+  status: LessonStatus
+  moment_signals: Json
+  baseline_utterance: string | null
+  final_utterance: string | null
+  delta_score: number | null
+  created_at: string
+  completed_at: string | null
+}
+
+export type LessonInsert = Omit<
+  LessonRow,
+  'id' | 'created_at' | 'completed_at' | 'moment_signals' | 'baseline_utterance' | 'final_utterance' | 'delta_score'
+> & {
+  id?: string
+  moment_signals?: Json
+  baseline_utterance?: string | null
+  final_utterance?: string | null
+  delta_score?: number | null
+  completed_at?: string | null
+  created_at?: string
+}
+export type LessonUpdate = Partial<LessonInsert>
+
+/**
+ * Wave 6 Stage A — lesson_offers table.
+ * Stage A writes only dry_run=true rows (no student-visible surface).
+ */
+export type LessonTriggerType = 'chronic' | 'stuck' | 'breakthrough' | 'cadence'
+export type LessonOfferStatus =
+  | 'would_offer'
+  | 'offered'
+  | 'accepted'
+  | 'dismissed'
+  | 'muted_week'
+
+export interface LessonOfferRow {
+  id: string
+  user_id: string
+  candidate_pattern: string
+  trigger_type: LessonTriggerType
+  status: LessonOfferStatus
+  dry_run: boolean
+  mute_until: string | null
+  created_at: string
+}
+
+export type LessonOfferInsert = Omit<
+  LessonOfferRow,
+  'id' | 'created_at' | 'mute_until' | 'dry_run'
+> & {
+  id?: string
+  created_at?: string
+  mute_until?: string | null
+  dry_run?: boolean
+}
+export type LessonOfferUpdate = Partial<LessonOfferInsert>

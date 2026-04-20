@@ -18,6 +18,7 @@ import { SignOutButton } from './sections/AppearanceSection';
 import { AlertDialog } from '../ui/AlertDialog';
 import { masterEnabled } from '../../services/runtimeConfigSnapshot';
 import { resetLearnerModel } from '../../services/learnerModel';
+import { updateProfile } from '../../services/supabase/auth';
 
 export function SettingsPage() {
   const { user, profile, signOut: authSignOut, refreshProfile } = useAuth();
@@ -38,7 +39,28 @@ export function SettingsPage() {
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [lessonsOptIn, setLessonsOptIn] = useState<boolean>(true);
+  const [lessonsOptInSaving, setLessonsOptInSaving] = useState(false);
   const showMasterSection = masterEnabled();
+
+  useEffect(() => {
+    // `null` is treated as opt-in (default) to preserve backward-compat.
+    setLessonsOptIn(profile?.lessons_opt_in !== false);
+  }, [profile?.lessons_opt_in]);
+
+  const handleLessonsOptInChange = async (next: boolean) => {
+    setLessonsOptIn(next);
+    setLessonsOptInSaving(true);
+    try {
+      await updateProfile({ lessons_opt_in: next });
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error updating lessons_opt_in:', error);
+      setLessonsOptIn(!next);
+    } finally {
+      setLessonsOptInSaving(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -196,6 +218,23 @@ export function SettingsPage() {
             )}
             {resetting ? 'Resetando...' : 'Resetar meu tutor'}
           </Button>
+
+          <label className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+            <span className="text-sm text-foreground">
+              Permitir atividades sugeridas pelo tutor
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                Quando desligado, você não recebe atividades montadas automaticamente.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={lessonsOptIn}
+              onChange={(e) => handleLessonsOptInChange(e.target.checked)}
+              disabled={lessonsOptInSaving}
+              data-testid="lessons-opt-in-toggle"
+              className="size-5 accent-primary cursor-pointer disabled:cursor-wait"
+            />
+          </label>
           {resetDone && (
             <div className="rounded-xl border border-leaf/30 bg-leaf-soft px-3 py-2 text-xs font-medium text-leaf">
               Tutor resetado com sucesso.

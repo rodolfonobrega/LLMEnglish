@@ -42,6 +42,9 @@ const ErrorDashboard = lazy(() =>
 const HistoryPage = lazy(() =>
   import('./components/history/HistoryPage').then(m => ({ default: m.HistoryPage }))
 );
+const LessonPage = lazy(() =>
+  import('./components/lesson/LessonPage').then(m => ({ default: m.LessonPage }))
+);
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
@@ -89,6 +92,7 @@ function App() {
                 <Route path="settings" element={<SettingsPage />} errorElement={<ErrorFallback />} />
                 <Route path="errors" element={<ErrorDashboard />} errorElement={<ErrorFallback />} />
                 <Route path="history" element={<HistoryPage />} errorElement={<ErrorFallback />} />
+                <Route path="lesson/:lessonId" element={<LessonPage />} errorElement={<ErrorFallback />} />
               </Route>
             </Routes>
           </RuntimeConfigProvider>

@@ -135,3 +135,43 @@ export function findPedagogicalLeaks(text: string | null | undefined): string[] 
   }
   return hits;
 }
+
+// ---------------------------------------------------------------------------
+// Lessons (Wave 6 Stage B) — R-9 mitigations
+// ---------------------------------------------------------------------------
+
+/**
+ * A lesson's thematic title must NEVER surface grammar metalanguage. Use
+ * for `LessonPlan.title_thematic` and for any moment 1–4 student-facing
+ * copy. Moment 5 ("reveal") is explicitly allowed to name the target.
+ */
+export function lessonTitleIsThematic(title: string | null | undefined): boolean {
+  if (!title) return false;
+  if (containsPedagogicalLeak(title)) return false;
+  // Extra safety: ban the bare word "grammar"/"gramática" in titles because
+  // substring matching above requires a two-word phrase.
+  const normalised = ` ${title.toLowerCase()} `;
+  const bannedTitleWords = [' grammar ', ' gramática ', ' gramatica '];
+  for (const w of bannedTitleWords) {
+    if (normalised.includes(w)) return false;
+  }
+  return true;
+}
+
+/**
+ * Per-moment stealth gate.
+ *
+ * `moment` is a minimal shape so callers don't have to import the full
+ * `MomentContent` union — any object carrying an `index` and a student-
+ * facing text blob works. Moments 1..4 must be stealth-clean; moment 5
+ * is always considered stealth (it's the explicit reveal).
+ */
+export interface StealthCheckMoment {
+  index: 1 | 2 | 3 | 4 | 5;
+  studentFacingText: string | null | undefined;
+}
+
+export function momentIsStealth(moment: StealthCheckMoment): boolean {
+  if (moment.index === 5) return true;
+  return !containsPedagogicalLeak(moment.studentFacingText);
+}

@@ -44,6 +44,7 @@ const MOCK_PROFILE: Profile = {
   current_level: 'Intermediate',
   conversation_tone: 'balanced',
   master_enabled: null,
+  lessons_opt_in: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

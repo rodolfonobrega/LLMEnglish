@@ -114,4 +114,55 @@ describe('Master.prescribe', () => {
     const b = await prescribe('u1', { learnerModel: createDiagnosticModel() });
     expect(b).toBeNull();
   });
+
+  it('pins target_skill to primary_goal while consolidation window is active', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ target_skill: 'some_other_pattern' }),
+    );
+    const model = createDiagnosticModel();
+    model.next_step_plan = {
+      ...model.next_step_plan,
+      primary_goal: 'consolidated_pattern',
+      consolidation_until: new Date(Date.now() + 60_000).toISOString(),
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.target_skill).toBe('consolidated_pattern');
+    expect(b?.rationale).toMatch(/consolidation_until/);
+  });
+
+  it('ignores expired consolidation windows', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ target_skill: 'llm_chosen_pattern' }),
+    );
+    const model = createDiagnosticModel();
+    model.next_step_plan = {
+      ...model.next_step_plan,
+      primary_goal: 'consolidated_pattern',
+      consolidation_until: new Date(Date.now() - 60_000).toISOString(),
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.target_skill).toBe('llm_chosen_pattern');
+  });
+
+  it('reroutes away from hard_for_user blacklisted patterns', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ target_skill: 'hated_pattern' }),
+    );
+    const model = createDiagnosticModel();
+    model.next_step_plan = { ...model.next_step_plan, primary_goal: 'safe_fallback' };
+    model.hard_for_user = [
+      {
+        id: 'hated_pattern',
+        added_at: new Date().toISOString(),
+        next_retry_at: new Date(Date.now() + 3_600_000).toISOString(),
+        reason: 'user_frustration',
+      },
+    ];
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.target_skill).toBe('safe_fallback');
+    expect(b?.rationale).toMatch(/hard_for_user/);
+  });
 });

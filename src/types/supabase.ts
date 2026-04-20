@@ -90,13 +90,15 @@ export interface Profile {
   conversation_tone: ConversationTone
   /** Wave 3 — per-user override for the Master pedagogical agent. NULL pre-migration. */
   master_enabled: boolean | null
+  /** Wave 6 Stage B — global opt-out for Master's focused lessons. NULL pre-migration, defaults to TRUE. */
+  lessons_opt_in: boolean | null
   created_at: string
   updated_at: string
 }
 
 export type ProfileInsert =
-  Omit<Profile, 'created_at' | 'updated_at' | 'master_enabled'>
-  & Partial<Pick<Profile, 'master_enabled'>>
+  Omit<Profile, 'created_at' | 'updated_at' | 'master_enabled' | 'lessons_opt_in'>
+  & Partial<Pick<Profile, 'master_enabled' | 'lessons_opt_in'>>
 export type ProfileUpdate = Partial<ProfileInsert>
 
 // ============================================================================

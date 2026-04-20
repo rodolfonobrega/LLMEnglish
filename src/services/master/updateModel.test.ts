@@ -4,9 +4,12 @@ import {
   detectFrustrationPatches,
   pushFrustrationSample,
   resetFrustrationState,
+  buildLessonBoostPatches,
+  computeLessonDeltaScore,
 } from './updateModel';
 import { createDiagnosticModel } from '../../types/learnerModel';
 import type { EvaluationResult } from '../../types/card';
+import type { LearnerModel, MomentSignal } from '../../types/learnerModel';
 import type { MetaAssessment } from './evaluate';
 
 function makeMeta(
@@ -117,5 +120,127 @@ describe('frustration detection', () => {
     ]);
     expect(detectFrustrationPatches('u1', createDiagnosticModel()).length).toBeGreaterThan(0);
     expect(detectFrustrationPatches('u2', createDiagnosticModel())).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wave 6 Stage B — lesson boost patches
+// ---------------------------------------------------------------------------
+
+function signal(
+  goalMet: boolean,
+  difficulty: MomentSignal['difficulty_actual'],
+  engagement: MomentSignal['engagement_observed'],
+): MomentSignal {
+  return {
+    goal_met: goalMet,
+    difficulty_actual: difficulty,
+    observed_issues: [],
+    notable_successes: [],
+    engagement_observed: engagement,
+  };
+}
+
+describe('lesson-boost patch builder', () => {
+  const baseModel: LearnerModel = {
+    ...createDiagnosticModel(),
+    acquiring_patterns: [
+      {
+        id: 'past_continuous_in_interrupted_narrative',
+        success_rate: 0.7,
+        attempts: 4,
+        last_seen: '2026-04-18T00:00:00Z',
+      },
+    ],
+  };
+
+  it('emits evidence, plan and consolidation_until patches on a healthy boost', () => {
+    const patches = buildLessonBoostPatches(baseModel, {
+      target_canonical_pattern: 'past_continuous_in_interrupted_narrative',
+      rounds: 3,
+      baseline_signal: signal(false, 'hard', 'medium'),
+      final_signal: signal(true, 'ok', 'high'),
+      delta_score: 0.3,
+    });
+
+    const acquiring = patches.find(
+      (p) => p.op === 'acquiring.upsert' && p.id === 'past_continuous_in_interrupted_narrative',
+    );
+    expect(acquiring).toBeTruthy();
+    // attempts should go up by rounds*2 = 6
+    if (acquiring && acquiring.op === 'acquiring.upsert') {
+      expect(acquiring.attempts).toBe(4 + 6);
+    }
+    const plan = patches.find((p) => p.op === 'plan.set');
+    expect(plan).toBeTruthy();
+    if (plan && plan.op === 'plan.set') {
+      expect(plan.plan.primary_goal).toBe('past_continuous_in_interrupted_narrative');
+      expect(plan.plan.consolidation_until).toBeTruthy();
+    }
+    // No hard_for_user with a positive delta and healthy engagement.
+    expect(patches.some((p) => p.op === 'hard_for_user.upsert')).toBe(false);
+  });
+
+  it('promotes to mastered when the boost crosses the mastery bar', () => {
+    const warmModel: LearnerModel = {
+      ...baseModel,
+      acquiring_patterns: [
+        {
+          id: 'past_continuous_in_interrupted_narrative',
+          success_rate: 0.72,
+          attempts: 4,
+          last_seen: '2026-04-18T00:00:00Z',
+        },
+      ],
+    };
+    const patches = buildLessonBoostPatches(warmModel, {
+      target_canonical_pattern: 'past_continuous_in_interrupted_narrative',
+      rounds: 3,
+      baseline_signal: signal(false, 'hard', 'medium'),
+      final_signal: signal(true, 'ok', 'high'),
+      delta_score: 0.15,
+    });
+    expect(patches.some((p) => p.op === 'mastered.add')).toBe(true);
+    expect(patches.some((p) => p.op === 'acquiring.remove')).toBe(true);
+  });
+
+  it('flags hard_for_user when delta is weak', () => {
+    const patches = buildLessonBoostPatches(baseModel, {
+      target_canonical_pattern: 'past_continuous_in_interrupted_narrative',
+      rounds: 3,
+      baseline_signal: signal(false, 'hard', 'medium'),
+      final_signal: signal(false, 'hard', 'medium'),
+      delta_score: 0.01,
+    });
+    const hard = patches.find((p) => p.op === 'hard_for_user.upsert');
+    expect(hard).toBeTruthy();
+  });
+
+  it('flags hard_for_user when engagement observed is frustrated, even with good delta', () => {
+    const patches = buildLessonBoostPatches(baseModel, {
+      target_canonical_pattern: 'past_continuous_in_interrupted_narrative',
+      rounds: 3,
+      baseline_signal: signal(false, 'hard', 'medium'),
+      final_signal: signal(true, 'ok', 'frustrated'),
+      delta_score: 0.2,
+    });
+    expect(patches.some((p) => p.op === 'hard_for_user.upsert')).toBe(true);
+  });
+});
+
+describe('computeLessonDeltaScore', () => {
+  it('is positive when final signal is stronger than baseline', () => {
+    const baseline = signal(false, 'hard', 'low');
+    const final = signal(true, 'ok', 'high');
+    expect(computeLessonDeltaScore(baseline, final)).toBeGreaterThan(0);
+  });
+  it('is near zero when signals match', () => {
+    const same = signal(true, 'ok', 'medium');
+    expect(computeLessonDeltaScore(same, same)).toBe(0);
+  });
+  it('is negative when final is weaker', () => {
+    const baseline = signal(true, 'easy', 'high');
+    const final = signal(false, 'hard', 'low');
+    expect(computeLessonDeltaScore(baseline, final)).toBeLessThan(0);
   });
 });

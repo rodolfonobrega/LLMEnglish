@@ -30,9 +30,29 @@ import type {
   LearnerModel,
   PatchOp,
   PatchSource,
+  MomentSignal,
 } from '../../types/learnerModel';
 import type { EvaluationResult } from '../../types/card';
 import type { MetaAssessment } from './evaluate';
+
+/**
+ * Wave 6 Stage B — extra context passed by LessonPage at the end of a
+ * focused lesson. When present, we:
+ *   - attribute patches to `lesson_boost` in learner_model_history,
+ *   - append synthetic evidence forcing faster acquiring→mastered promotion,
+ *   - set `next_step_plan.consolidation_until` for the 48h boost window,
+ *   - add the pattern to `hard_for_user` when the delta is weak.
+ *
+ * Counted as "present" when `target_canonical_pattern` is provided.
+ */
+export interface LessonBoostPayload {
+  target_canonical_pattern: string;
+  rounds: number;
+  baseline_signal: MomentSignal;
+  final_signal: MomentSignal;
+  /** Scalar derived from moment signals in [-1, 1]. Negative = worse. */
+  delta_score: number;
+}
 
 export interface SessionSummary {
   userId: string;
@@ -50,8 +70,12 @@ export interface UpdateModelInput {
   evaluationResult: EvaluationResult;
   metaAssessment: MetaAssessment | null;
   sessionSummary: SessionSummary;
-  /** Wave 6 hook: when true, saves history with source 'lesson_boost'. */
-  lessonBoost?: boolean;
+  /**
+   * Wave 6 hook. `true` (legacy) or a structured payload (Wave 6 Stage B).
+   * When it is an object the Master applies the boost semantics: forced
+   * evidence patches, consolidation_until, hard_for_user on weak delta.
+   */
+  lessonBoost?: boolean | LessonBoostPayload;
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +351,18 @@ export async function updateLearnerModel(
       '[frustration-guard] added engagement + plan adjustments.';
   }
 
+  // Wave 6 Stage B — synthesise boost patches when a LessonBoostPayload is
+  // provided. These are ALWAYS applied after the LLM's patches and after
+  // frustration-guard so they override stale plans.
+  if (typeof input.lessonBoost === 'object' && input.lessonBoost !== null) {
+    const boost = input.lessonBoost;
+    const evidencePatches = buildLessonBoostPatches(input.learnerModel, boost);
+    patches = [...patches, ...evidencePatches];
+    reason =
+      (reason ? reason + ' ' : '') +
+      `[lesson-boost] target=${boost.target_canonical_pattern} rounds=${boost.rounds} delta=${boost.delta_score.toFixed(2)}`;
+  }
+
   const nextModel = applyPatches(input.learnerModel, patches);
   const source: PatchSource = input.lessonBoost ? 'lesson_boost' : 'update_model';
 
@@ -361,4 +397,105 @@ export async function updateLearnerModel(
   })();
 
   return { nextModel, patches, reason, source, forcedByFrustration };
+}
+
+// ---------------------------------------------------------------------------
+// Wave 6 Stage B helpers
+// ---------------------------------------------------------------------------
+
+/** 48h consolidation window after a focused lesson. */
+const CONSOLIDATION_WINDOW_MS = 48 * 60 * 60 * 1000;
+/** Back-off window for patterns a learner struggled with in a focused lesson. */
+const HARD_FOR_USER_RETRY_MS = 14 * 24 * 60 * 60 * 1000;
+/** Delta below this counts as "weak" gains → hard_for_user. */
+const WEAK_DELTA_THRESHOLD = 0.05;
+
+/**
+ * Pure helper — exported for tests. Given the learner model + boost payload
+ * produce the extra patches we want to apply unconditionally.
+ */
+export function buildLessonBoostPatches(
+  model: LearnerModel,
+  boost: LessonBoostPayload,
+): PatchOp[] {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const patches: PatchOp[] = [];
+
+  const id = boost.target_canonical_pattern;
+
+  // +2 evidence per round — acquiring.upsert with attempts bumped.
+  const existingAcquiring = model.acquiring_patterns.find((p) => p.id === id);
+  const extraAttempts = boost.rounds * 2;
+  const existingAttempts = existingAcquiring?.attempts ?? 0;
+  const existingSuccess = existingAcquiring?.success_rate ?? 0.5;
+  const boostedSuccess = Math.max(
+    0,
+    Math.min(1, existingSuccess + Math.max(0, boost.delta_score)),
+  );
+  patches.push({
+    op: 'acquiring.upsert',
+    id,
+    success_rate: boostedSuccess,
+    attempts: existingAttempts + extraAttempts,
+    last_seen: nowIso,
+    hypothesis: existingAcquiring?.hypothesis,
+  });
+
+  // If post-boost success_rate crossed the mastery bar, promote.
+  if (boostedSuccess >= 0.8 && existingAttempts + extraAttempts >= 5) {
+    patches.push({ op: 'mastered.add', id });
+    patches.push({ op: 'acquiring.remove', id });
+  }
+
+  // Consolidation window — even if plan had other goals, bias the next 48h
+  // toward the pattern we just drilled.
+  const consolidationUntil = new Date(now.getTime() + CONSOLIDATION_WINDOW_MS).toISOString();
+  patches.push({
+    op: 'plan.set',
+    plan: {
+      primary_goal: id,
+      expected_difficulty: 'slight_stretch',
+      rationale: `Post-lesson consolidation window for ${id}; vary contexts for 48h.`,
+      consolidation_until: consolidationUntil,
+      avoid_for_now: model.next_step_plan.avoid_for_now,
+      secondary_goal: model.next_step_plan.secondary_goal,
+    },
+  });
+
+  // Weak delta OR frustration observed → blacklist this pattern for 14 days.
+  const engagementFrustrated = boost.final_signal.engagement_observed === 'frustrated';
+  if (boost.delta_score < WEAK_DELTA_THRESHOLD || engagementFrustrated) {
+    patches.push({
+      op: 'hard_for_user.upsert',
+      id,
+      next_retry_at: new Date(now.getTime() + HARD_FOR_USER_RETRY_MS).toISOString(),
+      reason: engagementFrustrated
+        ? 'Learner showed frustration during the focused lesson.'
+        : `Weak gain (delta=${boost.delta_score.toFixed(2)}); give the pattern time.`,
+    });
+  }
+
+  return patches;
+}
+
+/** Helper for LessonPage: derive the scalar delta score from the two signals. */
+export function computeLessonDeltaScore(
+  baseline: MomentSignal,
+  final: MomentSignal,
+): number {
+  const difficultyScore = (s: MomentSignal) =>
+    s.difficulty_actual === 'easy' ? 1 : s.difficulty_actual === 'ok' ? 0.5 : 0;
+  const engagementScore = (s: MomentSignal) =>
+    s.engagement_observed === 'high'
+      ? 1
+      : s.engagement_observed === 'medium'
+        ? 0.5
+        : s.engagement_observed === 'low'
+          ? 0.2
+          : 0;
+  const goalScore = (s: MomentSignal) => (s.goal_met ? 1 : 0);
+  const blend = (s: MomentSignal) =>
+    0.5 * goalScore(s) + 0.3 * difficultyScore(s) + 0.2 * engagementScore(s);
+  return Math.max(-1, Math.min(1, blend(final) - blend(baseline)));
 }

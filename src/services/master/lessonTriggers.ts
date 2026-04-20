@@ -249,6 +249,22 @@ export async function evaluateAndRecordTriggers(
   const user = getCurrentUser();
   if (!user) return null;
 
+  // Wave 6 Stage B — respect the global opt-out. `null`/`true` both mean
+  // "allow" (default), `false` short-circuits the trigger evaluator.
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('lessons_opt_in')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile && profile.lessons_opt_in === false) {
+      return null;
+    }
+  } catch (err) {
+    // If we can't read the profile we fail OPEN — Stage A behaviour.
+    console.warn('[lessonTriggers] opt-in read failed, allowing:', err);
+  }
+
   try {
     const recentOffers = await fetchRecentOffers(user.id);
     const candidate = evaluateTriggers({ learnerModel, recentOffers });

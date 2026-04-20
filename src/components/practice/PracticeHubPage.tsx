@@ -15,6 +15,7 @@ import { loadLearnerModel } from '../../services/learnerModel';
 import { getCurrentUser } from '../../services/supabase/auth';
 import { prescribe } from '../../services/master/prescribe';
 import { routeModality } from '../../services/master/modalityRouter';
+import { LessonOfferCard } from '../lesson/LessonOfferCard';
 
 const soloModes: readonly PracticeMode[] = [
   ...exerciseModes,
@@ -64,6 +65,8 @@ export function PracticeHubPage() {
           Escolha como quer praticar hoje
         </p>
       </div>
+
+      {showSuggestedCta && <LessonOfferCard />}
 
       {showSuggestedCta && (
         <section>

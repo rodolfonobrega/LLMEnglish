@@ -97,6 +97,17 @@ export interface LearnerModelMeta {
   schema_version: 1;
 }
 
+/**
+ * Wave 6 Stage B — patterns the Master should back off from for a while
+ * because a recent lesson produced weak gains or triggered frustration.
+ * `next_retry_at` is an ISO timestamp after which the Master may retry.
+ */
+export interface HardForUserEntry {
+  id: CanonicalPatternId;
+  next_retry_at: string;
+  reason?: string;
+}
+
 export interface LearnerModel {
   cefr_estimate: CEFREstimate;
   mastered_patterns: CanonicalPatternId[];
@@ -109,8 +120,87 @@ export interface LearnerModel {
   diagnostic_mode: boolean;
   /** 0–1 calibration of the whole model. Rises as evidence accumulates. */
   confidence: number;
+  /**
+   * Wave 6 Stage B — patterns blacklisted for a cool-off period after a
+   * weak lesson. Optional so older persisted models stay valid.
+   */
+  hard_for_user?: HardForUserEntry[];
   meta: LearnerModelMeta;
 }
+
+// ---------------------------------------------------------------------------
+// Lesson types — Wave 6 Stage B
+// ---------------------------------------------------------------------------
+
+/**
+ * Signal captured at the end of each lesson moment so the Master can adapt
+ * the remaining moments. Q-11 in the design doc.
+ */
+export interface MomentSignal {
+  goal_met: boolean;
+  difficulty_actual: 'easy' | 'ok' | 'hard';
+  observed_issues: string[];
+  notable_successes: string[];
+  engagement_observed: EngagementSignal;
+}
+
+export interface LessonMoment {
+  /** 1..5 — matches the 5-moment arc from the design doc §7.2.2. */
+  index: 1 | 2 | 3 | 4 | 5;
+  role: 'hook' | 'noticing' | 'controlled_practice' | 'free_production' | 'consolidation';
+  duration_minutes: number;
+  /** Free-form adaptation notes the renderer can follow (never user-facing). */
+  adaptation_rules: string;
+}
+
+export interface LessonEngagementContext {
+  theme: string;
+  tone_hint?: 'casual' | 'balanced' | 'formal';
+}
+
+/**
+ * Plan returned by `Master.compose_lesson`. Crystallised once at
+ * offer-acceptance and saved into `lessons.lesson_plan`.
+ */
+export interface LessonPlan {
+  title_thematic: string;
+  target_canonical_pattern: CanonicalPatternId;
+  moments: LessonMoment[];
+  engagement_context: LessonEngagementContext;
+  expected_difficulty_curve: number[];
+}
+
+/**
+ * Per-moment content returned by `Master.render_moment`. Discriminated on
+ * `kind` so each moment UI can type-narrow safely.
+ */
+export type MomentContent =
+  | {
+      kind: 'hook';
+      portuguese_opener: string;
+      expected_target_usage_hint: string;
+    }
+  | {
+      kind: 'noticing';
+      pairs: Array<{ a: string; b: string; portuguese_question: string }>;
+    }
+  | {
+      kind: 'controlled_practice';
+      rounds: Array<{
+        modality: 'oral_cloze' | 'error_spotting' | 'reaction_drill' | 'active_shadowing';
+        payload: unknown;
+      }>;
+    }
+  | {
+      kind: 'free_production';
+      modality: 'narrative' | 'live_roleplay_short';
+      seed: string;
+    }
+  | {
+      kind: 'consolidation';
+      callback_prompt_pt: string;
+      reveal_copy_pt: string;
+    };
 
 // ---------------------------------------------------------------------------
 // Patch protocol
@@ -148,7 +238,15 @@ export type PatchOp =
   | { op: 'engagement.update'; patch: Partial<EngagementProfile> }
   | { op: 'plan.set'; plan: NextStepPlan }
   | { op: 'diagnostic.set'; value: boolean }
-  | { op: 'confidence.set'; value: number };
+  | { op: 'confidence.set'; value: number }
+  /** Wave 6 Stage B — blacklist a pattern until `next_retry_at` passes. */
+  | {
+      op: 'hard_for_user.upsert';
+      id: CanonicalPatternId;
+      next_retry_at: string;
+      reason?: string;
+    }
+  | { op: 'hard_for_user.remove'; id: CanonicalPatternId };
 
 export type PatchOpName = PatchOp['op'];
 
@@ -165,6 +263,8 @@ export const PATCH_OPS: readonly PatchOpName[] = [
   'plan.set',
   'diagnostic.set',
   'confidence.set',
+  'hard_for_user.upsert',
+  'hard_for_user.remove',
 ] as const;
 
 /** Sources recognised by the `learner_model_history.source` check constraint. */

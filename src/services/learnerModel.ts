@@ -171,6 +171,27 @@ function applySinglePatch(model: LearnerModel, patch: PatchOp): LearnerModel {
     case 'confidence.set':
       return { ...model, confidence: clamp01(patch.value) };
 
+    case 'hard_for_user.upsert': {
+      const list = model.hard_for_user ?? [];
+      const idx = list.findIndex((e) => e.id === patch.id);
+      const entry = {
+        id: patch.id,
+        next_retry_at: patch.next_retry_at,
+        reason: patch.reason,
+      };
+      const next =
+        idx >= 0
+          ? list.map((e, i) => (i === idx ? { ...e, ...entry } : e))
+          : [...list, entry];
+      return { ...model, hard_for_user: next };
+    }
+
+    case 'hard_for_user.remove':
+      return {
+        ...model,
+        hard_for_user: (model.hard_for_user ?? []).filter((e) => e.id !== patch.id),
+      };
+
     default: {
       // Unknown op — intentional: protects against LLM-drifted ops.
       // The `never` cast documents the exhaustiveness of the union.

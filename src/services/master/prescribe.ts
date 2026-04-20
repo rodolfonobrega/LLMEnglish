@@ -241,6 +241,37 @@ export async function prescribe(
     briefing.modality_choice = input.requestedExerciseType;
   }
 
+  // Wave 6 Stage B — consolidation wave. While `next_step_plan.consolidation_until`
+  // is in the future, pin target_skill to that pattern and vary contexts.
+  const consolidationUntil = input.learnerModel.next_step_plan.consolidation_until;
+  if (consolidationUntil) {
+    const ts = Date.parse(consolidationUntil);
+    if (Number.isFinite(ts) && ts > Date.now()) {
+      briefing.target_skill = input.learnerModel.next_step_plan.primary_goal;
+      briefing.rationale =
+        (briefing.rationale ? briefing.rationale + ' ' : '') +
+        `[consolidation_until=${consolidationUntil}] varying contexts for the same pattern.`;
+    }
+  }
+
+  // Wave 6 Stage B — `hard_for_user` back-off. If the LLM chose a pattern
+  // that's currently blacklisted with a future `next_retry_at`, fall back
+  // to the next_step_plan.primary_goal (or leave it untouched if that is
+  // also blacklisted — better to be honest than to thrash).
+  const blacklisted = (input.learnerModel.hard_for_user ?? []).filter((e) => {
+    const t = Date.parse(e.next_retry_at);
+    return Number.isFinite(t) && t > Date.now();
+  });
+  if (blacklisted.some((e) => e.id === briefing.target_skill)) {
+    const fallback = input.learnerModel.next_step_plan.primary_goal;
+    if (fallback && !blacklisted.some((e) => e.id === fallback)) {
+      briefing.target_skill = fallback;
+      briefing.rationale =
+        (briefing.rationale ? briefing.rationale + ' ' : '') +
+        `[hard_for_user] rerouted away from blacklisted pattern.`;
+    }
+  }
+
   // Non-blocking telemetry.
   try {
     await recordMasterUsage({

@@ -10,6 +10,18 @@
 import { supabase } from './client'
 import type { Source } from '../../types/settings'
 
+/**
+ * Fallback metadata sent to the Edge Function (G1).
+ * When present, the server attempts the fallback provider if the primary call
+ * throws. The client still keeps its own try/catch retry so the app keeps
+ * working if an older version of the Edge Function is deployed.
+ */
+export interface FallbackMeta {
+  source: Source
+  model: string
+  voice?: string
+}
+
 const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`
 
 /**
@@ -88,6 +100,7 @@ export interface ChatCompletionOptions {
   source?: Source
   temperature?: number
   responseSchema?: Record<string, unknown>
+  fallback?: FallbackMeta
 }
 
 export async function chatCompletion(options: ChatCompletionOptions): Promise<string> {
@@ -99,6 +112,7 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<st
     source: options.source,
     temperature: options.temperature ?? 0.8,
     ...(options.responseSchema && { responseSchema: options.responseSchema }),
+    ...(options.fallback && { fallback: options.fallback }),
   }) as { content: string }
 
   return result.content
@@ -113,6 +127,7 @@ export interface ChatCompletionWithImageOptions {
   imageUrl: string
   model?: string
   source?: Source
+  fallback?: FallbackMeta
 }
 
 export async function chatCompletionWithImage(options: ChatCompletionWithImageOptions): Promise<string> {
@@ -123,6 +138,7 @@ export async function chatCompletionWithImage(options: ChatCompletionWithImageOp
     model: options.model,
     source: options.source,
     imageMode: true,
+    ...(options.fallback && { fallback: options.fallback }),
   }) as { content: string }
 
   return result.content
@@ -137,6 +153,7 @@ export interface TextToSpeechOptions {
   voice?: string
   model?: string
   source?: Source
+  fallback?: FallbackMeta
 }
 
 export async function textToSpeech(options: TextToSpeechOptions): Promise<string> {
@@ -146,6 +163,7 @@ export async function textToSpeech(options: TextToSpeechOptions): Promise<string
     voice: options.voice,
     model: options.model,
     source: options.source,
+    ...(options.fallback && { fallback: options.fallback }),
   }) as { audio: string } // base64 audio
 
   return result.audio
@@ -160,6 +178,7 @@ export interface SpeechToTextOptions {
   model?: string
   source?: Source
   language?: string
+  fallback?: FallbackMeta
 }
 
 export async function speechToText(options: SpeechToTextOptions): Promise<string> {
@@ -178,6 +197,7 @@ export async function speechToText(options: SpeechToTextOptions): Promise<string
     model: options.model,
     source: options.source,
     language: options.language || 'en',
+    ...(options.fallback && { fallback: options.fallback }),
   }) as { text: string }
 
   return result.text
@@ -203,6 +223,7 @@ export interface ImageGenerationOptions {
   imageSize?: string
   personGeneration?: string
   numberOfImages?: number
+  fallback?: FallbackMeta
 }
 
 export async function generateImage(options: ImageGenerationOptions): Promise<string> {
@@ -221,6 +242,7 @@ export async function generateImage(options: ImageGenerationOptions): Promise<st
     imageSize: options.imageSize,
     personGeneration: options.personGeneration,
     numberOfImages: options.numberOfImages,
+    ...(options.fallback && { fallback: options.fallback }),
   }) as { imageUrl: string } | { imageData: string }
 
   if ('imageUrl' in result) {

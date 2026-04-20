@@ -9,11 +9,36 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json',
+// CORS allowlist — configurable via ALLOWED_ORIGINS (comma-separated).
+// Falls back to local dev origin when unset.
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+/**
+ * Build CORS response headers for a given request origin.
+ * - Allowlisted origins: echoes the origin back.
+ * - Non-allowlisted: returns headers WITHOUT Access-Control-Allow-Origin
+ *   (browsers will block cross-origin reads; preflights get 403 separately).
+ * Content-Type is included here so every JSON response carries it.
+ */
+function corsHeaders(origin: string | null): Record<string, string> {
+  const isAllowed = !!origin && ALLOWED_ORIGINS.includes(origin)
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+    'Content-Type': 'application/json',
+  }
+  if (isAllowed) {
+    headers['Access-Control-Allow-Origin'] = origin!
+  }
+  return headers
+}
+
+function isOriginAllowed(origin: string | null): boolean {
+  return !!origin && ALLOWED_ORIGINS.includes(origin)
 }
 
 // Get encryption key from environment
@@ -145,6 +170,67 @@ function isSafeImageUrl(url: string): boolean {
   }
 }
 
+// ----------------------------------------------------------------------------
+// Image fetch bounds — prevents OOM / slowloris from user-supplied image URLs.
+// ----------------------------------------------------------------------------
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
+const IMAGE_FETCH_TIMEOUT_MS = 10_000
+
+/**
+ * Fetch a user-supplied image URL with hard bounds:
+ *   - 10-second request timeout (AbortSignal.timeout).
+ *   - Reject up-front if Content-Length > 10 MB.
+ *   - Stream-read and abort if the body grows past 10 MB
+ *     (servers may omit Content-Length).
+ * Throws on any violation so callers surface the error to the client.
+ */
+async function fetchBoundedImage(url: string): Promise<{ bytes: Uint8Array; mimeType: string }> {
+  const response = await fetch(url, { signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS) })
+
+  if (!response.ok) {
+    throw new Error(`Image fetch failed: ${response.status}`)
+  }
+
+  const contentLength = response.headers.get('content-length')
+  if (contentLength && Number(contentLength) > MAX_IMAGE_BYTES) {
+    // Release the body before throwing so the connection can be reused.
+    try { await response.body?.cancel() } catch { /* ignore */ }
+    throw new Error(`Image too large: ${contentLength} bytes (max ${MAX_IMAGE_BYTES})`)
+  }
+
+  const mimeType = response.headers.get('content-type')?.split(';')[0].trim() || 'image/png'
+
+  // Stream-read, aborting past the cap even if Content-Length was absent or wrong.
+  const reader = response.body?.getReader()
+  if (!reader) {
+    throw new Error('Image fetch returned no body')
+  }
+
+  const chunks: Uint8Array[] = []
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (value) {
+      total += value.byteLength
+      if (total > MAX_IMAGE_BYTES) {
+        try { await reader.cancel() } catch { /* ignore */ }
+        throw new Error(`Image too large: exceeds ${MAX_IMAGE_BYTES} bytes`)
+      }
+      chunks.push(value)
+    }
+  }
+
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return { bytes, mimeType }
+}
+
 // ============================================================================
 // API KEY RETRIEVAL
 // ============================================================================
@@ -241,122 +327,353 @@ async function saveApiKey(userId: string, source: string, key: string): Promise<
 // ============================================================================
 
 /**
- * OpenAI Chat Completion
+ * Common shape for chat provider requests.
  */
-async function openaiChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8, responseSchema?: Record<string, unknown>): Promise<string> {
-  const body: Record<string, unknown> = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
-    temperature,
-  }
-  if (responseSchema) {
-    body.response_format = {
-      type: 'json_schema',
-      json_schema: { name: 'scenario', strict: true, schema: responseSchema },
-    }
-  }
+interface ChatRequest {
+  model: string
+  systemPrompt: string
+  userMessage: string
+  temperature?: number
+  responseSchema?: Record<string, unknown>
+}
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+/**
+ * Declarative endpoint definition for a chat provider.
+ * Each provider supplies its URL, auth headers, request body shape,
+ * and a response parser. `callChat` drives the common fetch flow.
+ */
+interface ChatEndpoint {
+  label: string // used in error messages (e.g. 'OpenAI', 'Gemini')
+  url: (req: ChatRequest) => string
+  buildHeaders: (apiKey: string) => HeadersInit
+  buildBody: (req: ChatRequest) => unknown
+  parseResponse: (raw: unknown) => string
+}
+
+/**
+ * Generic chat dispatcher — fetches an endpoint, validates status,
+ * parses the response, and surfaces provider-labelled errors.
+ * Applies a 60-second timeout so a hung provider cannot stall the function.
+ */
+async function callChat(ep: ChatEndpoint, apiKey: string, req: ChatRequest): Promise<string> {
+  const response = await fetch(ep.url(req), {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    headers: ep.buildHeaders(apiKey),
+    body: JSON.stringify(ep.buildBody(req)),
+    signal: AbortSignal.timeout(60_000),
   })
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`OpenAI error: ${response.status} - ${error}`)
+    throw new Error(`${ep.label} error: ${response.status} - ${error}`)
   }
 
   const data = await response.json()
-  const content = data.choices?.[0]?.message?.content
+  const content = ep.parseResponse(data)
   if (!content) {
-    throw new Error(`OpenAI returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+    throw new Error(`${ep.label} returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
   }
   return content
 }
 
-/**
- * Gemini Chat Completion
- */
-async function geminiChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, responseSchema?: Record<string, unknown>): Promise<string> {
-  const generationConfig: Record<string, unknown> = { temperature: 0.8 }
-  if (responseSchema) {
+// --- Provider-specific body/parse helpers shared by OpenAI-compatible APIs ---
+
+function openaiCompatBody(req: ChatRequest): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model: req.model,
+    messages: [
+      { role: 'system', content: req.systemPrompt },
+      { role: 'user', content: req.userMessage },
+    ],
+    temperature: req.temperature ?? 0.8,
+  }
+  if (req.responseSchema) {
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'scenario', strict: true, schema: req.responseSchema },
+    }
+  }
+  return body
+}
+
+function openaiCompatParse(raw: unknown): string {
+  const data = raw as { choices?: Array<{ message?: { content?: string } }> }
+  return data.choices?.[0]?.message?.content ?? ''
+}
+
+function geminiCompatBody(req: ChatRequest): Record<string, unknown> {
+  const generationConfig: Record<string, unknown> = { temperature: req.temperature ?? 0.8 }
+  if (req.responseSchema) {
     generationConfig.responseMimeType = 'application/json'
-    generationConfig.responseSchema = responseSchema
+    generationConfig.responseSchema = req.responseSchema
+  }
+  return {
+    system_instruction: { parts: [{ text: req.systemPrompt }] },
+    contents: [{ role: 'user', parts: [{ text: req.userMessage }] }],
+    generationConfig,
+  }
+}
+
+function geminiCompatParse(raw: unknown): string {
+  const data = raw as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+}
+
+// --- Endpoint registry for text-only chat providers ---
+
+const CHAT_ENDPOINTS: Record<'openai' | 'genai' | 'groq' | 'openrouter', ChatEndpoint> = {
+  openai: {
+    label: 'OpenAI',
+    url: () => 'https://api.openai.com/v1/chat/completions',
+    buildHeaders: (apiKey) => ({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    }),
+    buildBody: openaiCompatBody,
+    parseResponse: openaiCompatParse,
+  },
+  genai: {
+    label: 'Gemini',
+    url: (req) => `https://generativelanguage.googleapis.com/v1beta/models/${req.model}:generateContent`,
+    buildHeaders: (apiKey) => ({
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    }),
+    buildBody: geminiCompatBody,
+    parseResponse: geminiCompatParse,
+  },
+  groq: {
+    label: 'Groq',
+    url: () => 'https://api.groq.com/openai/v1/chat/completions',
+    buildHeaders: (apiKey) => ({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    }),
+    buildBody: openaiCompatBody,
+    parseResponse: openaiCompatParse,
+  },
+  openrouter: {
+    label: 'OpenRouter',
+    url: () => 'https://openrouter.ai/api/v1/chat/completions',
+    buildHeaders: (apiKey) => ({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://speaklab.app',
+      'X-Title': 'SpeakLab',
+    }),
+    buildBody: openaiCompatBody,
+    parseResponse: openaiCompatParse,
+  },
+}
+
+// ----------------------------------------------------------------------------
+// Fallback helper (G1)
+// ----------------------------------------------------------------------------
+
+/**
+ * Run `primary`. If it throws and a `fallback` is supplied, run the fallback.
+ * Always surfaces the primary error on total failure — the fallback failure is
+ * logged but not reported to the caller (same semantics the client used to have).
+ */
+async function withFallback<T>(
+  primary: () => Promise<T>,
+  fallback?: { run: () => Promise<T>; label: string },
+): Promise<T> {
+  try {
+    return await primary()
+  } catch (primaryErr) {
+    if (!fallback) throw primaryErr
+    console.warn(`Primary call failed, trying fallback (${fallback.label}):`, primaryErr)
+    try {
+      return await fallback.run()
+    } catch (fallbackErr) {
+      console.warn(`Fallback call also failed (${fallback.label}):`, fallbackErr)
+      throw primaryErr
+    }
+  }
+}
+
+/**
+ * Optional fallback metadata parsed off the request body.
+ * Validated before use: unknown sources or missing models collapse to `null`.
+ */
+interface FallbackMeta {
+  source: string
+  model: string
+  voice?: string
+}
+
+function parseFallback(raw: unknown): FallbackMeta | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const source = typeof obj.source === 'string' ? normalizeSource(obj.source) : ''
+  const model = typeof obj.model === 'string' ? obj.model : ''
+  const voice = typeof obj.voice === 'string' ? obj.voice : undefined
+  if (!source || !model) return null
+  const allowed = new Set(['openai', 'genai', 'groq', 'openrouter', 'vertex'])
+  if (!allowed.has(source)) return null
+  return { source, model, voice }
+}
+
+// ----------------------------------------------------------------------------
+// Dispatch helpers — switch on source, resolve the user's API key, call
+// provider. Shared between primary and fallback code paths (G1).
+// ----------------------------------------------------------------------------
+
+async function resolveKeyOrThrow(userId: string, source: string): Promise<string> {
+  // Vertex piggy-backs on the genai key.
+  const keySource = source === 'vertex' ? 'genai' : source
+  const apiKey = await getApiKey(userId, keySource)
+  if (!apiKey) {
+    if (source === 'vertex') throw new Error('No Gemini API key configured for Vertex AI')
+    if (source === 'openai') throw new Error('No OpenAI API key configured')
+    if (source === 'groq') throw new Error('No Groq API key configured')
+    if (source === 'openrouter') throw new Error('No OpenRouter API key configured')
+    throw new Error('No Gemini API key configured')
+  }
+  return apiKey
+}
+
+async function dispatchChat(
+  userId: string,
+  source: string,
+  model: string,
+  systemPrompt: string,
+  userMessage: string,
+  temperature: number | undefined,
+  responseSchema: Record<string, unknown> | undefined,
+): Promise<string> {
+  const apiKey = await resolveKeyOrThrow(userId, source)
+  if (source === 'vertex') {
+    return vertexChat(apiKey, model, systemPrompt, userMessage, responseSchema)
+  }
+  if (source === 'openai' || source === 'genai' || source === 'groq' || source === 'openrouter') {
+    return callChat(CHAT_ENDPOINTS[source], apiKey, { model, systemPrompt, userMessage, temperature, responseSchema })
+  }
+  throw new Error(`Unsupported chat source: ${source}`)
+}
+
+/**
+ * Resolve a chat-with-image `imageUrl` (either a data: URL or an external URL
+ * subject to SSRF guard + size cap) to raw base64 + mime. Pulled out so that
+ * primary + fallback share a single fetch.
+ */
+async function resolveImagePayload(imageUrl: string): Promise<{ imageData: string; mimeType: string }> {
+  if (imageUrl.startsWith('data:')) {
+    const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/)
+    if (!match) throw new Error('Invalid data URL')
+    return { mimeType: match[1], imageData: match[2] }
+  }
+  if (!isSafeImageUrl(imageUrl)) {
+    throw new Error('Image URL must be a publicly accessible HTTPS or HTTP URL')
+  }
+  const fetched = await fetchBoundedImage(imageUrl)
+  return { mimeType: fetched.mimeType, imageData: uint8ToBase64(fetched.bytes) }
+}
+
+async function dispatchChatWithImage(
+  userId: string,
+  source: string,
+  model: string,
+  systemPrompt: string,
+  imageUrl: string,
+  imageData: string,
+  mimeType: string,
+): Promise<string> {
+  const apiKey = await resolveKeyOrThrow(userId, source)
+
+  if (source === 'vertex') {
+    return vertexChatWithImage(apiKey, model, systemPrompt, imageData, mimeType)
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
+  if (source === 'genai') {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+    const geminiResp = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig,
+        contents: [{
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType, data: imageData } },
+            { text: 'Please create a question about this image as instructed.' },
+          ],
+        }],
       }),
+      signal: AbortSignal.timeout(60_000),
+    })
+
+    if (!geminiResp.ok) {
+      const error = await geminiResp.text()
+      throw new Error(`Gemini error: ${geminiResp.status} - ${error}`)
     }
-  )
 
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Gemini error: ${response.status} - ${error}`)
+    const geminiData = await geminiResp.json()
+    return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
   }
 
-  const data = await response.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) {
-    throw new Error(`Gemini returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
+  if (source === 'openrouter') {
+    return openrouterChat(apiKey, model, systemPrompt, imageUrl)
   }
-  return text
+
+  // openai, groq — legacy behavior routed imageUrl as a message string.
+  if (source === 'openai' || source === 'groq') {
+    return callChat(CHAT_ENDPOINTS[source], apiKey, { model, systemPrompt, userMessage: imageUrl })
+  }
+
+  throw new Error(`Unsupported chat-with-image source: ${source}`)
 }
 
-/**
- * Groq Chat Completion
- */
-async function groqChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, responseSchema?: Record<string, unknown>): Promise<string> {
-  const body: Record<string, unknown> = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
-    temperature: 0.8,
-  }
-  if (responseSchema) {
-    body.response_format = {
-      type: 'json_schema',
-      json_schema: { name: 'scenario', strict: true, schema: responseSchema },
-    }
-  }
-
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Groq error: ${response.status} - ${error}`)
-  }
-
-  const data = await response.json()
-  const content = data.choices?.[0]?.message?.content
-  if (!content) {
-    throw new Error(`Groq returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
-  }
-  return content
+async function dispatchTTS(
+  userId: string,
+  source: string,
+  model: string,
+  voice: string,
+  text: string,
+): Promise<string> {
+  const apiKey = await resolveKeyOrThrow(userId, source)
+  if (source === 'openai') return openaiTTS(apiKey, text, voice, model)
+  if (source === 'groq') return groqTTS(apiKey, text, voice, model)
+  if (source === 'openrouter') return openrouterTTS(apiKey, text, voice, model)
+  if (source === 'vertex') return vertexTTS(apiKey, model, text, voice)
+  if (source === 'genai') return geminiTTS(apiKey, text, voice, model)
+  throw new Error(`Unsupported TTS source: ${source}`)
 }
+
+async function dispatchSTT(
+  userId: string,
+  source: string,
+  model: string,
+  audioBase64: string,
+  mimeType: string,
+): Promise<string> {
+  const apiKey = await resolveKeyOrThrow(userId, source)
+  if (source === 'openai') return openaiSTT(apiKey, audioBase64, mimeType, model)
+  if (source === 'groq') return groqSTT(apiKey, audioBase64, mimeType, model)
+  if (source === 'openrouter') return openrouterSTT(apiKey, audioBase64, mimeType, model)
+  if (source === 'vertex') return vertexSTT(apiKey, model, audioBase64, mimeType)
+  if (source === 'genai') return geminiSTT(apiKey, audioBase64, mimeType, model)
+  throw new Error(`Unsupported STT source: ${source}`)
+}
+
+async function dispatchImage(
+  userId: string,
+  source: string,
+  model: string,
+  prompt: string,
+  options: Record<string, unknown>,
+): Promise<string> {
+  const apiKey = await resolveKeyOrThrow(userId, source)
+  if (source === 'vertex') return vertexImage(apiKey, model, prompt, options)
+  if (source === 'openrouter') return openrouterImage(apiKey, prompt, model)
+  if (source === 'openai') return openaiImage(apiKey, prompt, model, options)
+  if (source === 'genai') return geminiImage(apiKey, prompt, model, options)
+  throw new Error(`Unsupported image source: ${source}`)
+}
+
+// Note: openaiChat / geminiChat / groqChat thin wrappers were removed when
+// `dispatchChat` started calling `callChat(CHAT_ENDPOINTS[source], …)` directly.
 
 /**
  * OpenAI TTS
@@ -541,46 +858,11 @@ async function groqSTT(apiKey: string, audioBase64: string, mimeType: string, mo
 // ============================================================================
 
 /**
- * OpenRouter Chat Completion (OpenAI-compatible format)
+ * OpenRouter Chat Completion (OpenAI-compatible format).
+ * Thin wrapper over `callChat` — see CHAT_ENDPOINTS.openrouter above.
  */
 async function openrouterChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8, responseSchema?: Record<string, unknown>): Promise<string> {
-  const body: Record<string, unknown> = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
-    temperature,
-  }
-  if (responseSchema) {
-    body.response_format = {
-      type: 'json_schema',
-      json_schema: { name: 'scenario', strict: true, schema: responseSchema },
-    }
-  }
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://speaklab.app',
-      'X-Title': 'SpeakLab',
-    },
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`OpenRouter error: ${response.status} - ${error}`)
-  }
-
-  const data = await response.json()
-  const content = data.choices?.[0]?.message?.content
-  if (!content) {
-    throw new Error(`OpenRouter returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
-  }
-  return content
+  return callChat(CHAT_ENDPOINTS.openrouter, apiKey, { model, systemPrompt, userMessage, temperature, responseSchema })
 }
 
 /**
@@ -1215,9 +1497,16 @@ function writeString(view: DataView, offset: number, string: string): void {
 // ============================================================================
 
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const cors = corsHeaders(origin)
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    // Non-allowlisted origins: 403 with NO Access-Control-Allow-Origin.
+    if (!isOriginAllowed(origin)) {
+      return new Response('forbidden', { status: 403, headers: cors })
+    }
+    return new Response('ok', { headers: cors })
   }
 
   try {
@@ -1253,130 +1542,65 @@ serve(async (req) => {
             }
           }
         }
-        return new Response(JSON.stringify({ success: true }), { headers: corsHeaders })
+        return new Response(JSON.stringify({ success: true }), { headers: cors })
       }
 
       case 'get_key': {
         const src = normalizeSource(body.source || body.provider)
         const key = await getApiKey(userId, src)
-        return new Response(JSON.stringify({ key }), { headers: corsHeaders })
+        return new Response(JSON.stringify({ key }), { headers: cors })
       }
 
       // Chat
       case 'chat': {
         const source = normalizeSource(body.source || body.provider, 'genai')
         const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-2.5-flash' : 'gpt-4o-mini')
+        const fallback = parseFallback(body.fallback)
 
         let content: string
 
         if (body.imageMode) {
-          // Chat with image
-          if (source === 'vertex') {
-            const apiKey = await getApiKey(userId, 'genai')
-            if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
+          // Pre-fetch image bytes once so fallback doesn't re-download.
+          const { imageData, mimeType } = await resolveImagePayload(body.imageUrl)
 
-            let imageData: string
-            let mimeType: string
+          const primaryRun = () => dispatchChatWithImage(
+            userId, source, model, body.systemPrompt, body.imageUrl, imageData, mimeType,
+          )
+          const fallbackRun = fallback
+            ? { run: () => dispatchChatWithImage(
+                userId,
+                fallback.source,
+                fallback.model,
+                body.systemPrompt,
+                body.imageUrl,
+                imageData,
+                mimeType,
+              ), label: `${fallback.source}:${fallback.model}` }
+            : undefined
 
-            if (body.imageUrl.startsWith('data:')) {
-              const match = body.imageUrl.match(/^data:([^;]+);base64,(.+)$/)
-              if (!match) throw new Error('Invalid data URL')
-              mimeType = match[1]
-              imageData = match[2]
-            } else {
-              if (!isSafeImageUrl(body.imageUrl)) {
-                throw new Error('Image URL must be a publicly accessible HTTPS or HTTP URL')
-              }
-              const imgResp = await fetch(body.imageUrl)
-              const blob = await imgResp.blob()
-              mimeType = blob.type || 'image/png'
-              imageData = await blob.arrayBuffer().then(b => uint8ToBase64(new Uint8Array(b)))
-            }
-
-            content = await vertexChatWithImage(apiKey, model, body.systemPrompt, imageData, mimeType)
-          } else if (source === 'genai') {
-            // Handle image with Gemini — direct REST (same pattern as geminiChat/geminiTTS/geminiSTT)
-            const apiKey = await getApiKey(userId, source)
-            if (!apiKey) throw new Error('No Gemini API key configured')
-
-            let imageData: string
-            let mimeType: string
-
-            if (body.imageUrl.startsWith('data:')) {
-              const match = body.imageUrl.match(/^data:([^;]+);base64,(.+)$/)
-              if (!match) throw new Error('Invalid data URL')
-              mimeType = match[1]
-              imageData = match[2]
-            } else {
-              if (!isSafeImageUrl(body.imageUrl)) {
-                throw new Error('Image URL must be a publicly accessible HTTPS or HTTP URL')
-              }
-              const imgResp = await fetch(body.imageUrl)
-              const blob = await imgResp.blob()
-              mimeType = blob.type || 'image/png'
-              imageData = await imgResp.arrayBuffer().then(b => uint8ToBase64(new Uint8Array(b)))
-            }
-
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-            const geminiResp = await fetch(geminiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-              body: JSON.stringify({
-                system_instruction: { parts: [{ text: body.systemPrompt }] },
-                contents: [{
-                  role: 'user',
-                  parts: [
-                    { inlineData: { mimeType, data: imageData } },
-                    { text: 'Please create a question about this image as instructed.' },
-                  ],
-                }],
-              }),
-            })
-
-            if (!geminiResp.ok) {
-              const error = await geminiResp.text()
-              throw new Error(`Gemini error: ${geminiResp.status} - ${error}`)
-            }
-
-            const geminiData = await geminiResp.json()
-            content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          } else if (source === 'openrouter') {
-            const apiKey = await getApiKey(userId, source)
-            if (!apiKey) throw new Error('No OpenRouter API key configured')
-            content = await openrouterChat(apiKey, model, body.systemPrompt, body.imageUrl)
-          } else {
-            const apiKey = await getApiKey(userId, source)
-            if (!apiKey) throw new Error('No OpenAI API key configured')
-            content = await openaiChat(apiKey, model, body.systemPrompt, body.imageUrl)
-          }
+          content = await withFallback(primaryRun, fallbackRun)
         } else {
           // Regular chat
           const schema = body.responseSchema || undefined
-          if (source === 'openai') {
-            const apiKey = await getApiKey(userId, source)
-            if (!apiKey) throw new Error('No OpenAI API key configured')
-            content = await openaiChat(apiKey, model, body.systemPrompt, body.userMessage, body.temperature, schema)
-          } else if (source === 'groq') {
-            const apiKey = await getApiKey(userId, source)
-            if (!apiKey) throw new Error('No Groq API key configured')
-            content = await groqChat(apiKey, model, body.systemPrompt, body.userMessage, schema)
-          } else if (source === 'openrouter') {
-            const apiKey = await getApiKey(userId, source)
-            if (!apiKey) throw new Error('No OpenRouter API key configured')
-            content = await openrouterChat(apiKey, model, body.systemPrompt, body.userMessage, body.temperature, schema)
-          } else if (source === 'vertex') {
-            const apiKey = await getApiKey(userId, 'genai')
-            if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
-            content = await vertexChat(apiKey, model, body.systemPrompt, body.userMessage, schema)
-          } else {
-            // genai (default)
-            const apiKey = await getApiKey(userId, source)
-            if (!apiKey) throw new Error('No Gemini API key configured')
-            content = await geminiChat(apiKey, model, body.systemPrompt, body.userMessage, schema)
-          }
+          const primaryRun = () => dispatchChat(
+            userId, source, model, body.systemPrompt, body.userMessage, body.temperature, schema,
+          )
+          const fallbackRun = fallback
+            ? { run: () => dispatchChat(
+                userId,
+                fallback.source,
+                fallback.model,
+                body.systemPrompt,
+                body.userMessage,
+                body.temperature,
+                schema,
+              ), label: `${fallback.source}:${fallback.model}` }
+            : undefined
+
+          content = await withFallback(primaryRun, fallbackRun)
         }
 
-        return new Response(JSON.stringify({ content }), { headers: corsHeaders })
+        return new Response(JSON.stringify({ content }), { headers: cors })
       }
 
       // TTS
@@ -1384,72 +1608,46 @@ serve(async (req) => {
         const source = normalizeSource(body.source || body.provider, 'genai')
         const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-2.5-flash-preview-tts' : 'tts-1')
         const voice = body.voice || (source === 'genai' || source === 'vertex' ? 'Kore' : 'alloy')
+        const fallback = parseFallback(body.fallback)
 
-        let audio: string
+        const primaryRun = () => dispatchTTS(userId, source, model, voice, body.text)
+        const fallbackRun = fallback
+          ? { run: () => dispatchTTS(
+              userId,
+              fallback.source,
+              fallback.model,
+              fallback.voice || voice,
+              body.text,
+            ), label: `${fallback.source}:${fallback.model}` }
+          : undefined
 
-        if (source === 'openai') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No OpenAI API key configured')
-          audio = await openaiTTS(apiKey, body.text, voice, model)
-        } else if (source === 'groq') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No Groq API key configured')
-          audio = await groqTTS(apiKey, body.text, voice, model)
-        } else if (source === 'openrouter') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No OpenRouter API key configured')
-          audio = await openrouterTTS(apiKey, body.text, voice, model)
-        } else if (source === 'vertex') {
-          const apiKey = await getApiKey(userId, 'genai')
-          if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
-          audio = await vertexTTS(apiKey, model, body.text, voice)
-        } else {
-          // genai (default)
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No Gemini API key configured')
-          audio = await geminiTTS(apiKey, body.text, voice, model)
-        }
+        const audio = await withFallback(primaryRun, fallbackRun)
 
-        return new Response(JSON.stringify({ audio }), { headers: corsHeaders })
+        return new Response(JSON.stringify({ audio }), { headers: cors })
       }
 
       // STT
       case 'stt': {
         const source = normalizeSource(body.source || body.provider, 'genai')
         const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-2.5-flash' : 'whisper-1')
+        const fallback = parseFallback(body.fallback)
 
-        let text: string
+        const primaryRun = () => dispatchSTT(userId, source, model, body.audio, body.mimeType)
+        const fallbackRun = fallback
+          ? { run: () => dispatchSTT(userId, fallback.source, fallback.model, body.audio, body.mimeType),
+              label: `${fallback.source}:${fallback.model}` }
+          : undefined
 
-        if (source === 'openai') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No OpenAI API key configured')
-          text = await openaiSTT(apiKey, body.audio, body.mimeType, model)
-        } else if (source === 'groq') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No Groq API key configured')
-          text = await groqSTT(apiKey, body.audio, body.mimeType, model)
-        } else if (source === 'openrouter') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No OpenRouter API key configured')
-          text = await openrouterSTT(apiKey, body.audio, body.mimeType, model)
-        } else if (source === 'vertex') {
-          const apiKey = await getApiKey(userId, 'genai')
-          if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
-          text = await vertexSTT(apiKey, model, body.audio, body.mimeType)
-        } else {
-          // genai (default)
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No Gemini API key configured')
-          text = await geminiSTT(apiKey, body.audio, body.mimeType, model)
-        }
+        const text = await withFallback(primaryRun, fallbackRun)
 
-        return new Response(JSON.stringify({ text }), { headers: corsHeaders })
+        return new Response(JSON.stringify({ text }), { headers: cors })
       }
 
       // Image Generation
       case 'image': {
         const source = normalizeSource(body.source || body.provider, 'genai')
         const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-3.1-flash-image-preview' : 'gpt-image-1')
+        const fallback = parseFallback(body.fallback)
 
         const options = {
           size: body.size,
@@ -1464,31 +1662,18 @@ serve(async (req) => {
           numberOfImages: body.numberOfImages,
         }
 
-        let result: string
+        const primaryRun = () => dispatchImage(userId, source, model, body.prompt, options)
+        const fallbackRun = fallback
+          ? { run: () => dispatchImage(userId, fallback.source, fallback.model, body.prompt, options),
+              label: `${fallback.source}:${fallback.model}` }
+          : undefined
 
-        if (source === 'vertex') {
-          const apiKey = await getApiKey(userId, 'genai')
-          if (!apiKey) throw new Error('No Gemini API key configured for Vertex AI')
-          result = await vertexImage(apiKey, model, body.prompt, options)
-        } else if (source === 'openrouter') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No OpenRouter API key configured')
-          result = await openrouterImage(apiKey, body.prompt, model)
-        } else if (source === 'openai') {
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No OpenAI API key configured')
-          result = await openaiImage(apiKey, body.prompt, model, options)
-        } else {
-          // genai (default)
-          const apiKey = await getApiKey(userId, source)
-          if (!apiKey) throw new Error('No Gemini API key configured')
-          result = await geminiImage(apiKey, body.prompt, model, options)
-        }
+        const result = await withFallback(primaryRun, fallbackRun)
 
         const isBase64 = result.startsWith('data:')
         return new Response(
           JSON.stringify(isBase64 ? { imageData: result } : { imageUrl: result }),
-          { headers: corsHeaders }
+          { headers: cors }
         )
       }
 
@@ -1499,7 +1684,7 @@ serve(async (req) => {
         const { projectId, region } = await getVertexConfig(userId)
         return new Response(
           JSON.stringify({ accessToken, projectId, region }),
-          { headers: corsHeaders }
+          { headers: cors }
         )
       }
 
@@ -1508,9 +1693,10 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('Error in ai-proxy:', error)
+    const message = error instanceof Error ? error.message : String(error)
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 400, headers: corsHeaders }
+      JSON.stringify({ error: message }),
+      { status: 400, headers: cors }
     )
   }
 })

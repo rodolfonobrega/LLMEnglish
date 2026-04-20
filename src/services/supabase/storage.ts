@@ -8,6 +8,7 @@
 import { supabase } from './client'
 import type { Card as SupabaseCard, CardReview, CardEvaluation, Badge, ConversationTurn } from '../../types/supabase'
 import type { Card } from '../../types/card'
+import { normalizeCorrectionItem } from '../../types/card'
 import type { GamificationState, SessionReport, Badge as LocalBadge } from '../../types/gamification'
 import type { LiveSession, PathProgress } from '../../types/scenario'
 import type { ModelConfig, ConversationTone } from '../../types/settings'
@@ -59,7 +60,7 @@ function supabaseCardToLocal(card: SupabaseCard, reviews?: CardReview[], evaluat
       correctedVersion: evaluation.corrected_version,
       betterAlternatives: evaluation.better_alternatives || [],
       highlights: evaluation.highlights || undefined,
-      corrections: evaluation.corrections || [],
+      corrections: (evaluation.corrections || []).map(normalizeCorrectionItem),
       overallFeedback: evaluation.overall_feedback,
     } : undefined,
   }
@@ -97,10 +98,27 @@ export async function getCards(): Promise<Card[]> {
 }
 
 export async function saveCards(cards: Card[]): Promise<void> {
-  // This is a bulk operation - for simplicity, we'll update each card
-  // In production, consider using a more efficient approach
+  // Best-effort batch: we loop through each card and collect failures rather
+  // than aborting on the first error. A proper transactional RPC should land
+  // when we next touch the schema so partial-failure state can be avoided.
+  const errors: Array<{ id: string; message: string }> = []
+  const succeeded: string[] = []
+
   for (const card of cards) {
-    await updateCard(card)
+    try {
+      await updateCard(card)
+      succeeded.push(card.id)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      errors.push({ id: card.id, message })
+    }
+  }
+
+  if (errors.length > 0) {
+    const failedList = errors.map(e => `${e.id}: ${e.message}`).join('; ')
+    throw new Error(
+      `saveCards partial failure — succeeded: [${succeeded.join(', ')}]; failed: [${failedList}]`
+    )
   }
 }
 
@@ -241,8 +259,26 @@ export async function deleteCard(id: string): Promise<void> {
 }
 
 export async function getCardById(id: string): Promise<Card | undefined> {
-  const cards = await getCards()
-  return cards.find(c => c.id === id)
+  const userId = getUserId()
+
+  const { data: card, error } = await supabase
+    .from('cards')
+    .select(`
+      *,
+      card_reviews(*),
+      card_evaluations(*)
+    `)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to get card: ${error.message}`)
+  if (!card) return undefined
+
+  const typed = card as SupabaseCardWithRelations
+  const reviews = typed.card_reviews || []
+  const evaluation = typed.card_evaluations?.[0]
+  return supabaseCardToLocal(typed, reviews, evaluation)
 }
 
 export async function getCardsDueForReview(): Promise<Card[]> {
@@ -877,6 +913,21 @@ export async function saveConversationTone(tone: ConversationTone): Promise<void
 // ============================================================================
 
 /**
+ * Thrown when the user's session can no longer be refreshed (e.g. revoked,
+ * signed out in another tab, or expired beyond recovery). UI layers should
+ * catch this and route the user to `/login`.
+ *
+ * Handled by AuthContext.tsx's onAuthStateChange: when supabase.auth.signOut()
+ * above fires the SIGNED_OUT event, AuthContext redirects to /login.
+ */
+export class SessionRevokedError extends Error {
+  constructor(message = 'Session revoked') {
+    super(message)
+    this.name = 'SessionRevokedError'
+  }
+}
+
+/**
  * Map source name to DB provider column name.
  * The DB still uses 'gemini' in column names; 'genai' source maps to 'gemini' key.
  * Only sources with existing DB columns are mapped; others are ignored.
@@ -926,7 +977,21 @@ async function edgeFunctionFetch(body: unknown): Promise<Response> {
   )
 
   if (response.status === 401) {
-    accessToken = await getAccessToken(true)
+    try {
+      accessToken = await getAccessToken(true)
+    } catch (refreshError) {
+      // Force-refresh failed (token revoked, signed out elsewhere, etc.).
+      // Clear the client-side session cleanly and surface a typed error so
+      // UI can route to /login.
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // Best-effort: sign-out failures shouldn't mask the revoked signal.
+      }
+      const message = refreshError instanceof Error ? refreshError.message : String(refreshError)
+      throw new SessionRevokedError(`Session revoked: ${message}`)
+    }
+
     response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`,
       {

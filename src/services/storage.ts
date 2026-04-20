@@ -2,7 +2,7 @@
  * Storage Facade
  *
  * Single import point for all storage operations.
- * Sync functions read from runtimeState cache.
+ * Sync functions read from `runtimeConfigSnapshot`.
  * Async functions delegate to supabase/storage.
  * Dev mode (no VITE_SUPABASE_URL) returns defaults for reads and no-ops for writes.
  */
@@ -13,12 +13,12 @@ import type { LiveSession, PathProgress } from '../types/scenario';
 import type { ModelConfig, ConversationTone } from '../types/settings';
 
 import {
-  getRuntimeApiKey,
-  getRuntimeConversationTone,
-  getRuntimeGamification,
-  getRuntimeModelConfig,
-  setRuntimeCredentials,
-} from './runtimeState'
+  getApiKey as snapshotGetApiKey,
+  getConversationTone as snapshotGetConversationTone,
+  getGamification as snapshotGetGamification,
+  getModelConfig as snapshotGetModelConfig,
+  patchCredentials,
+} from './runtimeConfigSnapshot'
 
 import {
   getCards as supabaseGetCards,
@@ -54,59 +54,77 @@ function isDevMode(): boolean {
 }
 
 // ============================================================
-// SYNC FUNCTIONS — delegate to runtimeState cache (D-07, D-11)
+// SYNC FUNCTIONS — delegate to runtimeConfigSnapshot (D-07, D-11)
 // ============================================================
 
 export function getModelConfig(): ModelConfig {
-  return getRuntimeModelConfig();
+  return snapshotGetModelConfig();
 }
 
 export function getGamification(): GamificationState {
-  return getRuntimeGamification();
+  return snapshotGetGamification();
 }
 
 export function getConversationTone(): ConversationTone {
-  return getRuntimeConversationTone();
+  return snapshotGetConversationTone();
 }
 
 // Named API key wrappers (D-10, D-11)
 export function getOpenAIKey(): string {
-  return getRuntimeApiKey('openai') || '';
+  return snapshotGetApiKey('openai') || '';
 }
 
-export function setOpenAIKey(key: string): void {
-  setRuntimeCredentials({ openai: key });
+export async function setOpenAIKey(key: string): Promise<void> {
+  const prev = snapshotGetApiKey('openai') || '';
+  patchCredentials({ openai: key });
   if (isDevMode()) {
     console.warn('setOpenAIKey: write ignored in dev mode');
     return;
   }
-  void supabaseSaveApiKey('openai', key);
+  try {
+    await supabaseSaveApiKey('openai', key);
+  } catch (err) {
+    patchCredentials({ openai: prev });
+    throw err;
+  }
 }
 
 export function getGeminiKey(): string {
-  return getRuntimeApiKey('genai') || '';
+  return snapshotGetApiKey('genai') || '';
 }
 
-export function setGeminiKey(key: string): void {
-  setRuntimeCredentials({ genai: key });
+export async function setGeminiKey(key: string): Promise<void> {
+  const prev = snapshotGetApiKey('genai') || '';
+  patchCredentials({ genai: key });
   if (isDevMode()) {
     console.warn('setGeminiKey: write ignored in dev mode');
     return;
   }
-  void supabaseSaveApiKey('genai', key);
+  try {
+    await supabaseSaveApiKey('genai', key);
+  } catch (err) {
+    patchCredentials({ genai: prev });
+    throw err;
+  }
 }
 
 export function getGroqKey(): string {
-  return getRuntimeApiKey('groq') || '';
+  return snapshotGetApiKey('groq') || '';
 }
 
-export function setGroqKey(key: string): void {
-  setRuntimeCredentials({ groq: key });
+export async function setGroqKey(key: string): Promise<void> {
+  const prev = snapshotGetApiKey('groq') || '';
+  patchCredentials({ groq: key });
   if (isDevMode()) {
     console.warn('setGroqKey: write ignored in dev mode');
     return;
   }
-  void supabaseSaveApiKey('groq', key);
+  try {
+    await supabaseSaveApiKey('groq', key);
+  } catch (err) {
+    patchCredentials({ groq: prev });
+    throw err;
+  }
 }
 
 // ============================================================
@@ -273,7 +291,7 @@ export async function saveApiKey(source: string, key: string): Promise<void> {
 }
 
 export async function getApiKey(source: string): Promise<string> {
-  if (isDevMode()) return getRuntimeApiKey(source as 'genai' | 'openai' | 'groq' | 'openrouter') || '';
+  if (isDevMode()) return snapshotGetApiKey(source as 'genai' | 'openai' | 'groq' | 'openrouter') || '';
   return supabaseGetApiKey(source);
 }
 

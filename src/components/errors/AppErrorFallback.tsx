@@ -1,6 +1,6 @@
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
-export function AppErrorFallback({ error, resetErrorBoundary: _reset }: {
+export function AppErrorFallback({ error }: {
   error: unknown;
   resetErrorBoundary: () => void;
 }) {

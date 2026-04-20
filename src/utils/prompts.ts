@@ -176,7 +176,7 @@ Evaluate the student's response and provide feedback. Respond in JSON format:
   "highlights": ["<something the student did well, in Portuguese>"],
   "corrections": [
     {
-      "tip": "<short, direct feedback in Portuguese — what was wrong and a quick suggestion. e.g. 'Sua frase ficou formal demais, tente usar \"sounds good\" em vez de \"that is acceptable\"'>",
+      "tip": "<short, direct feedback in Portuguese — what was wrong and a quick suggestion. e.g. 'Sua frase ficou formal demais, tente usar "sounds good" em vez de "that is acceptable"'>",
       "example": "<optional full English example sentence showing the fix in context>"
     }
   ],

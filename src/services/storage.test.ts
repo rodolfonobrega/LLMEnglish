@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock runtimeState before importing storage
-vi.mock('./runtimeState', () => ({
-  getRuntimeModelConfig: vi.fn(() => ({ chatModel: 'test-model', chatProvider: 'openai' })),
-  getRuntimeGamification: vi.fn(() => ({ xp: 100, level: 2 })),
-  getRuntimeConversationTone: vi.fn(() => 'balanced'),
-  getRuntimeApiKey: vi.fn((provider: string) => `mock-${provider}-key`),
-  setRuntimeCredentials: vi.fn(),
+// Mock runtimeConfigSnapshot (read + credential write path) before importing storage
+vi.mock('./runtimeConfigSnapshot', () => ({
+  getModelConfig: vi.fn(() => ({ chatModel: 'test-model', chatProvider: 'openai' })),
+  getGamification: vi.fn(() => ({ xp: 100, level: 2 })),
+  getConversationTone: vi.fn(() => 'balanced'),
+  getApiKey: vi.fn((provider: string) => `mock-${provider}-key`),
+  patchCredentials: vi.fn(),
 }));
 
 // Mock supabase/storage before importing storage
@@ -43,8 +43,18 @@ vi.mock('./supabase/storage', () => ({
 
 // Import the module under test (after mocks)
 import * as storage from './storage';
-import { getRuntimeModelConfig, getRuntimeGamification, getRuntimeConversationTone, getRuntimeApiKey } from './runtimeState';
+import {
+  getModelConfig as snapshotGetModelConfig,
+  getGamification as snapshotGetGamification,
+  getConversationTone as snapshotGetConversationTone,
+  getApiKey as snapshotGetApiKey,
+  patchCredentials,
+} from './runtimeConfigSnapshot';
 import * as supabaseStorage from './supabase/storage';
+import type { Card } from '../types/card';
+import type { GamificationState, SessionReport } from '../types/gamification';
+import type { LiveSession } from '../types/scenario';
+import type { ModelConfig } from '../types/settings';
 
 describe('Storage Facade', () => {
   beforeEach(() => {
@@ -57,55 +67,55 @@ describe('Storage Facade', () => {
   // SYNC DELEGATION TESTS
   // ============================================================
 
-  describe('sync functions delegate to runtimeState', () => {
-    it('getModelConfig delegates to getRuntimeModelConfig', () => {
+  describe('sync functions delegate to runtimeConfigSnapshot', () => {
+    it('getModelConfig delegates to snapshot getModelConfig', () => {
       const result = storage.getModelConfig();
-      expect(getRuntimeModelConfig).toHaveBeenCalledOnce();
+      expect(snapshotGetModelConfig).toHaveBeenCalledOnce();
       expect(result).toEqual({ chatModel: 'test-model', chatProvider: 'openai' });
       // Verify sync: result is NOT a Promise
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getGamification delegates to getRuntimeGamification', () => {
+    it('getGamification delegates to snapshot getGamification', () => {
       const result = storage.getGamification();
-      expect(getRuntimeGamification).toHaveBeenCalledOnce();
+      expect(snapshotGetGamification).toHaveBeenCalledOnce();
       expect(result).toEqual({ xp: 100, level: 2 });
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getConversationTone delegates to getRuntimeConversationTone', () => {
+    it('getConversationTone delegates to snapshot getConversationTone', () => {
       const result = storage.getConversationTone();
-      expect(getRuntimeConversationTone).toHaveBeenCalledOnce();
+      expect(snapshotGetConversationTone).toHaveBeenCalledOnce();
       expect(result).toBe('balanced');
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getConversationTone delegates to getRuntimeConversationTone', () => {
+    it('getConversationTone returns the snapshot value synchronously', () => {
       const result = storage.getConversationTone();
-      expect(getRuntimeConversationTone).toHaveBeenCalledOnce();
+      expect(snapshotGetConversationTone).toHaveBeenCalledOnce();
       expect(result).toBe('balanced');
       expect(result).not.toBeInstanceOf(Promise);
     });
   });
 
-  describe('named API key wrappers delegate to getRuntimeApiKey', () => {
-    it('getOpenAIKey calls getRuntimeApiKey with openai', () => {
+  describe('named API key wrappers delegate to snapshot getApiKey', () => {
+    it('getOpenAIKey calls snapshot getApiKey with openai', () => {
       const result = storage.getOpenAIKey();
-      expect(getRuntimeApiKey).toHaveBeenCalledWith('openai');
+      expect(snapshotGetApiKey).toHaveBeenCalledWith('openai');
       expect(result).toBe('mock-openai-key');
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getGeminiKey calls getRuntimeApiKey with genai', () => {
+    it('getGeminiKey calls snapshot getApiKey with genai', () => {
       const result = storage.getGeminiKey();
-      expect(getRuntimeApiKey).toHaveBeenCalledWith('genai');
+      expect(snapshotGetApiKey).toHaveBeenCalledWith('genai');
       expect(result).toBe('mock-genai-key');
       expect(result).not.toBeInstanceOf(Promise);
     });
 
-    it('getGroqKey calls getRuntimeApiKey with groq', () => {
+    it('getGroqKey calls snapshot getApiKey with groq', () => {
       const result = storage.getGroqKey();
-      expect(getRuntimeApiKey).toHaveBeenCalledWith('groq');
+      expect(snapshotGetApiKey).toHaveBeenCalledWith('groq');
       expect(result).toBe('mock-groq-key');
       expect(result).not.toBeInstanceOf(Promise);
     });
@@ -128,13 +138,13 @@ describe('Storage Facade', () => {
     });
 
     it('addCard delegates to supabase addCard', async () => {
-      const card = { id: '1' } as any;
+      const card = { id: '1' } as unknown as Card;
       await storage.addCard(card);
       expect(supabaseStorage.addCard).toHaveBeenCalledWith(card);
     });
 
     it('updateCard delegates to supabase updateCard', async () => {
-      const card = { id: '1' } as any;
+      const card = { id: '1' } as unknown as Card;
       await storage.updateCard(card);
       expect(supabaseStorage.updateCard).toHaveBeenCalledWith(card);
     });
@@ -155,7 +165,7 @@ describe('Storage Facade', () => {
     });
 
     it('saveGamification delegates to supabase saveGamification', async () => {
-      await storage.saveGamification({ xp: 100 } as any);
+      await storage.saveGamification({ xp: 100 } as unknown as GamificationState);
       expect(supabaseStorage.saveGamification).toHaveBeenCalledWith({ xp: 100 });
     });
 
@@ -165,7 +175,7 @@ describe('Storage Facade', () => {
     });
 
     it('saveLiveSession delegates to supabase saveLiveSession', async () => {
-      await storage.saveLiveSession({ id: 's1' } as any);
+      await storage.saveLiveSession({ id: 's1' } as unknown as LiveSession);
       expect(supabaseStorage.saveLiveSession).toHaveBeenCalledWith({ id: 's1' });
     });
 
@@ -205,7 +215,7 @@ describe('Storage Facade', () => {
     });
 
     it('saveSessionReport delegates to supabase saveSessionReport', async () => {
-      await storage.saveSessionReport({ id: 'r1' } as any);
+      await storage.saveSessionReport({ id: 'r1' } as unknown as SessionReport);
       expect(supabaseStorage.saveSessionReport).toHaveBeenCalledWith({ id: 'r1' });
     });
 
@@ -220,7 +230,7 @@ describe('Storage Facade', () => {
     });
 
     it('saveModelConfig delegates to supabase saveModelConfig', async () => {
-      await storage.saveModelConfig({ chatModel: 'new' } as any);
+      await storage.saveModelConfig({ chatModel: 'new' } as unknown as ModelConfig);
       expect(supabaseStorage.saveModelConfig).toHaveBeenCalledWith({ chatModel: 'new' });
     });
 
@@ -308,7 +318,7 @@ describe('Storage Facade', () => {
       const result = await storage.getApiKey('openai');
       expect(result).toBe('mock-openai-key');
       expect(supabaseStorage.getApiKey).not.toHaveBeenCalled();
-      expect(getRuntimeApiKey).toHaveBeenCalledWith('openai');
+      expect(snapshotGetApiKey).toHaveBeenCalledWith('openai');
     });
 
     it('async getSessionReportsByDateRange returns empty array', async () => {
@@ -333,7 +343,7 @@ describe('Storage Facade', () => {
 
     it('dev mode write: saveGamification logs warning', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      await storage.saveGamification({} as any);
+      await storage.saveGamification({} as unknown as GamificationState);
       expect(supabaseStorage.saveGamification).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('dev mode'));
       warnSpy.mockRestore();
@@ -341,7 +351,7 @@ describe('Storage Facade', () => {
 
     it('dev mode write: saveModelConfig logs warning', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      await storage.saveModelConfig({} as any);
+      await storage.saveModelConfig({} as unknown as ModelConfig);
       expect(supabaseStorage.saveModelConfig).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('dev mode'));
       warnSpy.mockRestore();
@@ -371,7 +381,7 @@ describe('Storage Facade', () => {
       warnSpy.mockRestore();
     });
 
-    it('sync functions still work in dev mode (runtimeState always available)', () => {
+    it('sync functions still work in dev mode (snapshot always available)', () => {
       expect(storage.getModelConfig()).toEqual({ chatModel: 'test-model', chatProvider: 'openai' });
       expect(storage.getGamification()).toEqual({ xp: 100, level: 2 });
       expect(storage.getConversationTone()).toBe('balanced');
@@ -385,11 +395,11 @@ describe('Storage Facade', () => {
 
   describe('dead code removal', () => {
     it('does not export getCachedAudio', () => {
-      expect((storage as any).getCachedAudio).toBeUndefined();
+      expect((storage as unknown as Record<string, unknown>).getCachedAudio).toBeUndefined();
     });
 
     it('does not export setCachedAudio', () => {
-      expect((storage as any).setCachedAudio).toBeUndefined();
+      expect((storage as unknown as Record<string, unknown>).setCachedAudio).toBeUndefined();
     });
   });
 
@@ -417,10 +427,36 @@ describe('Storage Facade', () => {
       expect(supabaseStorage.saveApiKey).toHaveBeenCalledWith('groq', 'test-key');
     });
 
+    it('setOpenAIKey updates runtime optimistically before awaiting supabase', async () => {
+      await storage.setOpenAIKey('new-key');
+      expect(patchCredentials).toHaveBeenCalledWith({ openai: 'new-key' });
+    });
+
+    it('setOpenAIKey rolls back runtime and rethrows on supabase failure', async () => {
+      vi.mocked(supabaseStorage.saveApiKey).mockRejectedValueOnce(new Error('boom'));
+      await expect(storage.setOpenAIKey('new-key')).rejects.toThrow('boom');
+      expect(patchCredentials).toHaveBeenNthCalledWith(1, { openai: 'new-key' });
+      expect(patchCredentials).toHaveBeenNthCalledWith(2, { openai: 'mock-openai-key' });
+    });
+
+    it('setGeminiKey rolls back runtime and rethrows on supabase failure', async () => {
+      vi.mocked(supabaseStorage.saveApiKey).mockRejectedValueOnce(new Error('boom'));
+      await expect(storage.setGeminiKey('new-key')).rejects.toThrow('boom');
+      expect(patchCredentials).toHaveBeenNthCalledWith(1, { genai: 'new-key' });
+      expect(patchCredentials).toHaveBeenNthCalledWith(2, { genai: 'mock-genai-key' });
+    });
+
+    it('setGroqKey rolls back runtime and rethrows on supabase failure', async () => {
+      vi.mocked(supabaseStorage.saveApiKey).mockRejectedValueOnce(new Error('boom'));
+      await expect(storage.setGroqKey('new-key')).rejects.toThrow('boom');
+      expect(patchCredentials).toHaveBeenNthCalledWith(1, { groq: 'new-key' });
+      expect(patchCredentials).toHaveBeenNthCalledWith(2, { groq: 'mock-groq-key' });
+    });
+
     it('setOpenAIKey no-ops in dev mode', async () => {
       vi.stubEnv('VITE_SUPABASE_URL', '');
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      storage.setOpenAIKey('test-key');
+      await storage.setOpenAIKey('test-key');
       expect(supabaseStorage.saveApiKey).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('dev mode'));
       warnSpy.mockRestore();
@@ -429,7 +465,7 @@ describe('Storage Facade', () => {
     it('setGeminiKey no-ops in dev mode', async () => {
       vi.stubEnv('VITE_SUPABASE_URL', '');
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      storage.setGeminiKey('test-key');
+      await storage.setGeminiKey('test-key');
       expect(supabaseStorage.saveApiKey).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('dev mode'));
       warnSpy.mockRestore();
@@ -438,7 +474,7 @@ describe('Storage Facade', () => {
     it('setGroqKey no-ops in dev mode', async () => {
       vi.stubEnv('VITE_SUPABASE_URL', '');
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      storage.setGroqKey('test-key');
+      await storage.setGroqKey('test-key');
       expect(supabaseStorage.saveApiKey).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('dev mode'));
       warnSpy.mockRestore();

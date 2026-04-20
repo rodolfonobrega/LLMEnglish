@@ -1,20 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { Flame, Zap } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { getGamification } from '../../services/storage';
-import { useState, useEffect } from 'react';
-import type { GamificationState } from '../../types/gamification';
+import { useRuntimeConfig } from '../../contexts/RuntimeConfigContext';
 import { primaryNavItems } from '../../config/navigation';
 
 export function Sidebar() {
-    const [stats, setStats] = useState<GamificationState | null>(null);
-
-    useEffect(() => {
-        setStats(getGamification());
-        const handler = () => setStats(getGamification());
-        window.addEventListener('gamification-update', handler);
-        return () => window.removeEventListener('gamification-update', handler);
-    }, []);
+    const { gamification: stats } = useRuntimeConfig();
 
     return (
         <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-secondary h-screen sticky top-0">
@@ -26,7 +17,7 @@ export function Sidebar() {
       <div>
         <h1 className="font-bold text-foreground text-lg">SpeakLab</h1>
         <span className="text-xs font-semibold text-primary">
-          NÍVEL {stats?.level || 1}
+          NÍVEL {stats.level || 1}
         </span>
       </div>
     </div>
@@ -65,7 +56,7 @@ export function Sidebar() {
             </nav>
 
 
-            {stats && stats.streak > 0 && (
+            {stats.streak > 0 && (
   <div className="p-3 border-t border-border">
     <div className="bg-amber-soft border border-amber/20 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-1">

@@ -14,7 +14,7 @@ import {
   speechToText as proxySTT,
   generateImage as proxyImage,
 } from './supabase/aiProxy';
-import { getRuntimeModelConfig } from './runtimeState';
+import { getModelConfig } from './runtimeConfigSnapshot';
 import { getAudioCache } from './audioCache';
 
 // ---------------------------------------------------------------------------
@@ -47,12 +47,18 @@ export async function chatCompletion(
   modelOverride?: string,
   responseSchema?: Record<string, unknown>,
 ): Promise<string> {
-  const config = getRuntimeModelConfig();
+  const config = getModelConfig();
   const model = modelOverride || config.chatModel;
   const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
+  // When no explicit override is used, thread the user's fallback config to the
+  // Edge Function so it can retry server-side (G1). The client-side catch below
+  // is kept as a belt-and-suspenders safety net for old Edge Function deploys.
+  const fallback = !modelOverride && config.chatFallbackModel && config.chatFallbackSource
+    ? { source: config.chatFallbackSource, model: config.chatFallbackModel }
+    : undefined;
 
   try {
-    return await proxyChat({ source, model, systemPrompt, userMessage, responseSchema });
+    return await proxyChat({ source, model, systemPrompt, userMessage, responseSchema, fallback });
   } catch (primaryError) {
     if (!modelOverride && config.chatFallbackModel && config.chatFallbackSource) {
       console.warn('Primary chat failed, trying fallback:', primaryError);
@@ -79,7 +85,7 @@ export async function chatCompletionWithImage(
   imageUrl: string,
   modelOverride?: string
 ): Promise<string> {
-  const config = getRuntimeModelConfig();
+  const config = getModelConfig();
   const model = modelOverride || config.chatModel;
   const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
 
@@ -87,8 +93,12 @@ export async function chatCompletionWithImage(
   const resolvedSource = source === 'groq' ? 'genai' : source;
   const resolvedModel = source === 'groq' ? 'gemini-2.5-flash' : model;
 
+  const fallback = !modelOverride && config.chatFallbackModel && config.chatFallbackSource
+    ? { source: config.chatFallbackSource, model: config.chatFallbackModel }
+    : undefined;
+
   try {
-    return await proxyChatWithImage({ source: resolvedSource, model: resolvedModel, systemPrompt, imageUrl });
+    return await proxyChatWithImage({ source: resolvedSource, model: resolvedModel, systemPrompt, imageUrl, fallback });
   } catch (primaryError) {
     if (!modelOverride && config.chatFallbackModel && config.chatFallbackSource) {
       console.warn('Primary chat-with-image failed, trying fallback:', primaryError);
@@ -113,7 +123,7 @@ export async function textToSpeech(
   text: string,
   voiceOverride?: string
 ): Promise<string> {
-  const config = getRuntimeModelConfig();
+  const config = getModelConfig();
   const source = config.ttsSource;
   const model = config.ttsModel;
   const voice = normalizeTtsVoice(source, model, voiceOverride || config.ttsVoice);
@@ -127,8 +137,20 @@ export async function textToSpeech(
     // Cache read failure is non-critical — fall through to network
   }
 
+  const fallback = config.ttsFallbackModel && config.ttsFallbackSource
+    ? {
+        source: config.ttsFallbackSource,
+        model: config.ttsFallbackModel,
+        voice: normalizeTtsVoice(
+          config.ttsFallbackSource,
+          config.ttsFallbackModel,
+          config.ttsFallbackVoice || voice,
+        ),
+      }
+    : undefined;
+
   try {
-    const base64 = await proxyTTS({ source, model, voice, text });
+    const base64 = await proxyTTS({ source, model, voice, text, fallback });
     // Store in cache (fire-and-forget, errors are logged internally)
     audioCache.set(text, voice, model, source, base64);
     return base64;
@@ -161,12 +183,15 @@ export async function textToSpeech(
 // ===== Speech to Text =====
 
 export async function speechToText(audioBlob: Blob): Promise<string> {
-  const config = getRuntimeModelConfig();
+  const config = getModelConfig();
   const source = config.sttSource;
   const model = config.sttModel;
+  const fallback = config.sttFallbackModel && config.sttFallbackSource
+    ? { source: config.sttFallbackSource, model: config.sttFallbackModel }
+    : undefined;
 
   try {
-    return await proxySTT({ source, model, audioBlob });
+    return await proxySTT({ source, model, audioBlob, fallback });
   } catch (primaryError) {
     if (config.sttFallbackModel && config.sttFallbackSource) {
       console.warn('Primary STT failed, trying fallback:', primaryError);
@@ -206,11 +231,14 @@ export async function generateImage(
   prompt: string,
   options?: ImageGenerationOptions
 ): Promise<string> {
-  const config = getRuntimeModelConfig();
+  const config = getModelConfig();
   const source = config.imageSource;
   const model = config.imageModel;
+  const fallback = config.imageFallbackModel && config.imageFallbackSource
+    ? { source: config.imageFallbackSource, model: config.imageFallbackModel }
+    : undefined;
   try {
-    return await proxyImage({ source, model, prompt, ...options });
+    return await proxyImage({ source, model, prompt, ...options, fallback });
   } catch (primaryError) {
     if (config.imageFallbackModel && config.imageFallbackSource) {
       console.warn('Primary image generation failed, trying fallback:', primaryError);

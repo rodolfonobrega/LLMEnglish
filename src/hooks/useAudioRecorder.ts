@@ -89,7 +89,7 @@ export function useAudioRecorder() {
         error: `Microphone access denied: ${err}`,
       }));
     }
-  }, []);
+  }, [updateState]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecordingRef.current) {

@@ -1,14 +1,21 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PracticeHubPage } from './PracticeHubPage';
+
+const navigateMock = vi.fn();
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => navigateMock,
   };
+});
+
+beforeEach(() => {
+  navigateMock.mockClear();
 });
 
 function renderPage() {
@@ -103,5 +110,39 @@ describe('PracticeHubPage', () => {
       const elements = screen.getAllByText(label);
       expect(elements).toHaveLength(1);
     }
+  });
+
+  it('clicking the Frases mode card navigates to /exercises?mode=phrases', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    // Each PracticeModeCard is a button with aria-label "<Label>: <description>".
+    const frasesCard = screen.getByRole('button', { name: /^Frases:/ });
+    await user.click(frasesCard);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith('/exercises?mode=phrases');
+  });
+
+  it('clicking the Simulação ao Vivo mode card navigates to /live', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const liveCard = screen.getByRole('button', { name: /^Simulação ao Vivo:/ });
+    await user.click(liveCard);
+    expect(navigateMock).toHaveBeenCalledWith('/live');
+  });
+
+  it('clicking the Trilhas mode card navigates to /paths', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const trilhasCard = screen.getByRole('button', { name: /^Trilhas:/ });
+    await user.click(trilhasCard);
+    expect(navigateMock).toHaveBeenCalledWith('/paths');
+  });
+
+  it('clicking the Scripts mode card navigates to /scripts', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const scriptsCard = screen.getByRole('button', { name: /^Scripts:/ });
+    await user.click(scriptsCard);
+    expect(navigateMock).toHaveBeenCalledWith('/scripts');
   });
 });

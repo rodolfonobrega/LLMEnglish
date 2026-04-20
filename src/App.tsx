@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { RuntimeConfigProvider } from './contexts/RuntimeConfigContext';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './components/auth/LoginPage';
 import { MigrationPage } from './components/auth/MigrationPage';
@@ -69,26 +70,28 @@ function App() {
     <ErrorBoundary FallbackComponent={AppErrorFallback}>
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} errorElement={<ErrorFallback />} />
-            <Route path="/migrate" element={<MigrationPage />} errorElement={<ErrorFallback />} />
+          <RuntimeConfigProvider>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} errorElement={<ErrorFallback />} />
+              <Route path="/migrate" element={<MigrationPage />} errorElement={<ErrorFallback />} />
 
-            {/* Protected routes with Layout -- errorElement renders inside Layout (sidebar preserved) */}
-            <Route path="/" element={<Layout />}>
-              <Route index element={<ProtectedApp />} errorElement={<ErrorFallback />} />
-              <Route path="review" element={<ReviewPage />} errorElement={<ErrorFallback />} />
-              <Route path="live" element={<LiveRoleplayPage />} errorElement={<ErrorFallback />} />
-              <Route path="paths" element={<PathsPage />} errorElement={<ErrorFallback />} />
-              <Route path="exercises" element={<ExercisesPage />} errorElement={<ErrorFallback />} />
-              <Route path="library" element={<LibraryPage />} errorElement={<ErrorFallback />} />
-              <Route path="scripts" element={<PracticePage />} errorElement={<ErrorFallback />} />
-              <Route path="practice" element={<PracticeHubPage />} errorElement={<ErrorFallback />} />
-              <Route path="settings" element={<SettingsPage />} errorElement={<ErrorFallback />} />
-              <Route path="errors" element={<ErrorDashboard />} errorElement={<ErrorFallback />} />
-              <Route path="history" element={<HistoryPage />} errorElement={<ErrorFallback />} />
-            </Route>
-          </Routes>
+              {/* Protected routes with Layout -- errorElement renders inside Layout (sidebar preserved) */}
+              <Route path="/" element={<Layout />}>
+                <Route index element={<ProtectedApp />} errorElement={<ErrorFallback />} />
+                <Route path="review" element={<ReviewPage />} errorElement={<ErrorFallback />} />
+                <Route path="live" element={<LiveRoleplayPage />} errorElement={<ErrorFallback />} />
+                <Route path="paths" element={<PathsPage />} errorElement={<ErrorFallback />} />
+                <Route path="exercises" element={<ExercisesPage />} errorElement={<ErrorFallback />} />
+                <Route path="library" element={<LibraryPage />} errorElement={<ErrorFallback />} />
+                <Route path="scripts" element={<PracticePage />} errorElement={<ErrorFallback />} />
+                <Route path="practice" element={<PracticeHubPage />} errorElement={<ErrorFallback />} />
+                <Route path="settings" element={<SettingsPage />} errorElement={<ErrorFallback />} />
+                <Route path="errors" element={<ErrorDashboard />} errorElement={<ErrorFallback />} />
+                <Route path="history" element={<HistoryPage />} errorElement={<ErrorFallback />} />
+              </Route>
+            </Routes>
+          </RuntimeConfigProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

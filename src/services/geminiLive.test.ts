@@ -88,7 +88,6 @@ describe('GeminiLiveSession', () => {
     // Mock global AudioWorkletNode constructor so production `new AudioWorkletNode(...)` works.
     // Must use a function (not arrow) so it's callable as a constructor with `new`.
     lastCreatedWorkletNode = new FakeAudioWorkletNode();
-    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
     (globalThis as unknown as { AudioWorkletNode: unknown }).AudioWorkletNode = class {
       constructor() {
         return lastCreatedWorkletNode;

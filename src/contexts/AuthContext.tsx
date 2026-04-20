@@ -7,7 +7,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AuthUser } from '../services/supabase/auth'
-import { hydrateRuntimeState, resetRuntimeState, setRuntimeGamification } from '../services/runtimeState'
 import {
   getSession,
   signInWithGoogle,
@@ -19,7 +18,6 @@ import {
   updateProfile,
 } from '../services/supabase/auth'
 import type { Profile } from '../types/supabase'
-import type { GamificationState } from '../types/gamification'
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -49,21 +47,6 @@ const MOCK_PROFILE: Profile = {
   updated_at: new Date().toISOString(),
 }
 
-const MOCK_GAMIFICATION: GamificationState = {
-  xp: 1250,
-  level: 5,
-  streak: 7,
-  longestStreak: 14,
-  lastPracticeDate: new Date().toISOString().split('T')[0],
-  totalSessions: 42,
-  totalCards: 87,
-  badges: [
-    { id: 'first_card', name: 'First Steps', description: 'Complete your first exercise', icon: '🎯', earnedAt: '2026-03-15' },
-    { id: 'streak_7', name: 'Unstoppable', description: '7-day streak', icon: '⚡', earnedAt: '2026-03-28' },
-    { id: 'level_5', name: 'Rising Star', description: 'Reach level 5', icon: '⭐', earnedAt: '2026-03-30' },
-  ],
-}
-
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -90,7 +73,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (import.meta.env.DEV && (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY)) {
       setUser(MOCK_USER)
       setProfile(MOCK_PROFILE)
-      setRuntimeGamification(MOCK_GAMIFICATION)
+      // Runtime config (including mock gamification) is seeded by
+      // RuntimeConfigProvider in dev-mode-without-Supabase.
       setLoading(false)
       return
     }
@@ -112,10 +96,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function loadProfile(userId: string, email?: string) {
       try {
-        const [userProfile] = await Promise.all([
-          getOrCreateProfile(userId, email),
-          hydrateRuntimeState(),
-        ])
+        const userProfile = await getOrCreateProfile(userId, email)
+        // RuntimeConfigProvider observes `user` changes and hydrates its
+        // own state — no need to call `hydrateRuntimeState()` here.
         if (mounted) {
           setProfile(userProfile)
         }
@@ -156,8 +139,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setProfile(null)
-        resetRuntimeState()
+        // RuntimeConfigProvider resets automatically when `user` becomes null.
         finishLoading()
+
+        // If a request made by the app got a revoked-session response, storage.ts
+        // calls supabase.auth.signOut(), which lands here. Redirect to /login so
+        // the user isn't stuck on a protected route with no session.
+        const pathname = window.location.pathname
+        const publicPaths = ['/login', '/migrate']
+        if (!publicPaths.includes(pathname)) {
+          window.location.href = '/login'
+        }
         return
       }
 
@@ -171,7 +163,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } else {
         setUser(null)
         setProfile(null)
-        resetRuntimeState()
+        // RuntimeConfigProvider resets automatically when `user` becomes null.
       }
 
       finishLoading()

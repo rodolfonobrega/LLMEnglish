@@ -1,21 +1,12 @@
-import { useState, useEffect } from 'react';
 import { ProgressBar } from '../ui/custom';
-import { getGamification } from '../../services/storage';
-import type { GamificationState } from '../../types/gamification';
+import { useRuntimeConfig } from '../../contexts/RuntimeConfigContext';
 import { Hand, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { XP_PER_LEVEL } from '../../types/gamification';
 
 export function DiscoveryPage() {
-  const [stats, setStats] = useState<GamificationState | null>(null);
+  const { gamification: stats } = useRuntimeConfig();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setStats(getGamification());
-    const handler = () => setStats(getGamification());
-    window.addEventListener('gamification-update', handler);
-    return () => window.removeEventListener('gamification-update', handler);
-  }, []);
 
   return (
     <div className="space-y-6 pb-20">
@@ -31,14 +22,12 @@ export function DiscoveryPage() {
       </div>
 
       {/* Progress Bar */}
-      {stats && (
-        <ProgressBar
-          current={stats.xp % XP_PER_LEVEL}
-          max={XP_PER_LEVEL}
-          level={stats.level}
-          streak={stats.streak}
-        />
-      )}
+      <ProgressBar
+        current={stats.xp % XP_PER_LEVEL}
+        max={XP_PER_LEVEL}
+        level={stats.level}
+        streak={stats.streak}
+      />
 
       {/* Praticar Hero Card */}
       <section>

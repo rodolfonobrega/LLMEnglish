@@ -5,74 +5,20 @@ import {
   saveApiKeys,
 } from '../../services/storage';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  hydrateRuntimeState,
-  setRuntimeConversationTone,
-  setRuntimeModelConfig,
-} from '../../services/runtimeState';
-import type { ModelConfig, Source, ModelOption, ConversationTone } from '../../types/settings';
-import {
-  DEFAULT_MODEL_CONFIG, SOURCE_LABELS,
-  CHAT_MODELS, STT_MODELS, TTS_MODELS,
-  defaultTtsVoice, normalizeTtsVoice, ttsVoicesForSource,
-  IMAGE_MODELS, LIVE_MODELS, OPENAI_LIVE_VOICES, GEMINI_LIVE_VOICES,
-  sourcesFromModels,
-} from '../../types/settings';
-import { KeyRound, Shield, Save, Check, Cpu, RotateCcw, MessageSquare, Mic, Volume2, ImageIcon, Radio, ShieldAlert, MessagesSquare, Coffee, Briefcase, Scale, LogOut, Loader2 } from 'lucide-react';
+import { useRuntimeConfig } from '../../contexts/RuntimeConfigContext';
+import type { ModelConfig, ConversationTone } from '../../types/settings';
+import { DEFAULT_MODEL_CONFIG, normalizeTtsVoice } from '../../types/settings';
+import { Shield, Save, Check, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-
-function firstModelForSource(models: readonly ModelOption[], source: Source): string {
-  return models.find(m => m.source === source)?.value ?? models[0].value;
-}
-
-/** Two-dropdown model selector: Provider → Model (filtered by provider). */
-function ModelSelect({
-  sources,
-  models,
-  currentSource,
-  currentModel,
-  onSourceChange,
-  onModelChange,
-  label,
-}: {
-  sources: readonly Source[];
-  models: readonly ModelOption[];
-  currentSource: Source;
-  currentModel: string;
-  onSourceChange: (source: Source) => void;
-  onModelChange: (source: Source, model: string) => void;
-  label: string;
-}) {
-  const filteredModels = models.filter(m => m.source === currentSource);
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <Select
-        label={`${label} - Provedor`}
-        value={currentSource}
-        options={sources.map(s => ({ value: s, label: SOURCE_LABELS[s] }))}
-        onChange={v => onSourceChange(v as Source)}
-      />
-      <Select
-        label={`${label} - Modelo`}
-        value={currentModel}
-        options={filteredModels.map(m => ({ value: m.value, label: m.label }))}
-        onChange={v => onModelChange(currentSource, v)}
-      />
-    </div>
-  );
-}
-
-const CHAT_SOURCES = sourcesFromModels(CHAT_MODELS);
-const STT_SOURCES = sourcesFromModels(STT_MODELS);
-const TTS_SOURCES = sourcesFromModels(TTS_MODELS);
-const IMAGE_SOURCES = sourcesFromModels(IMAGE_MODELS);
-const LIVE_SOURCES = sourcesFromModels(LIVE_MODELS);
+import { ApiKeysSection } from './sections/ApiKeysSection';
+import { ProfileSection } from './sections/ProfileSection';
+import { ModelConfigSection } from './sections/ModelConfigSection';
+import { SignOutButton } from './sections/AppearanceSection';
 
 export function SettingsPage() {
   const { user, profile, signOut: authSignOut, refreshProfile } = useAuth();
+  const { setModelConfig, setConversationTone, hydrate } = useRuntimeConfig();
   const isDevMode = !import.meta.env.VITE_SUPABASE_URL;
   const [openaiKey, setOpenaiKeyState] = useState('');
   const [geminiKey, setGeminiKeyState] = useState('');
@@ -106,114 +52,6 @@ export function SettingsPage() {
     setConfig(prev => ({ ...prev, ...partial }));
   };
 
-  // --- Chat handlers ---
-  const handleChatSourceChange = (newSource: Source) => {
-    updateConfig({ chatSource: newSource, chatModel: firstModelForSource(CHAT_MODELS, newSource) });
-  };
-  const handleChatModelChange = (source: Source, model: string) => {
-    updateConfig({ chatSource: source, chatModel: model });
-  };
-
-  // --- STT handlers ---
-  const handleSttSourceChange = (newSource: Source) => {
-    updateConfig({ sttSource: newSource, sttModel: firstModelForSource(STT_MODELS, newSource) });
-  };
-  const handleSttModelChange = (source: Source, model: string) => {
-    updateConfig({ sttSource: source, sttModel: model });
-  };
-
-  // --- TTS handlers ---
-  const handleTtsSourceChange = (newSource: Source) => {
-    const model = firstModelForSource(TTS_MODELS, newSource);
-    updateConfig({ ttsSource: newSource, ttsModel: model, ttsVoice: defaultTtsVoice(newSource, model) });
-  };
-  const handleTtsModelChange = (source: Source, model: string) => {
-    updateConfig({
-      ttsSource: source,
-      ttsModel: model,
-      ttsVoice: normalizeTtsVoice(source, model, config.ttsVoice),
-    });
-  };
-
-  // --- Image handlers ---
-  const handleImageSourceChange = (newSource: Source) => {
-    updateConfig({ imageSource: newSource as ModelConfig['imageSource'], imageModel: firstModelForSource(IMAGE_MODELS, newSource) });
-  };
-  const handleImageModelChange = (source: Source, model: string) => {
-    updateConfig({ imageSource: source as ModelConfig['imageSource'], imageModel: model });
-  };
-
-  // --- Live handlers ---
-  const handleLiveSourceChange = (newSource: Source) => {
-    updateConfig({
-      liveSource: newSource as ModelConfig['liveSource'],
-      liveModel: firstModelForSource(LIVE_MODELS, newSource),
-      liveVoice: newSource === 'openai' ? 'marin' : 'Aoede',
-    });
-  };
-  const handleLiveModelChange = (source: Source, model: string) => {
-    updateConfig({ liveSource: source as ModelConfig['liveSource'], liveModel: model });
-  };
-
-  // --- Fallback handlers ---
-  const handleFallbackSourceChange = (
-    field: 'chat' | 'stt' | 'tts' | 'image',
-    newSource: Source | '',
-  ) => {
-    if (!newSource) {
-      const clears: Record<string, Partial<ModelConfig>> = {
-        chat: { chatFallbackModel: undefined, chatFallbackSource: undefined },
-        stt: { sttFallbackModel: undefined, sttFallbackSource: undefined },
-        tts: { ttsFallbackModel: undefined, ttsFallbackSource: undefined, ttsFallbackVoice: undefined },
-        image: { imageFallbackModel: undefined, imageFallbackSource: undefined },
-      };
-      updateConfig(clears[field]);
-      return;
-    }
-    const modelLists: Record<string, readonly ModelOption[]> = {
-      chat: CHAT_MODELS,
-      stt: STT_MODELS,
-      tts: TTS_MODELS,
-      image: IMAGE_MODELS,
-    };
-    const model = firstModelForSource(modelLists[field], newSource);
-    const updates: Record<string, Partial<ModelConfig>> = {
-      chat: { chatFallbackSource: newSource, chatFallbackModel: model },
-      stt: { sttFallbackSource: newSource, sttFallbackModel: model },
-      tts: {
-        ttsFallbackSource: newSource,
-        ttsFallbackModel: model,
-        ttsFallbackVoice: defaultTtsVoice(newSource, model),
-      },
-      image: { imageFallbackSource: newSource as ModelConfig['imageFallbackSource'], imageFallbackModel: model },
-    };
-    updateConfig(updates[field]);
-  };
-
-  const handleFallbackModelChange = (
-    field: 'chat' | 'stt' | 'tts' | 'image',
-    source: Source,
-    model: string,
-  ) => {
-    const updates: Record<string, Partial<ModelConfig>> = {
-      chat: { chatFallbackSource: source, chatFallbackModel: model },
-      stt: { sttFallbackSource: source, sttFallbackModel: model },
-      tts: {
-        ttsFallbackSource: source,
-        ttsFallbackModel: model,
-        ttsFallbackVoice: normalizeTtsVoice(source, model, config.ttsFallbackVoice),
-      },
-      image: { imageFallbackSource: source as ModelConfig['imageFallbackSource'], imageFallbackModel: model },
-    };
-    updateConfig(updates[field]);
-  };
-
-  const ttsVoiceOptions = ttsVoicesForSource(config.ttsSource, config.ttsModel);
-  const liveVoiceOptions = config.liveSource === 'openai' ? OPENAI_LIVE_VOICES : GEMINI_LIVE_VOICES;
-  const ttsFallbackVoiceOptions = config.ttsFallbackSource
-    ? ttsVoicesForSource(config.ttsFallbackSource, config.ttsFallbackModel)
-    : [];
-
   const handleSave = async () => {
     if (isDevMode) return;
     setSaving(true);
@@ -229,9 +67,9 @@ export function SettingsPage() {
       }
       await saveModelConfig(config);
       await saveConversationTone(tone);
-      setRuntimeModelConfig(config);
-      setRuntimeConversationTone(tone);
-      await hydrateRuntimeState();
+      setModelConfig(config);
+      setConversationTone(tone);
+      await hydrate();
       await refreshProfile();
       setSaved(true);
       setTimeout(() => setSaved(false), 4000);
@@ -250,68 +88,6 @@ export function SettingsPage() {
 
   const handleReset = () => setConfig({ ...DEFAULT_MODEL_CONFIG });
 
-  function FallbackSection({
-    label,
-    modelSources,
-    modelOptions,
-    currentModel,
-    currentSource,
-    onSourceChange,
-    onModelChange,
-    voiceOptions,
-    currentVoice,
-    onVoiceChange,
-  }: {
-    label: string;
-    modelSources: readonly Source[];
-    modelOptions: readonly ModelOption[];
-    currentModel: string | undefined;
-    currentSource: Source | undefined;
-    onSourceChange: (source: Source | '') => void;
-    onModelChange: (source: Source, model: string) => void;
-    voiceOptions?: { value: string; label: string }[];
-    currentVoice?: string;
-    onVoiceChange?: (voice: string) => void;
-  }) {
-    const filteredModels = currentSource
-      ? modelOptions.filter(m => m.source === currentSource)
-      : [];
-    return (
-      <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-        <div className="flex items-center gap-1.5">
-          <ShieldAlert size={12} className="text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Select
-            label="Fallback - Provedor"
-            value={currentSource ?? ''}
-            options={[
-              { value: '', label: 'Nenhum (sem fallback)' },
-              ...modelSources.map(s => ({ value: s, label: SOURCE_LABELS[s] })),
-            ]}
-            onChange={v => onSourceChange(v as Source | '')}
-          />
-          <Select
-            label="Fallback - Modelo"
-            value={currentModel ?? ''}
-            options={filteredModels.map(m => ({ value: m.value, label: m.label }))}
-            onChange={v => currentSource && onModelChange(currentSource, v)}
-            disabled={!currentSource}
-          />
-        </div>
-        {voiceOptions && currentModel && onVoiceChange && (
-          <Select
-            label="Voz Fallback"
-            value={currentVoice || ''}
-            options={voiceOptions}
-            onChange={onVoiceChange}
-          />
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
       {/* Header with User Profile */}
@@ -320,13 +96,7 @@ export function SettingsPage() {
           <h2 className="text-3xl font-extrabold text-foreground text-balance">Configurações</h2>
           <p className="text-muted-foreground text-pretty">Configure suas API keys, perfil e modelos de IA.</p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-colors"
-        >
-          <LogOut size={16} />
-          <span className="hidden sm:inline">Sair</span>
-        </button>
+        <SignOutButton onLogout={handleLogout} />
       </div>
 
       {/* User Info Card */}
@@ -353,338 +123,25 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* API Keys */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
-            <KeyRound size={14} className="text-primary" />
-          </div>
-          <h3 className="text-sm font-bold text-primary uppercase tracking-wide">API Keys</h3>
-        </div>
+      <ApiKeysSection
+        isDevMode={isDevMode}
+        openaiKey={openaiKey}
+        geminiKey={geminiKey}
+        groqKey={groqKey}
+        openrouterKey={openrouterKey}
+        vertexProjectId={vertexProjectId}
+        vertexRegion={vertexRegion}
+        onOpenaiKeyChange={setOpenaiKeyState}
+        onGeminiKeyChange={setGeminiKeyState}
+        onGroqKeyChange={setGroqKeyState}
+        onOpenrouterKeyChange={setOpenrouterKeyState}
+        onVertexProjectIdChange={setVertexProjectId}
+        onVertexRegionChange={setVertexRegion}
+      />
 
-        <div className="bg-card rounded-2xl p-5 border border-border space-y-4">
-          {isDevMode && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                API keys loaded from environment variables. Sign in to manage your own keys.
-              </p>
-            </div>
-          )}
-          <Input
-            label="OpenAI API Key"
-            type="password"
-            value={openaiKey}
-            onChange={e => setOpenaiKeyState(e.target.value)}
-            placeholder="sk-..."
-            disabled={isDevMode}
-            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
-            hint={import.meta.env.VITE_OPENAI_API_KEY && !localStorage.getItem('el_openai_key')
-              ? 'Carregada do arquivo .env'
-              : 'Obtenha em platform.openai.com/api-keys'}
-          />
-          <Input
-            label="Google Gemini API Key"
-            type="password"
-            value={geminiKey}
-            onChange={e => setGeminiKeyState(e.target.value)}
-            placeholder="AI..."
-            disabled={isDevMode}
-            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
-            hint={import.meta.env.VITE_GEMINI_API_KEY && !localStorage.getItem('el_gemini_key')
-              ? 'Carregada do arquivo .env'
-              : 'Obtenha em aistudio.google.com/apikey'}
-          />
-          <Input
-            label="Groq API Key"
-            type="password"
-            value={groqKey}
-            onChange={e => setGroqKeyState(e.target.value)}
-            placeholder="gsk_..."
-            disabled={isDevMode}
-            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
-            hint={import.meta.env.VITE_GROQ_API_KEY && !localStorage.getItem('el_groq_key')
-              ? 'Carregada do arquivo .env'
-              : 'Obtenha em console.groq.com'}
-          />
-          <Input
-            label="OpenRouter API Key"
-            type="password"
-            value={openrouterKey}
-            onChange={e => setOpenrouterKeyState(e.target.value)}
-            placeholder="sk-or-..."
-            disabled={isDevMode}
-            className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
-            hint={import.meta.env.VITE_OPENROUTER_API_KEY && !localStorage.getItem('el_openrouter_key')
-              ? 'Carregada do arquivo .env'
-              : 'Obtenha em openrouter.ai/keys'}
-          />
-          <div className="pt-3 border-t border-border/50 space-y-3">
-            <p className="text-sm font-medium text-foreground">Vertex AI (Google Cloud)</p>
-            <p className="text-xs text-muted-foreground">No API key needed. Uses your Google Cloud project credentials.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Project ID"
-                type="text"
-                value={vertexProjectId}
-                onChange={e => setVertexProjectId(e.target.value)}
-                placeholder="my-gcp-project"
-                disabled={isDevMode}
-                className={cn(isDevMode && 'opacity-50 cursor-not-allowed')}
-                hint="Google Cloud project ID"
-              />
-              <Select
-                label="Region"
-                value={vertexRegion}
-                onChange={v => setVertexRegion(v)}
-                options={[
-                  { value: 'us-central1', label: 'us-central1 (Iowa)' },
-                  { value: 'us-east1', label: 'us-east1 (South Carolina)' },
-                  { value: 'europe-west1', label: 'europe-west1 (Belgium)' },
-                  { value: 'europe-west4', label: 'europe-west4 (Netherlands)' },
-                  { value: 'asia-east1', label: 'asia-east1 (Taiwan)' },
-                  { value: 'asia-southeast1', label: 'asia-southeast1 (Singapore)' },
-                ]}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+      <ProfileSection tone={tone} onToneChange={setTone} />
 
-      {/* Conversation Tone */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
-            <MessagesSquare size={14} className="text-primary" />
-          </div>
-          <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Tom da Conversa</h3>
-        </div>
-        <p className="text-xs text-muted-foreground text-pretty">
-          Escolha o tom geral para conversas, exercícios e avaliações da IA no app.
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {([
-            {
-              id: 'casual' as const,
-              icon: Coffee,
-              label: 'Casual',
-              desc: 'Inglês do dia a dia. Contrações, gírias, ritmo relaxado. Como conversar com um amigo.',
-            },
-            {
-              id: 'balanced' as const,
-              icon: Scale,
-              label: 'Equilibrado',
-              desc: 'Natural e claro. Conversacional mas bem estruturado. O padrão.',
-            },
-            {
-              id: 'formal' as const,
-              icon: Briefcase,
-              label: 'Formal',
-              desc: 'Profissional e polido. Business English, reuniões, apresentações.',
-            },
-          ]).map(option => (
-            <button
-              key={option.id}
-              onClick={() => setTone(option.id)}
-              className={cn(
-                'flex flex-col items-start gap-3 p-4 rounded-2xl border-2 transition-all duration-200 text-left cursor-pointer',
-                tone === option.id
-                  ? 'border-primary bg-primary-soft shadow-sm'
-                  : 'border-border bg-card hover:border-primary/40 hover:bg-muted/30'
-              )}
-            >
-              <div className={cn(
-                'size-9 rounded-xl flex items-center justify-center',
-                tone === option.id ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-              )}>
-                <option.icon size={18} />
-              </div>
-              <div>
-                <p className={cn(
-                  'font-bold text-sm',
-                  tone === option.id ? 'text-primary' : 'text-foreground'
-                )}>
-                  {option.label}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{option.desc}</p>
-              </div>
-              {tone === option.id && (
-                <div className="self-end size-5 bg-primary rounded-full flex items-center justify-center">
-                  <Check size={12} className="text-white" />
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Model Configuration */}
-      <section className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="size-7 rounded-full bg-primary-soft flex items-center justify-center">
-              <Cpu size={14} className="text-primary" />
-            </div>
-            <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Configuração de Modelos</h3>
-          </div>
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 font-semibold cursor-pointer"
-          >
-            <RotateCcw size={12} />
-            Resetar
-          </button>
-        </div>
-
-        {[
-          {
-            icon: MessageSquare, color: 'sky' as const, title: 'Geração de Texto',
-            desc: 'Gera prompts, avalia fala, cria cenários.',
-            content: (
-              <>
-                <ModelSelect
-                  label="Chat"
-                  sources={CHAT_SOURCES}
-                  models={CHAT_MODELS}
-                  currentSource={config.chatSource}
-                  currentModel={config.chatModel}
-                  onSourceChange={handleChatSourceChange}
-                  onModelChange={handleChatModelChange}
-                />
-                <FallbackSection
-                  label="Fallback"
-                  modelSources={CHAT_SOURCES}
-                  modelOptions={CHAT_MODELS}
-                  currentModel={config.chatFallbackModel}
-                  currentSource={config.chatFallbackSource}
-                  onSourceChange={s => handleFallbackSourceChange('chat', s)}
-                  onModelChange={(s, m) => handleFallbackModelChange('chat', s, m)}
-                />
-              </>
-            ),
-          },
-          {
-            icon: Mic, color: 'coral' as const, title: 'Fala para Texto (STT)',
-            desc: `Transcreve seu áudio falado. Requer key do ${SOURCE_LABELS[config.sttSource]}.`,
-            content: (
-              <>
-                <ModelSelect
-                  label="STT"
-                  sources={STT_SOURCES}
-                  models={STT_MODELS}
-                  currentSource={config.sttSource}
-                  currentModel={config.sttModel}
-                  onSourceChange={handleSttSourceChange}
-                  onModelChange={handleSttModelChange}
-                />
-                <FallbackSection
-                  label="Fallback"
-                  modelSources={STT_SOURCES}
-                  modelOptions={STT_MODELS}
-                  currentModel={config.sttFallbackModel}
-                  currentSource={config.sttFallbackSource}
-                  onSourceChange={s => handleFallbackSourceChange('stt', s)}
-                  onModelChange={(s, m) => handleFallbackModelChange('stt', s, m)}
-                />
-              </>
-            ),
-          },
-          {
-            icon: Volume2, color: 'leaf' as const, title: 'Texto para Fala (TTS)',
-            desc: `Áudio para frases e correções. Requer key do ${SOURCE_LABELS[config.ttsSource]}.`,
-            content: (
-              <>
-                <ModelSelect
-                  label="TTS"
-                  sources={TTS_SOURCES}
-                  models={TTS_MODELS}
-                  currentSource={config.ttsSource}
-                  currentModel={config.ttsModel}
-                  onSourceChange={handleTtsSourceChange}
-                  onModelChange={handleTtsModelChange}
-                />
-                <Select label="Voz" value={config.ttsVoice} options={ttsVoiceOptions} onChange={v => updateConfig({ ttsVoice: v })} />
-                <FallbackSection
-                  label="Fallback"
-                  modelSources={TTS_SOURCES}
-                  modelOptions={TTS_MODELS}
-                  currentModel={config.ttsFallbackModel}
-                  currentSource={config.ttsFallbackSource}
-                  onSourceChange={s => handleFallbackSourceChange('tts', s)}
-                  onModelChange={(s, m) => handleFallbackModelChange('tts', s, m)}
-                  voiceOptions={ttsFallbackVoiceOptions}
-                  currentVoice={config.ttsFallbackVoice}
-                  onVoiceChange={v => updateConfig({ ttsFallbackVoice: v })}
-                />
-              </>
-            ),
-          },
-          {
-            icon: ImageIcon, color: 'amber' as const, title: 'Geração de Imagem',
-            desc: 'Gera imagens para o modo de Desafio Visual.',
-            content: (
-              <>
-                <ModelSelect
-                  label="Imagem"
-                  sources={IMAGE_SOURCES}
-                  models={IMAGE_MODELS}
-                  currentSource={config.imageSource}
-                  currentModel={config.imageModel}
-                  onSourceChange={handleImageSourceChange}
-                  onModelChange={handleImageModelChange}
-                />
-                <FallbackSection
-                  label="Fallback"
-                  modelSources={IMAGE_SOURCES}
-                  modelOptions={IMAGE_MODELS}
-                  currentModel={config.imageFallbackModel}
-                  currentSource={config.imageFallbackSource}
-                  onSourceChange={s => handleFallbackSourceChange('image', s)}
-                  onModelChange={(s, m) => handleFallbackModelChange('image', s, m)}
-                />
-              </>
-            ),
-          },
-          {
-            icon: Radio, color: 'coral' as const, title: 'Simulação ao Vivo',
-            desc: `Conversa de áudio em tempo real. Requer key do ${SOURCE_LABELS[config.liveSource]}.`,
-            content: (
-              <>
-                <ModelSelect
-                  label="Live"
-                  sources={LIVE_SOURCES}
-                  models={LIVE_MODELS}
-                  currentSource={config.liveSource}
-                  currentModel={config.liveModel}
-                  onSourceChange={handleLiveSourceChange}
-                  onModelChange={handleLiveModelChange}
-                />
-                <Select label="Voz" value={config.liveVoice} options={liveVoiceOptions} onChange={v => updateConfig({ liveVoice: v })} />
-              </>
-            ),
-          },
-        ].map(section => {
-          const colorMap = {
-            sky: { bg: 'bg-primary-soft', text: 'text-primary' },
-            coral: { bg: 'bg-primary-soft', text: 'text-primary' },
-            leaf: { bg: 'bg-leaf-soft', text: 'text-leaf' },
-            amber: { bg: 'bg-[var(--amber-soft)]', text: 'text-[var(--amber)]' },
-          };
-          const colors = colorMap[section.color];
-          return (
-            <div key={section.title} className="bg-card rounded-2xl p-5 border border-border space-y-3">
-              <div className="flex items-center gap-2">
-                <div className={cn('size-7 rounded-full flex items-center justify-center', colors.bg)}>
-                  <section.icon size={14} className={colors.text} />
-                </div>
-                <h4 className={cn('text-sm font-bold uppercase tracking-wide', colors.text)}>{section.title}</h4>
-              </div>
-              <p className="text-xs text-muted-foreground text-pretty">{section.desc}</p>
-              {section.content}
-            </div>
-          );
-        })}
-      </section>
+      <ModelConfigSection config={config} onConfigChange={updateConfig} onReset={handleReset} />
 
       {/* Save */}
       <div className="space-y-3">

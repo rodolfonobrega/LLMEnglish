@@ -3,22 +3,22 @@ import { IMAGE_CONFIG, getImageConfig } from './images';
 
 describe('IMAGE_CONFIG', () => {
   describe('imageMode.openai', () => {
-    it('uses PNG format', () => {
-      expect(IMAGE_CONFIG.imageMode.openai.format).toBe('png');
+    it('uses JPEG format', () => {
+      expect(IMAGE_CONFIG.imageMode.openai.format).toBe('jpeg');
     });
 
-    it('has no compression (PNG)', () => {
-      expect(IMAGE_CONFIG.imageMode.openai.compression).toBeUndefined();
+    it('uses compression 80 (JPEG)', () => {
+      expect(IMAGE_CONFIG.imageMode.openai.compression).toBe(80);
     });
   });
 
   describe('exerciseMode.openai', () => {
-    it('uses PNG format', () => {
-      expect(IMAGE_CONFIG.exerciseMode.openai.format).toBe('png');
+    it('uses JPEG format', () => {
+      expect(IMAGE_CONFIG.exerciseMode.openai.format).toBe('jpeg');
     });
 
-    it('has no compression (PNG)', () => {
-      expect(IMAGE_CONFIG.exerciseMode.openai.compression).toBeUndefined();
+    it('uses compression 80 (JPEG)', () => {
+      expect(IMAGE_CONFIG.exerciseMode.openai.compression).toBe(80);
     });
   });
 
@@ -44,8 +44,8 @@ describe('IMAGE_CONFIG', () => {
 describe('getImageConfig', () => {
   it('returns openai config for imageMode with openai source', () => {
     const config = getImageConfig('imageMode', 'openai');
-    expect(config.format).toBe('png');
-    expect(config.quality).toBe('medium');
+    expect(config.format).toBe('jpeg');
+    expect(config.quality).toBe('low');
   });
 
   it('returns gemini config for imageMode with genai source', () => {

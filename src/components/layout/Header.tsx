@@ -1,8 +1,6 @@
-import { getGamification } from '../../services/storage';
-import { useState, useEffect } from 'react';
-import type { GamificationState } from '../../types/gamification';
 import { Sun, Moon, Monitor, Zap } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
+import { useRuntimeConfig } from '../../contexts/RuntimeConfigContext';
 import { XPBadge } from '../ui/custom/XPBadge';
 import { XP_PER_LEVEL } from '../../types/gamification';
 
@@ -13,16 +11,8 @@ const themeIcons = {
 } as const;
 
 export function Header() {
-  const [stats, setStats] = useState<GamificationState | null>(null);
+  const { gamification: stats } = useRuntimeConfig();
   const { theme, cycle } = useTheme();
-
-  useEffect(() => {
-    setStats(getGamification());
-
-    const handler = () => setStats(getGamification());
-    window.addEventListener('gamification-update', handler);
-    return () => window.removeEventListener('gamification-update', handler);
-  }, []);
 
   const ThemeIcon = themeIcons[theme];
 

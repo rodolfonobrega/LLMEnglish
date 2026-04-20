@@ -39,15 +39,34 @@ class FakeWebSocket {
   }
 }
 
+interface FakeWorkletPort {
+  onmessage: ((event: MessageEvent) => void) | null;
+  close: () => void;
+}
+
+class FakeAudioWorkletNode {
+  port: FakeWorkletPort = {
+    onmessage: null,
+    close: vi.fn(),
+  };
+  connect = vi.fn();
+  disconnect = vi.fn();
+}
+
+let lastWorkletNode: FakeAudioWorkletNode | null = null;
+
 class FakeAudioContext {
   destination = {};
+  audioWorklet = {
+    addModule: vi.fn().mockResolvedValue(undefined),
+  };
+
+  resume() {
+    return Promise.resolve();
+  }
 
   createMediaStreamSource() {
     return { connect: vi.fn(), disconnect: vi.fn() };
-  }
-
-  createScriptProcessor() {
-    return { connect: vi.fn(), disconnect: vi.fn(), onaudioprocess: null as ((event: unknown) => void) | null };
   }
 
   createBuffer(channels: number, frameCount: number, sampleRate: number) {
@@ -63,6 +82,7 @@ class FakeAudioContext {
       buffer: null,
       connect: vi.fn(),
       start: vi.fn(),
+      stop: vi.fn(),
       onended: null as (() => void) | null,
     };
   }
@@ -75,6 +95,7 @@ class FakeAudioContext {
 describe('OpenAIRealtimeLiveSession', () => {
   beforeEach(() => {
     FakeWebSocket.instances = [];
+    lastWorkletNode = null;
     getOpenAIKeyMock.mockReturnValue('sk-test');
     getModelConfigMock.mockReturnValue({
       liveModel: 'gpt-4o-mini-realtime-preview',
@@ -84,6 +105,11 @@ describe('OpenAIRealtimeLiveSession', () => {
 
     (globalThis as unknown as { WebSocket: unknown }).WebSocket = FakeWebSocket as unknown;
     (globalThis as unknown as { AudioContext: unknown }).AudioContext = FakeAudioContext as unknown;
+    (globalThis as unknown as { AudioWorkletNode: unknown }).AudioWorkletNode = function () {
+      const node = new FakeAudioWorkletNode();
+      lastWorkletNode = node;
+      return node;
+    } as unknown;
 
     const trackStop = vi.fn();
     const mediaStream = { getTracks: () => [{ stop: trackStop }] };
@@ -157,7 +183,7 @@ describe('OpenAIRealtimeLiveSession', () => {
     expect(onUserTranscription).toHaveBeenCalledWith('my turn');
   });
 
-  it('streams microphone audio and sends append events', async () => {
+  it('streams microphone audio via AudioWorklet and sends append events', async () => {
     const session = new OpenAIRealtimeLiveSession({
       onAudioResponse: vi.fn(),
       onTextResponse: vi.fn(),
@@ -172,16 +198,49 @@ describe('OpenAIRealtimeLiveSession', () => {
 
     await session.startMicrophone();
 
-    const processor = (session as unknown as { processor: { onaudioprocess: (event: unknown) => void } }).processor;
-    processor.onaudioprocess({
-      inputBuffer: {
-        getChannelData: () => new Float32Array([0, 0.25, -0.25]),
-      },
-    });
+    expect(lastWorkletNode).not.toBeNull();
+    const port = lastWorkletNode!.port;
+    const pcm16 = new Int16Array([0, 100, -100]);
+    port.onmessage?.({ data: { audio: pcm16.buffer } } as MessageEvent);
 
     expect(ws.sent.some(msg => msg.includes('input_audio_buffer.append'))).toBe(true);
 
     session.disconnect();
     expect(ws.readyState).toBe(3);
+  });
+
+  it('flushes playback queue on input_audio_buffer.speech_started', async () => {
+    const onInterrupted = vi.fn();
+    const session = new OpenAIRealtimeLiveSession({
+      onAudioResponse: vi.fn(),
+      onTextResponse: vi.fn(),
+      onTurnComplete: vi.fn(),
+      onError: vi.fn(),
+      onConnectionChange: vi.fn(),
+      onInterrupted,
+    });
+
+    await session.connect('system');
+    const ws = FakeWebSocket.instances[0];
+    ws.onopen?.(new Event('open'));
+
+    // Seed the queue with two chunks (second one stays queued while first plays).
+    const internal = session as unknown as { playbackQueue: string[] };
+    // Two valid base64 PCM chunks (4 bytes each = even-length Int16)
+    ws.onmessage?.({
+      data: JSON.stringify({ type: 'response.output_audio.delta', delta: 'AAAAAA==' }),
+    } as MessageEvent);
+    ws.onmessage?.({
+      data: JSON.stringify({ type: 'response.output_audio.delta', delta: 'AQIDBA==' }),
+    } as MessageEvent);
+
+    expect(internal.playbackQueue.length).toBeGreaterThanOrEqual(1);
+
+    ws.onmessage?.({
+      data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }),
+    } as MessageEvent);
+
+    expect(internal.playbackQueue.length).toBe(0);
+    expect(onInterrupted).toHaveBeenCalled();
   });
 });

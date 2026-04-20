@@ -35,7 +35,7 @@ vi.mock('./storage', () => ({
 import { extractErrorPatterns, getCardsForWeakArea, getErrorStats } from './errorAnalysis';
 import { getCards } from './storage';
 import { supabase } from './supabase/client';
-import type { EvaluationResult } from '../types/card';
+import type { Card, EvaluationResult } from '../types/card';
 
 function makeEvaluation(overrides: Partial<EvaluationResult> = {}): EvaluationResult {
   return {
@@ -48,6 +48,18 @@ function makeEvaluation(overrides: Partial<EvaluationResult> = {}): EvaluationRe
     ...overrides,
   };
 }
+
+// Minimal Card shape for the rows fed to getCardsForWeakArea; real Card has
+// many SR fields we do not exercise here. Cast via unknown to avoid `any`.
+interface CardRow {
+  id: string;
+  prompt: string;
+  theme: string;
+  context: string;
+  latestEvaluation: { score: number };
+  reviews: unknown[];
+}
+const asCards = (rows: CardRow[]): Card[] => rows as unknown as Card[];
 
 describe('guessCategory (tested via extractErrorPatterns)', () => {
   beforeEach(() => {
@@ -137,11 +149,11 @@ describe('getCardsForWeakArea', () => {
   });
 
   it('with category preposition returns only cards matching preposition themes', async () => {
-    const mockCards = [
+    const mockCards = asCards([
       { id: '1', prompt: 'Fill in the blank', theme: 'preposition', context: '', latestEvaluation: { score: 4 }, reviews: [] },
       { id: '2', prompt: 'Translate this', theme: 'vocabulary', context: '', latestEvaluation: { score: 3 }, reviews: [] },
       { id: '3', prompt: 'Grammar exercise', theme: 'grammar', context: 'preposition', latestEvaluation: { score: 5 }, reviews: [] },
-    ] as any[];
+    ]);
     vi.mocked(getCards).mockResolvedValue(mockCards);
 
     const result = await getCardsForWeakArea('preposition');
@@ -154,11 +166,11 @@ describe('getCardsForWeakArea', () => {
   });
 
   it('with category other returns all low-scoring cards (no filter)', async () => {
-    const mockCards = [
+    const mockCards = asCards([
       { id: '1', prompt: 'Card 1', theme: 'vocab', context: '', latestEvaluation: { score: 3 }, reviews: [] },
       { id: '2', prompt: 'Card 2', theme: 'grammar', context: '', latestEvaluation: { score: 5 }, reviews: [] },
       { id: '3', prompt: 'Card 3', theme: 'other', context: '', latestEvaluation: { score: 8 }, reviews: [] },
-    ] as any[];
+    ]);
     vi.mocked(getCards).mockResolvedValue(mockCards);
 
     const result = await getCardsForWeakArea('other');
@@ -170,10 +182,10 @@ describe('getCardsForWeakArea', () => {
   });
 
   it('falls back to all low-scoring cards when no theme match found', async () => {
-    const mockCards = [
+    const mockCards = asCards([
       { id: '1', prompt: 'Card 1', theme: 'vocab', context: '', latestEvaluation: { score: 3 }, reviews: [] },
       { id: '2', prompt: 'Card 2', theme: 'grammar', context: '', latestEvaluation: { score: 5 }, reviews: [] },
-    ] as any[];
+    ]);
     vi.mocked(getCards).mockResolvedValue(mockCards);
 
     const result = await getCardsForWeakArea('pronunciation');
@@ -225,7 +237,9 @@ describe('buildErrorStats criticalErrors sort (safeAvg guard)', () => {
       },
     ];
 
-    // Override the supabase `from` mock to return the two worsening patterns
+    // Override the supabase `from` mock to return the two worsening patterns.
+    // The full PostgrestQueryBuilder type is huge; cast via unknown to satisfy
+    // the signature without pulling in @supabase/postgrest-js internals.
     vi.mocked(supabase.from).mockReturnValueOnce({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
@@ -234,7 +248,7 @@ describe('buildErrorStats criticalErrors sort (safeAvg guard)', () => {
           })),
         })),
       })),
-    } as any);
+    } as unknown as ReturnType<typeof supabase.from>);
 
     const stats = await getErrorStats();
 

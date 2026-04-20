@@ -12,7 +12,7 @@ vi.mock('./auth', () => ({
   getCurrentUser: vi.fn(() => ({ id: 'test-user-id' })),
 }));
 
-import { updateCard } from './storage';
+import { updateCard, getCardById } from './storage';
 import { supabase } from './client';
 import type { Card } from '../../types/card';
 
@@ -63,7 +63,7 @@ function setupFromMock(tableConfigs: Record<string, {
       proxy.catch = () => undefined;
 
       // Dynamic method support via explicit chainable methods
-      proxy.eq = vi.fn((..._args: unknown[]) => {
+      proxy.eq = vi.fn(() => {
         // For card_reviews select().eq('card_id', ...) - return existing reviews
         if (table === 'card_reviews') {
           return chainable({ data: config.existingReviews || [], error: null });
@@ -187,5 +187,73 @@ describe('updateCard', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+});
+
+describe('getCardById', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('queries supabase with .eq(id, ...) exactly once instead of fetching all cards', async () => {
+    const idEq = vi.fn();
+    const userEq = vi.fn();
+    const maybeSingle = vi.fn(() => Promise.resolve({
+      data: {
+        id: 'card-123',
+        type: 'phrase',
+        prompt: 'Hello',
+        expected_context: null,
+        image_url: null,
+        target_vocabulary: null,
+        context: null,
+        theme: null,
+        created_at: '2026-04-09T00:00:00Z',
+        last_reviewed_at: null,
+        next_review_at: null,
+        ease_factor: 2.5,
+        interval: 1,
+        repetitions: 0,
+        card_reviews: [],
+        card_evaluations: [],
+      },
+      error: null,
+    }));
+
+    // Chain: .select(...).eq('id', id).eq('user_id', userId).maybeSingle()
+    userEq.mockReturnValue({ maybeSingle });
+    idEq.mockReturnValue({ eq: userEq });
+    const select = vi.fn(() => ({ eq: idEq }));
+
+    (supabase.from as ReturnType<typeof vi.fn>).mockImplementation((table: string) => {
+      expect(table).toBe('cards');
+      return { select };
+    });
+
+    const card = await getCardById('card-123');
+
+    expect(card).toBeDefined();
+    expect(card?.id).toBe('card-123');
+
+    // Verify .eq('id', ...) was called exactly once with the right id
+    expect(idEq).toHaveBeenCalledTimes(1);
+    expect(idEq).toHaveBeenCalledWith('id', 'card-123');
+    // And the user scoping .eq was chained after
+    expect(userEq).toHaveBeenCalledTimes(1);
+    expect(userEq).toHaveBeenCalledWith('user_id', 'test-user-id');
+    // maybeSingle resolves exactly once (no list fetch)
+    expect(maybeSingle).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns undefined when maybeSingle yields null data', async () => {
+    const maybeSingle = vi.fn(() => Promise.resolve({ data: null, error: null }));
+    const userEq = vi.fn(() => ({ maybeSingle }));
+    const idEq = vi.fn(() => ({ eq: userEq }));
+    const select = vi.fn(() => ({ eq: idEq }));
+
+    (supabase.from as ReturnType<typeof vi.fn>).mockImplementation(() => ({ select }));
+
+    const card = await getCardById('missing-id');
+    expect(card).toBeUndefined();
   });
 });

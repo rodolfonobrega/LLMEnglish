@@ -25,8 +25,8 @@ vi.mock('./supabase/aiProxy', () => ({
   generateImage: proxyImageMock,
 }));
 
-vi.mock('./runtimeState', () => ({
-  getRuntimeModelConfig: getModelConfigMock,
+vi.mock('./runtimeConfigSnapshot', () => ({
+  getModelConfig: getModelConfigMock,
 }));
 
 import {

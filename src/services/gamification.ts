@@ -6,7 +6,7 @@ import {
   saveGamification,
   saveSessionReport,
 } from './storage'
-import { setRuntimeGamification } from './runtimeState'
+import { patchSnapshot } from './runtimeConfigSnapshot'
 
 function isToday(dateStr: string | null): boolean {
   if (!dateStr) return false;
@@ -24,8 +24,10 @@ function isYesterday(dateStr: string | null): boolean {
 }
 
 function emitGamificationUpdate(state: GamificationState): void {
-  setRuntimeGamification(state)
-  window.dispatchEvent(new Event('gamification-update'))
+  // Writes into the snapshot and notifies every `useRuntimeConfig()`
+  // subscriber via the pub/sub channel defined in runtimeConfigSnapshot.
+  // No window events.
+  patchSnapshot({ gamification: state })
 }
 
 export async function syncGamificationState(): Promise<GamificationState> {

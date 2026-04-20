@@ -64,10 +64,10 @@ describe('PracticeModeCard', () => {
     expect(exampleText).toBeInTheDocument();
   });
 
-  it('image container has "h-40" class', () => {
+  it('image container has "h-28" class', () => {
     render(<PracticeModeCard mode={testMode} />);
     const button = screen.getByRole('button');
-    const imageContainer = button.querySelector('.h-40');
+    const imageContainer = button.querySelector('.h-28');
     expect(imageContainer).toBeInTheDocument();
   });
 

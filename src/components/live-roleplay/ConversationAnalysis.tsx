@@ -131,7 +131,7 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
     } finally {
       setIsLoading(false);
     }
-  }, [scenario, turns]);
+  }, [scenario, turns, tone]);
 
   const generateDialogueAudio = useCallback(async (data: AnalysisData) => {
     setIsGeneratingAudio(true);

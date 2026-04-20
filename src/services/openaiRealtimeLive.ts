@@ -2,20 +2,41 @@ import { getOpenAIKey, getModelConfig } from './storage';
 import type { LiveSessionCallbacks, ILiveSession } from './liveSession';
 
 /**
+ * Helper: encode Uint8Array to base64 string.
+ */
+function encodeBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
  * OpenAI Realtime API via WebSocket for bidirectional audio conversation.
  * Used as an alternative to Gemini Live for the Live Roleplay mode.
+ *
+ * Uses an AudioWorklet (shared with Gemini) for microphone capture to avoid
+ * the deprecated ScriptProcessorNode and eliminate main-thread audio dropouts.
+ * On user speech start (server-side VAD), the queued playback buffers are
+ * flushed so the user can interrupt mid-response.
  */
 export class OpenAIRealtimeLiveSession implements ILiveSession {
   private ws: WebSocket | null = null;
   private callbacks: LiveSessionCallbacks;
   private mediaStream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
-  private processor: ScriptProcessorNode | null = null;
+  private workletNode: AudioWorkletNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private isStreaming = false;
-  private audioQueue: string[] = [];
-  private isPlayingAudio = false;
+
+  // Scheduled audio playback (mirrors Gemini pattern)
   private playbackContext: AudioContext | null = null;
+  private playbackQueue: string[] = [];
+  private activeSources = new Set<AudioBufferSourceNode>();
+  private nextStartTime = 0;
+  private isPlayingAudio = false;
+
   private currentTranscript = '';
 
   constructor(callbacks: LiveSessionCallbacks) {
@@ -98,7 +119,7 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
       case 'response.output_audio.delta': {
         const delta = event.delta as string;
         if (delta) {
-          this.audioQueue.push(delta);
+          this.playbackQueue.push(delta);
           this.playNextAudio();
         }
         break;
@@ -120,6 +141,13 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
           this.callbacks.onTurnComplete();
         }
         this.currentTranscript = '';
+        break;
+      }
+
+      // User started speaking (server-side VAD) — interrupt any queued/playing audio
+      case 'input_audio_buffer.speech_started': {
+        this.flushPlayback();
+        this.callbacks.onInterrupted?.();
         break;
       }
 
@@ -148,10 +176,10 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
   }
 
   private async playNextAudio(): Promise<void> {
-    if (this.isPlayingAudio || this.audioQueue.length === 0) return;
+    if (this.isPlayingAudio || this.playbackQueue.length === 0) return;
 
     this.isPlayingAudio = true;
-    const audioBase64 = this.audioQueue.shift()!;
+    const audioBase64 = this.playbackQueue.shift()!;
 
     try {
       this.callbacks.onAudioResponse(audioBase64);
@@ -159,6 +187,9 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
       if (!this.playbackContext) {
         this.playbackContext = new AudioContext({ sampleRate: 24000 });
       }
+
+      const ctx = this.playbackContext;
+      this.nextStartTime = Math.max(this.nextStartTime, ctx.currentTime);
 
       const binaryStr = atob(audioBase64);
       const bytes = new Uint8Array(binaryStr.length);
@@ -172,24 +203,46 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
         float32[i] = pcm16[i] / 32768.0;
       }
 
-      const audioBuffer = this.playbackContext.createBuffer(1, float32.length, 24000);
+      const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
       audioBuffer.getChannelData(0).set(float32);
 
-      const source = this.playbackContext.createBufferSource();
+      const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(this.playbackContext.destination);
+      source.connect(ctx.destination);
 
       source.onended = () => {
+        this.activeSources.delete(source);
         this.isPlayingAudio = false;
         this.playNextAudio();
       };
 
-      source.start();
+      source.start(this.nextStartTime);
+      this.nextStartTime += audioBuffer.duration;
+      this.activeSources.add(source);
     } catch (err) {
       console.error('Audio playback error:', err);
       this.isPlayingAudio = false;
       this.playNextAudio();
     }
+  }
+
+  /**
+   * Flush any pending or in-flight playback. Called when the server reports
+   * the user started speaking (so the AI audio does not talk over the user).
+   */
+  private flushPlayback(): void {
+    this.playbackQueue = [];
+    this.activeSources.forEach((src) => {
+      try {
+        src.onended = null;
+        src.stop();
+      } catch {
+        // already stopped
+      }
+    });
+    this.activeSources.clear();
+    this.nextStartTime = 0;
+    this.isPlayingAudio = false;
   }
 
   async startMicrophone(): Promise<void> {
@@ -199,34 +252,36 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
       });
 
       this.audioContext = new AudioContext({ sampleRate: 24000 });
-      this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
-      this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+      await this.audioContext.resume();
 
-      this.processor.onaudioprocess = (event) => {
+      this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
+
+      await this.audioContext.audioWorklet.addModule('worklets/pcm-processor.js');
+      this.workletNode = new AudioWorkletNode(this.audioContext, 'pcm-processor', {
+        parameterData: { bufferSize: 4096 },
+      });
+
+      this.workletNode.port.onmessage = (event: MessageEvent) => {
         if (!this.isStreaming) return;
 
-        const inputData = event.inputBuffer.getChannelData(0);
-        const pcm16 = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
-          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-        }
+        const payload = event.data as { audio?: ArrayBuffer } | ArrayBuffer | undefined;
+        const buffer =
+          payload instanceof ArrayBuffer
+            ? payload
+            : payload && 'audio' in payload
+              ? payload.audio
+              : undefined;
+        if (!buffer) return;
 
-        const bytes = new Uint8Array(pcm16.buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        const base64 = btoa(binary);
-
+        const base64 = encodeBase64(new Uint8Array(buffer));
         this.sendJSON({
           type: 'input_audio_buffer.append',
           audio: base64,
         });
       };
 
-      this.source.connect(this.processor);
-      this.processor.connect(this.audioContext.destination);
+      this.source.connect(this.workletNode);
+      this.workletNode.connect(this.audioContext.destination);
       this.isStreaming = true;
     } catch (err) {
       this.callbacks.onError(`Microphone access error: ${err}`);
@@ -235,9 +290,15 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
 
   stopMicrophone(): void {
     this.isStreaming = false;
-    if (this.processor) {
-      this.processor.disconnect();
-      this.processor = null;
+    if (this.workletNode) {
+      this.workletNode.port.onmessage = null;
+      try {
+        this.workletNode.port.close();
+      } catch {
+        // ignore
+      }
+      this.workletNode.disconnect();
+      this.workletNode = null;
     }
     if (this.source) {
       this.source.disconnect();
@@ -273,6 +334,7 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
 
   disconnect(): void {
     this.stopMicrophone();
+    this.flushPlayback();
     if (this.playbackContext) {
       this.playbackContext.close();
       this.playbackContext = null;
@@ -281,8 +343,6 @@ export class OpenAIRealtimeLiveSession implements ILiveSession {
       this.ws.close();
       this.ws = null;
     }
-    this.audioQueue = [];
-    this.isPlayingAudio = false;
     this.currentTranscript = '';
   }
 }

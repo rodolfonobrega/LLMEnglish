@@ -20,6 +20,12 @@ import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification'
 import type { EvaluationResult } from '../../types/card';
 import { normalizeEvaluationResult } from '../../types/card';
 import type { ConversationTone } from '../../types/settings';
+import { masterEnabled } from '../../services/runtimeConfigSnapshot';
+import { getCurrentUser } from '../../services/supabase/auth';
+import { loadLearnerModel } from '../../services/learnerModel';
+import { masterEvaluate } from '../../services/master/evaluate';
+import { updateLearnerModel } from '../../services/master/updateModel';
+import type { Briefing } from '../../types/master';
 
 interface SaveCardContext {
   type: ExerciseType;
@@ -36,6 +42,8 @@ interface UseExerciseEvaluationParams {
   userMessage: string;
   validateSetup: () => string | null;
   getSaveContext: () => SaveCardContext;
+  /** Optional Master briefing passed via navigation state. */
+  briefing?: Briefing | null;
 }
 
 export interface UseExerciseEvaluationReturn {
@@ -116,6 +124,40 @@ export function useExerciseEvaluation(
             persistErr,
           );
         }
+
+        // Master (silent) — produce a MetaAssessment to rerank corrections, and
+        // fire-and-forget update the LearnerModel. Never blocks the user.
+        if (masterEnabled() && params.briefing) {
+          void (async () => {
+            try {
+              const user = getCurrentUser();
+              if (!user) return;
+              const learnerModel = await loadLearnerModel(user.id);
+              const meta = await masterEvaluate({
+                briefing: params.briefing!,
+                evaluationResult: evalResult,
+                learnerModel,
+              });
+              if (meta) {
+                dispatch({ type: 'META_ASSESSMENT_SUCCESS', meta });
+              }
+              void updateLearnerModel({
+                learnerModel,
+                evaluationResult: evalResult,
+                metaAssessment: meta,
+                sessionSummary: {
+                  userId: user.id,
+                  modality: params.briefing!.modality_choice,
+                  disguiseTheme: params.briefing!.disguise_theme,
+                  targetSkill: params.briefing!.target_skill,
+                  endedAt: new Date().toISOString(),
+                },
+              });
+            } catch (masterErr) {
+              console.warn('[Master] post-evaluation pipeline failed (swallowed):', masterErr);
+            }
+          })();
+        }
       } catch (err) {
         dispatch({
           type: 'EVALUATION_ERROR',
@@ -123,7 +165,7 @@ export function useExerciseEvaluation(
         });
       }
     },
-    [state.prompt, params.evalType, params.tone],
+    [state.prompt, params.evalType, params.tone, params.briefing],
   );
 
   const handleSaveToLibrary = useCallback(async () => {

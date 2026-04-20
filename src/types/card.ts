@@ -10,6 +10,12 @@ export type CanonicalPatternId = string;
 export type CorrectionSeverity = 'critical' | 'moderate' | 'polish';
 
 export interface CorrectionItem {
+  /**
+   * Locally-stable id for this correction instance. Used by the Master's
+   * `MetaAssessment.relevant_correction_ids` to pin specific corrections.
+   * Generated at normalization time when missing (see `normalizeCorrectionItem`).
+   */
+  id?: string;
   tip: string;
   example?: string;
   /** Stable canonical pattern id (see src/services/patterns.ts). Optional — legacy entries are `undefined`. */
@@ -74,10 +80,31 @@ export interface EvaluationResult {
   overallFeedback: string;
 }
 
+/**
+ * Stable hash from a correction payload. Short base36 so it survives
+ * round-trips through JSON without being ugly in debug panels.
+ */
+function correctionIdFrom(tip: string, canonicalPattern?: string, example?: string): string {
+  const source = `${tip}::${canonicalPattern ?? ''}::${example ?? ''}`;
+  let hash = 2166136261; // FNV-1a offset basis
+  for (let i = 0; i < source.length; i++) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const asUnsigned = hash >>> 0;
+  return `c_${asUnsigned.toString(36)}`;
+}
+
 /** Normalize a correction entry (legacy string or new object) into CorrectionItem. */
 export function normalizeCorrectionItem(item: CorrectionItem | string): CorrectionItem {
-  if (typeof item === 'string') return { tip: item };
-  return item;
+  if (typeof item === 'string') {
+    return { id: correctionIdFrom(item), tip: item };
+  }
+  if (item.id) return item;
+  return {
+    ...item,
+    id: correctionIdFrom(item.tip, item.canonical_pattern, item.example),
+  };
 }
 
 function clamp(n: number, min: number, max: number): number {

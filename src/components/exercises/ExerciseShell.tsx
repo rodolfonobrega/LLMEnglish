@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Loader2,
   RefreshCw,
@@ -22,6 +22,7 @@ import { Input } from '../ui/Input';
 import { SkeletonText } from '../ui/Skeleton';
 import { cn } from '../../utils/cn';
 import { useExerciseEvaluation } from './useExerciseEvaluation';
+import type { Briefing } from '../../types/master';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -49,6 +50,7 @@ export interface ExerciseShellConfig {
     context: string | undefined;
     theme: string | null;
     tone: ConversationTone;
+    briefing?: Briefing | null;
   }) => string;
 }
 
@@ -58,6 +60,11 @@ interface ExerciseShellProps {
 
 export function ExerciseShell({ config }: ExerciseShellProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const briefing = useMemo<Briefing | null>(() => {
+    const raw = (location.state as { briefing?: Briefing } | null)?.briefing;
+    return raw ?? null;
+  }, [location.state]);
   const [theme, setTheme] = useState<string | null>('random');
   const [targetVocab, setTargetVocab] = useState('');
   const [context, setContext] = useState('');
@@ -88,6 +95,7 @@ export function ExerciseShell({ config }: ExerciseShellProps) {
         context: context || undefined,
         theme: theme !== 'random' ? theme : null,
         tone,
+        briefing,
       });
     },
     validateSetup: () => {
@@ -103,6 +111,7 @@ export function ExerciseShell({ config }: ExerciseShellProps) {
       context,
       theme,
     }),
+    briefing,
   });
 
   const hasActiveSession = !!state.prompt;
@@ -323,6 +332,7 @@ export function ExerciseShell({ config }: ExerciseShellProps) {
 
         <EvaluationResults
           result={evaluation}
+          metaAssessment={state.metaAssessment}
           onSaveToLibrary={() => {
             void handleSaveToLibrary();
           }}

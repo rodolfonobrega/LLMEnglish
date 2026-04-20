@@ -53,7 +53,7 @@ ${naturalnessMarkers}`;
 // Exercise generation prompts
 // ---------------------------------------------------------------------------
 
-export function getPhraseGenerationPrompt(targetVocab?: string[], context?: string, theme?: string, tone?: ConversationTone): string {
+export function getPhraseGenerationPrompt(targetVocab?: string[], context?: string, theme?: string, tone?: ConversationTone, briefing?: Briefing): string {
   let prompt = `You are a native English language teacher. Generate a short phrase or sentence in Brazilian Portuguese that the student needs to translate into spoken English.
 
 ${getToneInstruction(tone)}
@@ -77,11 +77,12 @@ Rules:
     prompt += `\n- Theme: ${theme}.`;
   }
 
+  prompt += renderBriefingBlock(briefing);
   prompt += `\n\nRespond with ONLY the Portuguese phrase, nothing else.`;
   return prompt;
 }
 
-export function getTextGenerationPrompt(targetVocab?: string[], context?: string, theme?: string, tone?: ConversationTone): string {
+export function getTextGenerationPrompt(targetVocab?: string[], context?: string, theme?: string, tone?: ConversationTone, briefing?: Briefing): string {
   let prompt = `You are a native English language teacher. Generate a short paragraph (3-5 sentences) in Brazilian Portuguese that the student needs to translate into spoken English.
 
 ${getToneInstruction(tone)}
@@ -106,11 +107,12 @@ Rules:
     prompt += `\n- Theme: ${theme}.`;
   }
 
+  prompt += renderBriefingBlock(briefing);
   prompt += `\n\nRespond with ONLY the Portuguese text, nothing else.`;
   return prompt;
 }
 
-export function getRoleplayGenerationPrompt(context?: string, theme?: string, targetVocabulary?: string[], tone?: ConversationTone): string {
+export function getRoleplayGenerationPrompt(context?: string, theme?: string, targetVocabulary?: string[], tone?: ConversationTone, briefing?: Briefing): string {
   let prompt = `You are a native English language teacher. Generate a role-play situation in Brazilian Portuguese for the student.
 
 ${getToneInstruction(tone)}
@@ -136,21 +138,22 @@ Rules:
     prompt += `\n- Theme: ${theme}.`;
   }
 
+  prompt += renderBriefingBlock(briefing);
   prompt += `\n\nRespond with ONLY the Portuguese situation description, nothing else.`;
   return prompt;
 }
 
-export function getImageQuestionPrompt(tone?: ConversationTone): string {
-  return `You are a native English language teacher. Based on this image, create a question or task in Brazilian Portuguese that asks the student to describe what they see or answer a question about the image in English.
+export function getImageQuestionPrompt(tone?: ConversationTone, briefing?: Briefing): string {
+  const base = `You are a native English language teacher. Based on this image, create a question or task in Brazilian Portuguese that asks the student to describe what they see or answer a question about the image in English.
 
 ${getToneInstruction(tone)}
 
 Rules:
 - The question should encourage the student to speak in natural, everyday English about the image using the tone above.
 - Write the question in natural Brazilian Portuguese.
-- Keep it to 1-2 sentences.
+- Keep it to 1-2 sentences.`;
 
-Respond with ONLY the Portuguese question, nothing else.`;
+  return `${base}${renderBriefingBlock(briefing)}\n\nRespond with ONLY the Portuguese question, nothing else.`;
 }
 
 export function getEvaluationPrompt(prompt: string, userTranscription: string, cardType: string, tone?: ConversationTone): string {

@@ -12,8 +12,8 @@ const config: ExerciseShellConfig = {
   hasVocab: true,
   contextPlaceholder: 'ex: devolver um produto, consulta médica',
   userMessage: 'Generate a role-play situation.',
-  buildSystemPrompt: ({ vocabArr, context, theme, tone }) =>
-    getRoleplayGenerationPrompt(context, theme || undefined, vocabArr, tone),
+  buildSystemPrompt: ({ vocabArr, context, theme, tone, briefing }) =>
+    getRoleplayGenerationPrompt(context, theme || undefined, vocabArr, tone, briefing ?? undefined),
 };
 
 export function RoleplayExercise() {

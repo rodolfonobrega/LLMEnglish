@@ -18,6 +18,8 @@ import {
   buildPatternFromCanonicalId,
   softFallbackPattern,
 } from './patterns'
+import { masterEnabled } from './runtimeConfigSnapshot'
+import { loadLearnerModel } from './learnerModel'
 
 const ERROR_CATEGORIES: ErrorCategory[] = [
   'grammar',
@@ -434,6 +436,36 @@ export async function getCardsForWeakArea(weakArea: ErrorCategory): Promise<Card
 export async function getPrioritizedReviewCards(limit: number = 10): Promise<Card[]> {
   const allCards = await getCards()
 
+  // Wave 5 F15: when the Master is on and a LearnerModel is loaded, bias
+  // the ranking toward the primary_goal + acquiring_patterns. We fetch the
+  // model lazily so the legacy code path stays untouched when the flag is off.
+  let planPrimary: string | undefined
+  const acquiringIds = new Set<string>()
+  if (masterEnabled()) {
+    try {
+      const user = getCurrentUser()
+      if (user) {
+        const model = await loadLearnerModel(user.id)
+        planPrimary = model.next_step_plan.primary_goal
+        for (const p of model.acquiring_patterns) acquiringIds.add(p.id)
+      }
+    } catch (err) {
+      console.warn('[errorAnalysis] Master model load failed, falling back to SRS-only:', err)
+    }
+  }
+
+  const cardMatchesPlan = (card: Card): boolean => {
+    const ev = card.latestEvaluation
+    if (!ev) return false
+    const items = Array.isArray(ev.corrections) ? ev.corrections : []
+    return items.some((item) => {
+      const normalised = typeof item === 'string' ? null : item.canonical_pattern
+      if (!normalised) return false
+      if (planPrimary && normalised === planPrimary) return true
+      return acquiringIds.has(normalised)
+    })
+  }
+
   return allCards
     .map(card => {
       let priorityScore = 0
@@ -447,6 +479,10 @@ export async function getPrioritizedReviewCards(limit: number = 10): Promise<Car
 
       if (card.latestEvaluation && card.latestEvaluation.score < 7) {
         priorityScore += 20
+      }
+
+      if ((planPrimary || acquiringIds.size > 0) && cardMatchesPlan(card)) {
+        priorityScore += 150
       }
 
       return { card, priorityScore }

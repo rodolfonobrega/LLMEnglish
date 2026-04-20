@@ -12,8 +12,8 @@ const config: ExerciseShellConfig = {
   hasVocab: true,
   contextPlaceholder: 'ex: pedir um café, entrevista de emprego',
   userMessage: 'Generate a text passage.',
-  buildSystemPrompt: ({ vocabArr, context, theme, tone }) =>
-    getTextGenerationPrompt(vocabArr, context, theme || undefined, tone),
+  buildSystemPrompt: ({ vocabArr, context, theme, tone, briefing }) =>
+    getTextGenerationPrompt(vocabArr, context, theme || undefined, tone, briefing ?? undefined),
 };
 
 export function TextExercise() {

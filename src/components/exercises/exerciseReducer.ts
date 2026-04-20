@@ -1,4 +1,5 @@
 import type { EvaluationResult } from '../../types/card';
+import type { MetaAssessment } from '../../services/master/evaluate';
 
 export type ExerciseStatus =
   | 'idle'
@@ -14,6 +15,7 @@ export interface ExerciseState {
   setupStep: SetupStep;
   prompt: string;
   evaluation: EvaluationResult | null;
+  metaAssessment: MetaAssessment | null;
   userAudioBase64: string | null;
   error: string | null;
   saved: boolean;
@@ -24,6 +26,7 @@ export const initialExerciseState: ExerciseState = {
   setupStep: 'theme',
   prompt: '',
   evaluation: null,
+  metaAssessment: null,
   userAudioBase64: null,
   error: null,
   saved: false,
@@ -36,6 +39,7 @@ export type ExerciseAction =
   | { type: 'GENERATION_ERROR'; message: string }
   | { type: 'EVALUATION_START'; audioBase64: string }
   | { type: 'EVALUATION_SUCCESS'; result: EvaluationResult }
+  | { type: 'META_ASSESSMENT_SUCCESS'; meta: MetaAssessment }
   | { type: 'EVALUATION_ERROR'; message: string }
   | { type: 'SAVE_SUCCESS' }
   | { type: 'SAVE_ERROR'; message: string }
@@ -57,6 +61,7 @@ export function exerciseReducer(
         status: 'generating',
         error: null,
         evaluation: null,
+        metaAssessment: null,
         saved: false,
         userAudioBase64: null,
         prompt: '',
@@ -89,6 +94,13 @@ export function exerciseReducer(
         ...state,
         status: 'done',
         evaluation: action.result,
+        metaAssessment: null,
+      };
+
+    case 'META_ASSESSMENT_SUCCESS':
+      return {
+        ...state,
+        metaAssessment: action.meta,
       };
 
     case 'EVALUATION_ERROR':
@@ -112,6 +124,7 @@ export function exerciseReducer(
         ...state,
         status: 'awaiting-user',
         evaluation: null,
+        metaAssessment: null,
         error: null,
         saved: false,
         userAudioBase64: null,

@@ -3,6 +3,7 @@ import { Loader2, Volume2, CheckCircle2, AlertTriangle, Lightbulb, MessageCircle
 import { useTTS } from '../../hooks/useTTS';
 import type { EvaluationResult, CorrectionItem } from '../../types/card';
 import { normalizeCorrectionItem, normalizeEvaluationResult } from '../../types/card';
+import type { MetaAssessment } from '../../services/master/evaluate';
 import { ScoreDisplay } from './ScoreDisplay';
 import { ScorecardDisplay } from './ScorecardDisplay';
 import { Button } from '../ui/Button';
@@ -14,6 +15,13 @@ interface EvaluationResultsProps {
   showSaveButton?: boolean;
   /** Render the Feedback Drill slot above the default layout (Wave 1 F4). */
   drillSlot?: React.ReactNode;
+  /**
+   * Wave 5 F8: when provided, corrections whose `id` is listed in
+   * `metaAssessment.relevant_correction_ids` are pinned at the top as
+   * "primary" and the rest collapses behind a "Ver mais detalhes" toggle.
+   * When absent, the component behaves exactly as W1 did.
+   */
+  metaAssessment?: MetaAssessment | null;
 }
 
 const SEVERITY_ORDER: Record<NonNullable<CorrectionItem['severity']>, number> = {
@@ -34,15 +42,71 @@ const SEVERITY_COLOR: Record<NonNullable<CorrectionItem['severity']>, string> = 
   polish: 'var(--primary)',
 };
 
-export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = true, drillSlot }: EvaluationResultsProps) {
-  const { speak, isLoading: ttsLoading } = useTTS();
-  const [expandedExamples, setExpandedExamples] = useState<Set<number>>(new Set());
+interface CorrectionRowProps {
+  correction: CorrectionItem;
+  index: number;
+  emphasised?: boolean;
+  expanded: boolean;
+  onToggleExample: () => void;
+}
 
-  const toggleExample = (index: number) => {
+function CorrectionRow({ correction: c, index, emphasised, expanded, onToggleExample }: CorrectionRowProps) {
+  return (
+    <li className="space-y-1.5">
+      <div className={cn('flex items-start gap-2 text-sm', emphasised ? 'text-foreground font-medium' : 'text-muted-foreground')}>
+        <span
+          className={cn(
+            'flex-shrink-0 size-5 rounded-full text-[10px] font-bold flex items-center justify-center mt-0.5',
+            emphasised
+              ? 'bg-[var(--danger)] text-[var(--danger-foreground,white)]'
+              : 'bg-[var(--danger-soft)] text-[var(--danger)]',
+          )}
+        >
+          {index}
+        </span>
+        <span className="leading-relaxed flex-1">{c.tip}</span>
+        {c.severity && (
+          <span
+            className="flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+            style={{ color: SEVERITY_COLOR[c.severity], backgroundColor: 'color-mix(in srgb, currentColor 15%, transparent)' }}
+          >
+            {SEVERITY_LABEL[c.severity]}
+          </span>
+        )}
+      </div>
+      {c.example && (
+        <div className="ml-7">
+          <button
+            onClick={onToggleExample}
+            className={cn(
+              'flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer',
+              expanded ? 'text-primary' : 'text-muted-foreground hover:text-primary',
+            )}
+          >
+            {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            {expanded ? 'Esconder exemplo' : 'Ver exemplo'}
+          </button>
+          {expanded && (
+            <div className="mt-1.5 bg-muted rounded-lg px-3 py-2 text-sm text-foreground/80 italic leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
+              "{c.example}"
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = true, drillSlot, metaAssessment }: EvaluationResultsProps) {
+  const { speak, isLoading: ttsLoading } = useTTS();
+  const [expandedExamples, setExpandedExamples] = useState<Set<string>>(new Set());
+  const [otherDetailsOpen, setOtherDetailsOpen] = useState(false);
+
+  const toggleExample = (key: string) => {
     setExpandedExamples(prev => {
       const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
@@ -54,6 +118,12 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
     return aRank - bRank;
   });
   const highlights = normalized.highlights ?? [];
+
+  const relevantIds = new Set(metaAssessment?.relevant_correction_ids ?? []);
+  const primaryCorrections = relevantIds.size > 0 ? corrections.filter((c) => c.id && relevantIds.has(c.id)) : [];
+  const secondaryCorrections = relevantIds.size > 0
+    ? corrections.filter((c) => !c.id || !relevantIds.has(c.id))
+    : corrections;
 
   return (
     <div className="space-y-5">
@@ -160,43 +230,66 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             </div>
             <h4 className="text-xs font-bold text-[var(--danger)] uppercase tracking-wide">Correções</h4>
           </div>
-          <ul className="space-y-3">
-            {corrections.map((c, i) => (
-              <li key={i} className="space-y-1.5">
-                <div className="flex items-start gap-2 text-muted-foreground text-sm">
-                  <span className="flex-shrink-0 size-5 rounded-full bg-[var(--danger-soft)] text-[var(--danger)] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-                  <span className="leading-relaxed flex-1">{c.tip}</span>
-                  {c.severity && (
-                    <span
-                      className="flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
-                      style={{ color: SEVERITY_COLOR[c.severity], backgroundColor: 'color-mix(in srgb, currentColor 15%, transparent)' }}
-                    >
-                      {SEVERITY_LABEL[c.severity]}
-                    </span>
-                  )}
-                </div>
-                {c.example && (
-                  <div className="ml-7">
-                    <button
-                      onClick={() => toggleExample(i)}
-                      className={cn(
-                        'flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer',
-                        expandedExamples.has(i) ? 'text-primary' : 'text-muted-foreground hover:text-primary',
-                      )}
-                    >
-                      {expandedExamples.has(i) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                      {expandedExamples.has(i) ? 'Esconder exemplo' : 'Ver exemplo'}
-                    </button>
-                    {expandedExamples.has(i) && (
-                      <div className="mt-1.5 bg-muted rounded-lg px-3 py-2 text-sm text-foreground/80 italic leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
-                        "{c.example}"
-                      </div>
-                    )}
-                  </div>
+
+          {primaryCorrections.length > 0 && (
+            <ul className="space-y-3" data-testid="corrections-primary">
+              {primaryCorrections.map((c, i) => (
+                <CorrectionRow
+                  key={c.id ?? `p${i}`}
+                  correction={c}
+                  index={i + 1}
+                  emphasised
+                  expanded={!!c.id && expandedExamples.has(c.id)}
+                  onToggleExample={() => c.id && toggleExample(c.id)}
+                />
+              ))}
+            </ul>
+          )}
+
+          {secondaryCorrections.length > 0 && primaryCorrections.length > 0 && (
+            <div className="mt-3">
+              <button
+                onClick={() => setOtherDetailsOpen((v) => !v)}
+                className={cn(
+                  'flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer',
+                  otherDetailsOpen ? 'text-primary' : 'text-muted-foreground hover:text-primary',
                 )}
-              </li>
-            ))}
-          </ul>
+                data-testid="corrections-other-toggle"
+              >
+                {otherDetailsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {otherDetailsOpen
+                  ? 'Esconder outros detalhes'
+                  : `Ver outros detalhes (${secondaryCorrections.length})`}
+              </button>
+              {otherDetailsOpen && (
+                <ul className="space-y-3 mt-3 opacity-80" data-testid="corrections-secondary">
+                  {secondaryCorrections.map((c, i) => (
+                    <CorrectionRow
+                      key={c.id ?? `s${i}`}
+                      correction={c}
+                      index={primaryCorrections.length + i + 1}
+                      expanded={!!c.id && expandedExamples.has(c.id)}
+                      onToggleExample={() => c.id && toggleExample(c.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {primaryCorrections.length === 0 && (
+            <ul className="space-y-3" data-testid="corrections-secondary">
+              {secondaryCorrections.map((c, i) => (
+                <CorrectionRow
+                  key={c.id ?? `a${i}`}
+                  correction={c}
+                  index={i + 1}
+                  expanded={!!c.id && expandedExamples.has(c.id)}
+                  onToggleExample={() => c.id && toggleExample(c.id)}
+                />
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

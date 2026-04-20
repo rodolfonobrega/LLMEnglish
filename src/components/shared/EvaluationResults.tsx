@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Loader2, Volume2, CheckCircle2, AlertTriangle, Lightbulb, MessageCircle, Star, ThumbsUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTTS } from '../../hooks/useTTS';
-import type { EvaluationResult } from '../../types/card';
-import { normalizeCorrectionItem } from '../../types/card';
+import type { EvaluationResult, CorrectionItem } from '../../types/card';
+import { normalizeCorrectionItem, normalizeEvaluationResult } from '../../types/card';
 import { ScoreDisplay } from './ScoreDisplay';
+import { ScorecardDisplay } from './ScorecardDisplay';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 
@@ -11,9 +12,29 @@ interface EvaluationResultsProps {
   result: EvaluationResult;
   onSaveToLibrary?: () => void;
   showSaveButton?: boolean;
+  /** Render the Feedback Drill slot above the default layout (Wave 1 F4). */
+  drillSlot?: React.ReactNode;
 }
 
-export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = true }: EvaluationResultsProps) {
+const SEVERITY_ORDER: Record<NonNullable<CorrectionItem['severity']>, number> = {
+  critical: 0,
+  moderate: 1,
+  polish: 2,
+};
+
+const SEVERITY_LABEL: Record<NonNullable<CorrectionItem['severity']>, string> = {
+  critical: 'Crítico',
+  moderate: 'Moderado',
+  polish: 'Polimento',
+};
+
+const SEVERITY_COLOR: Record<NonNullable<CorrectionItem['severity']>, string> = {
+  critical: 'var(--danger)',
+  moderate: 'var(--amber)',
+  polish: 'var(--primary)',
+};
+
+export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = true, drillSlot }: EvaluationResultsProps) {
   const { speak, isLoading: ttsLoading } = useTTS();
   const [expandedExamples, setExpandedExamples] = useState<Set<number>>(new Set());
 
@@ -26,15 +47,31 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
     });
   };
 
-  const corrections = result.corrections.map(normalizeCorrectionItem);
-  const highlights = result.highlights ?? [];
+  const normalized = normalizeEvaluationResult(result);
+  const corrections = [...normalized.corrections.map(normalizeCorrectionItem)].sort((a, b) => {
+    const aRank = a.severity ? SEVERITY_ORDER[a.severity] : 1.5;
+    const bRank = b.severity ? SEVERITY_ORDER[b.severity] : 1.5;
+    return aRank - bRank;
+  });
+  const highlights = normalized.highlights ?? [];
 
   return (
     <div className="space-y-5">
-      {/* Score */}
-      <div className="flex justify-center py-2">
-        <ScoreDisplay score={result.score} size="lg" />
-      </div>
+      {/* Score — 5D scorecard when available, scalar fallback otherwise */}
+      {normalized.scores5d ? (
+        <ScorecardDisplay
+          scores={normalized.scores5d}
+          primaryDimension={normalized.primaryDimension}
+          scalar={normalized.score}
+          size="lg"
+        />
+      ) : (
+        <div className="flex justify-center py-2">
+          <ScoreDisplay score={normalized.score} size="lg" />
+        </div>
+      )}
+
+      {drillSlot && <div>{drillSlot}</div>}
 
       {/* What you said */}
       <div className="bg-card rounded-2xl p-5 border border-border">
@@ -44,7 +81,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
           </div>
           <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">O que você disse</h4>
         </div>
-        <p className="text-muted-foreground leading-relaxed">{result.userTranscription || '(nenhuma fala detectada)'}</p>
+        <p className="text-muted-foreground leading-relaxed">{normalized.userTranscription || '(nenhuma fala detectada)'}</p>
       </div>
 
       {/* Highlights */}
@@ -77,7 +114,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             <h4 className="text-xs font-bold text-leaf uppercase tracking-wide">Versão Corrigida</h4>
           </div>
           <button
-            onClick={() => speak(result.correctedVersion)}
+            onClick={() => speak(normalized.correctedVersion)}
             disabled={ttsLoading}
             aria-label="Ouvir versão corrigida"
             className="size-8 rounded-full bg-primary-soft flex items-center justify-center text-primary hover:bg-primary/20 transition-colors cursor-pointer disabled:opacity-50"
@@ -85,11 +122,11 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             {ttsLoading ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />}
           </button>
         </div>
-        <p className="text-leaf font-medium leading-relaxed">{result.correctedVersion}</p>
+        <p className="text-leaf font-medium leading-relaxed">{normalized.correctedVersion}</p>
       </div>
 
       {/* Better Alternatives */}
-      {result.betterAlternatives.length > 0 && (
+      {normalized.betterAlternatives.length > 0 && (
         <div className="bg-card rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-3">
             <div className="size-6 rounded-full bg-[var(--amber-soft)] flex items-center justify-center">
@@ -98,7 +135,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
             <h4 className="text-xs font-bold text-[var(--amber)] uppercase tracking-wide">Formas Mais Naturais</h4>
           </div>
           <ul className="space-y-2.5">
-            {result.betterAlternatives.map((alt, i) => (
+            {normalized.betterAlternatives.map((alt, i) => (
               <li key={i} className="flex items-center justify-between bg-muted rounded-xl px-4 py-2.5">
                 <span className="text-muted-foreground text-sm leading-relaxed">{alt}</span>
                 <button
@@ -129,6 +166,14 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
                 <div className="flex items-start gap-2 text-muted-foreground text-sm">
                   <span className="flex-shrink-0 size-5 rounded-full bg-[var(--danger-soft)] text-[var(--danger)] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
                   <span className="leading-relaxed flex-1">{c.tip}</span>
+                  {c.severity && (
+                    <span
+                      className="flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                      style={{ color: SEVERITY_COLOR[c.severity], backgroundColor: 'color-mix(in srgb, currentColor 15%, transparent)' }}
+                    >
+                      {SEVERITY_LABEL[c.severity]}
+                    </span>
+                  )}
                 </div>
                 {c.example && (
                   <div className="ml-7">
@@ -163,7 +208,7 @@ export function EvaluationResults({ result, onSaveToLibrary, showSaveButton = tr
           </div>
           <h4 className="text-xs font-bold text-primary uppercase tracking-wide">Feedback Geral</h4>
         </div>
-        <p className="text-muted-foreground leading-relaxed">{result.overallFeedback}</p>
+        <p className="text-muted-foreground leading-relaxed">{normalized.overallFeedback}</p>
       </div>
 
       {/* Save Button */}

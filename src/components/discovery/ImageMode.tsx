@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, RefreshCw, X, ImageIcon, Sparkles, RotateCcw, ChevronLeft } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
+import { FeedbackDrill } from '../shared/FeedbackDrill';
 import { chatCompletion, chatCompletionWithImage, generateImage, speechToText } from '../../services/openai';
 import { getImageConfigAuto, BASE_IMAGE_STYLE_PROMPT } from '../../config/images';
 import { getImageQuestionPrompt, getEvaluationPrompt, evaluationResponseSchema } from '../../utils/prompts';
@@ -11,7 +12,9 @@ import { createDefaultCard } from '../../services/spacedRepetition';
 import { addCard, getConversationTone } from '../../services/storage';
 import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
+import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
 import type { EvaluationResult } from '../../types/card';
+import { normalizeEvaluationResult } from '../../types/card';
 import type { ConversationTone } from '../../types/settings';
 import { Button } from '../ui/Button';
 import { Skeleton, SkeletonText } from '../ui/Skeleton';
@@ -67,9 +70,20 @@ export function ImageMode() {
       const evalPrompt = getEvaluationPrompt(question, transcription, 'image description', tone);
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt, undefined, evaluationResponseSchema);
       const cleanResponse = cleanJson(evalResponse);
-      const evalResult: EvaluationResult = JSON.parse(cleanResponse);
-      evalResult.userTranscription = transcription;
+      const parsed: EvaluationResult = JSON.parse(cleanResponse);
+      parsed.userTranscription = transcription;
+      const evalResult = normalizeEvaluationResult(parsed);
       setEvaluation(evalResult);
+
+      // Mirror solo exercises: record error patterns + bump gamification.
+      // Previously image mode skipped errorAnalysis — patterns never hit the dashboard.
+      try {
+        const imageSessionId = `image_${Date.now()}`;
+        const patterns = await extractErrorPatterns(evalResult, question, imageSessionId);
+        await recordErrorPatterns(patterns);
+      } catch (persistErr) {
+        console.warn('Image mode pattern recording failed (evaluation still shown):', persistErr);
+      }
 
       let xp = XP_PER_EXERCISE;
       if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
@@ -197,7 +211,19 @@ export function ImageMode() {
             <p className="text-xs text-muted-foreground uppercase mb-1 font-bold tracking-wide">Tarefa</p>
             <p className="text-foreground text-pretty">{question}</p>
           </div>
-          <EvaluationResults result={evaluation} onSaveToLibrary={() => { void handleSaveToLibrary() }} showSaveButton={!saved} />
+          <EvaluationResults
+            result={evaluation}
+            onSaveToLibrary={() => { void handleSaveToLibrary() }}
+            showSaveButton={!saved}
+            drillSlot={
+              evaluation.score < 9 && evaluation.correctedVersion ? (
+                <FeedbackDrill
+                  target={evaluation.correctedVersion}
+                  original={evaluation.userTranscription}
+                />
+              ) : undefined
+            }
+          />
           {saved && (
             <div className="bg-leaf-soft rounded-2xl p-4 text-center">
               <p className="text-leaf font-bold">Salvo na Biblioteca!</p>

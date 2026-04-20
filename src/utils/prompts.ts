@@ -6,6 +6,16 @@
 
 import type { ConversationTone } from '../types/settings';
 import type { CorrectionItem } from '../types/card';
+import { CANONICAL_PATTERNS } from '../services/patterns';
+
+/**
+ * Compact hint string listing known canonical pattern ids for the evaluator.
+ * Kept short on purpose — the evaluator only needs recognisable anchors, and a
+ * full catalogue would bloat the prompt. New ids proposed by the LLM flow
+ * through `softFallbackPattern` in `errorAnalysis.ts` with their semantic id
+ * preserved.
+ */
+const CANONICAL_PATTERN_HINTS = CANONICAL_PATTERNS.map((p) => p.id).join(', ');
 
 // ---------------------------------------------------------------------------
 // Tone helper
@@ -168,16 +178,26 @@ The student said (transcribed verbatim, may contain errors):
 Task type: ${cardType}
 ${contextInstruction ? `\n${contextInstruction}\n` : ''}
 
-Evaluate the student's response and provide feedback. Respond in JSON format:
+Evaluate the student's response across FIVE independent dimensions and provide feedback. Respond in JSON format:
 {
-  "score": <number 0-10>,
+  "score": <number 0-10, convenience scalar derived from the 5 axes>,
+  "scores5d": {
+    "naturalness": <integer 0-100 — sounds like a native speaker in the target register>,
+    "accuracy": <integer 0-100 — grammar, vocabulary, and word-choice correctness>,
+    "fluency": <integer 0-100 — rhythm, connected speech, fillers, lack of awkward pauses>,
+    "pragmatics": <integer 0-100 — register, politeness, situational fit>,
+    "completeness": <integer 0-100 — covers what the prompt actually asked for>
+  },
+  "primaryDimension": "<one of: naturalness | accuracy | fluency | pragmatics | completeness — the single axis that most held this response back>",
   "correctedVersion": "<the corrected English version of what they said>",
   "betterAlternatives": ["<more natural English way to say it>", "<another English alternative>"],
   "highlights": ["<something the student did well, in Portuguese>"],
   "corrections": [
     {
       "tip": "<short, direct feedback in Portuguese — what was wrong and a quick suggestion. e.g. 'Sua frase ficou formal demais, tente usar "sounds good" em vez de "that is acceptable"'>",
-      "example": "<optional full English example sentence showing the fix in context>"
+      "example": "<optional full English example sentence showing the fix in context>",
+      "severity": "<'critical' | 'moderate' | 'polish' — how impactful the fix is for this utterance>",
+      "canonical_pattern": "<optional stable snake_case id for the underlying phenomenon. Pick one from the canonical list below when it matches exactly; otherwise propose a new snake_case id that describes the phenomenon semantically (NOT a slice of the tip text). Example: 'past_continuous_in_interrupted_narrative', 'article_a_vs_an', 'false_friend_substitution'.>"
     }
   ],
   "overallFeedback": "<encouraging, constructive overall feedback IN PORTUGUESE (pt-br)>"
@@ -185,7 +205,7 @@ Evaluate the student's response and provide feedback. Respond in JSON format:
 
 Rules:
 - Score 0 = completely incomprehensible, 10 = perfect native-like SPOKEN speech.
-- SCORE ANCHORS (use these as reference points):
+- SCORE ANCHORS (use these as reference points for the scalar "score" — the 5D axes follow the same idea but each measures only its own facet):
   0-2: Empty, nonsensical, or completely incomprehensible.
   3-4: Understandable but major errors (broken grammar, wrong words, very unnatural).
   5-6: Gets the meaning across but sounds textbook/stiff/translated — "engessada". Correct grammar but robotic delivery with no natural speech markers.
@@ -193,6 +213,15 @@ Rules:
   8: Good and mostly natural. Uses some contractions and phrasal verbs but still has minor awkwardness a native wouldn't have.
   9: Very natural. Sounds like a real person talking. Good use of contractions, fillers, and natural flow. Minor imperfections only.
   10: Indistinguishable from a native speaker. Perfect rhythm, word choice, contractions, and flow.
+- SCORES5D RULES:
+  - Each axis is a 0-100 integer. They are INDEPENDENT — a response can be accurate (accuracy=85) but robotic (naturalness=40).
+  - "naturalness" tracks whether it sounds like a real native speaker in the target register.
+  - "accuracy" tracks raw correctness (grammar + word choice); textbook-but-correct gets high accuracy and low naturalness.
+  - "fluency" tracks rhythm and delivery (fillers used naturally, connected speech, no awkward pauses).
+  - "pragmatics" tracks register / politeness / situational fit (ordering coffee in a formal register would lower pragmatics).
+  - "completeness" tracks whether the response actually addresses the prompt (incomplete or off-topic → low).
+  - "primaryDimension" MUST be the single axis holding the student back the most. Pick the lowest or most impactful axis.
+  - The scalar "score" should be roughly the mean of the 5 axes, scaled to 0-10. If unsure, round the mean / 10 to one decimal.
 - Focus STRICTLY on SPOKEN English. IGNORE written grammar rules entirely.
 - Evaluate naturalness above all else — does it sound exactly like a real native speaker using the tone above? Is it fluid or robotic?
 - NATURALNESS PENALTY (CRITICAL): You MUST deduct points if the speech sounds stiff, overly formal, translated, or textbook-like ("engessada"). A grammatically "wrong" but highly natural-sounding slang/colloquial response MUST score higher than a grammatically perfect but robotic reading-style sentence. Specifically: "I would like to order a coffee please" in a CASUAL context MUST score 5 or below — it is textbook English that no native would say casually.
@@ -200,10 +229,11 @@ Rules:
 - CORRECTED VERSION: The "correctedVersion" MUST be in ENGLISH — exactly how a native speaker would ACTUALLY say this out loud on the street. Keep it casual if the tone is casual (force contractions, filler words, idioms). Correct for awkwardness/stiffness. NEVER EVER give a textbook grammar correction unless that is exactly how natives speak. If the student's response was completely unrelated to the prompt, the correctedVersion should be how a native would say what the prompt asked for.
 - The "betterAlternatives" MUST be 100% in ENGLISH — no Portuguese words at all, not even "por favor" (use "please" instead). Match the tone (casual, balanced, or formal) and provide ONLY heavily native-like, colloquial options.
 - HIGHLIGHTS: If the student did something well (used a natural contraction, a good phrasal verb, a discourse marker, an idiomatic expression, etc.), PRAISE it in the "highlights" array. Be specific: "Ótimo uso de 'gonna' — soou super natural!". If there's nothing to highlight, return an empty array. Do NOT invent forced praise.
-- CORRECTIONS FORMAT: Each correction has a "tip" (short, punchy feedback in Portuguese — what went wrong + a quick concrete suggestion) and an optional "example" (a full English sentence showing the fix in action). The tip should be direct and actionable, like a coach: "Ficou engessado — em vez de 'I would like to obtain', fale 'I wanna get'". The example is a bonus for students who want to see more context.
+- CORRECTIONS FORMAT: Each correction has a "tip" (short, punchy feedback in Portuguese — what went wrong + a quick concrete suggestion), an optional "example" (a full English sentence showing the fix in action), a "severity" of 'critical' (blocks understanding or sounds painfully off), 'moderate' (noticeable stiffness or clear mistake), or 'polish' (nice-to-have refinement), and an optional "canonical_pattern" (stable semantic id — see list below). Order corrections from most to least impactful.
+- CANONICAL PATTERNS: Prefer one of the following ids when it matches the phenomenon. If none fits, invent a new snake_case id that names the phenomenon itself (NOT a slice of the tip). Do NOT reuse an id for a different phenomenon. Known ids: ${CANONICAL_PATTERN_HINTS}.
 - LANGUAGE RULE (CRITICAL): "highlights", "tip" fields, and "overallFeedback" MUST be written in Portuguese (pt-br). English is allowed ONLY when quoting what the student said or showing the correct English form. "example" fields are in English.
 - Be encouraging but honest in your feedback.
-- If the transcription seems empty or nonsensical, score it low and explain why (in Portuguese).
+- If the transcription seems empty or nonsensical, score it low on every axis and explain why (in Portuguese).
 - Provide at least 2 better alternatives that sound genuinely native.
 - Respond ONLY with the JSON, nothing else.`;
 }
@@ -456,7 +486,24 @@ export const evaluationResponseSchema = {
   properties: {
     score: {
       type: 'number' as const,
-      description: 'Score from 0 to 10. 0 = incomprehensible, 10 = perfect native-like spoken English.',
+      description: 'Convenience 0-10 scalar derived from the 5D axes. 0 = incomprehensible, 10 = perfect native-like spoken English.',
+    },
+    scores5d: {
+      type: 'object' as const,
+      description: 'Five-dimensional scorecard. Each axis is an INTEGER 0-100 and is INDEPENDENT of the others.',
+      properties: {
+        naturalness: { type: 'number' as const, description: '0-100. Sounds like a native speaker in the target register.' },
+        accuracy: { type: 'number' as const, description: '0-100. Grammar, vocabulary, and word-choice correctness.' },
+        fluency: { type: 'number' as const, description: '0-100. Rhythm, fillers, connected speech.' },
+        pragmatics: { type: 'number' as const, description: '0-100. Register, politeness, situational fit.' },
+        completeness: { type: 'number' as const, description: '0-100. Covers what the prompt actually asked for.' },
+      },
+      required: ['naturalness', 'accuracy', 'fluency', 'pragmatics', 'completeness'],
+    },
+    primaryDimension: {
+      type: 'string' as const,
+      description: 'The single axis that most held this response back.',
+      enum: ['naturalness', 'accuracy', 'fluency', 'pragmatics', 'completeness'],
     },
     correctedVersion: {
       type: 'string' as const,
@@ -485,17 +532,26 @@ export const evaluationResponseSchema = {
             type: 'string' as const,
             description: 'Optional full English example sentence showing the fix in context.',
           },
+          severity: {
+            type: 'string' as const,
+            description: 'How impactful the fix is for this utterance.',
+            enum: ['critical', 'moderate', 'polish'],
+          },
+          canonical_pattern: {
+            type: 'string' as const,
+            description: 'Optional stable snake_case id naming the underlying phenomenon. Use one from the canonical list when it fits exactly, or propose a new semantic id (not a slice of the tip). Reuse ids across corrections only for the same phenomenon.',
+          },
         },
         required: ['tip'],
       },
-      description: 'Array of corrections with tips in Portuguese and optional English examples.',
+      description: 'Array of corrections with tips in Portuguese and optional English examples, ordered from most to least impactful.',
     },
     overallFeedback: {
       type: 'string' as const,
       description: 'Encouraging, constructive overall feedback in Portuguese (pt-br).',
     },
   },
-  required: ['score', 'correctedVersion', 'betterAlternatives', 'highlights', 'corrections', 'overallFeedback'],
+  required: ['score', 'scores5d', 'primaryDimension', 'correctedVersion', 'betterAlternatives', 'highlights', 'corrections', 'overallFeedback'],
 };
 
 export const conversationAnalysisResponseSchema = {

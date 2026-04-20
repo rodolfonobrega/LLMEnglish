@@ -5,6 +5,11 @@ interface ScoreDisplayProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
+/**
+ * @deprecated Use `ScorecardDisplay` which visualises the 5D scorecard.
+ * This single-scalar widget remains for backward-compatible rendering of
+ * legacy evaluations that do not carry `scores5d`.
+ */
 export function ScoreDisplay({ score, size = 'md' }: ScoreDisplayProps) {
   const getColor = () => {
     if (score >= 8) return 'text-leaf';

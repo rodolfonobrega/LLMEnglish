@@ -5,12 +5,16 @@ import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
 import { extractErrorPatterns, recordErrorPatterns, recordSessionSnapshot } from '../../services/errorAnalysis';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
+import { FeedbackDrill } from '../shared/FeedbackDrill';
 import { ScoreDisplay } from '../shared/ScoreDisplay';
 import { chatCompletion, speechToText } from '../../services/openai';
-import { getEvaluationPrompt, getTutorExplanationPrompt, evaluationResponseSchema } from '../../utils/prompts';
+import { getEvaluationPrompt, evaluationResponseSchema } from '../../utils/prompts';
+import { cleanJson } from '../../utils/cleanJson';
+import { explainCorrection } from '../../services/tutorExplain';
 import { addXP } from '../../services/gamification';
 import { XP_PER_REVIEW } from '../../types/gamification';
 import type { Card, EvaluationResult } from '../../types/card';
+import { normalizeEvaluationResult } from '../../types/card';
 import type { ConversationTone } from '../../types/settings';
 import { Loader2, RotateCcw, ChevronRight, ChevronLeft, CheckCircle2, Compass, Trophy, Brain, Lightbulb, BookOpen, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +39,7 @@ export function ReviewPage() {
   const [showTutor, setShowTutor] = useState(false);
   const [tutorExplanation, setTutorExplanation] = useState<string | null>(null);
   const [isGeneratingTutor, setIsGeneratingTutor] = useState(false);
+  const [showDrill, setShowDrill] = useState(false);
   const [tone, setTone] = useState<ConversationTone>('balanced');
 
   useEffect(() => {
@@ -73,18 +78,20 @@ export function ReviewPage() {
       const transcription = await speechToText(blob);
       const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`, tone);
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt, undefined, evaluationResponseSchema);
-      let evalResult: EvaluationResult;
+      let parsed: EvaluationResult;
       try {
-        evalResult = JSON.parse(evalResponse);
+        parsed = JSON.parse(cleanJson(evalResponse));
       } catch {
         throw new Error('AI returned invalid JSON for evaluation. Please try again.');
       }
-      if (typeof evalResult.score !== 'number' || !Array.isArray(evalResult.corrections)) {
+      if (typeof parsed.score !== 'number' || !Array.isArray(parsed.corrections)) {
         throw new Error('AI returned an incomplete evaluation. Please try again.');
       }
-      evalResult.userTranscription = transcription;
+      parsed.userTranscription = transcription;
+      const evalResult = normalizeEvaluationResult(parsed);
       setEvaluation(evalResult);
       setShowResults(true);
+      setShowDrill(false);
 
       const updatedCard = updateCardSchedule(currentCard, evalResult.score);
       updatedCard.reviews.push({
@@ -112,17 +119,13 @@ export function ReviewPage() {
     if (!evaluation || !currentCard) return;
     setIsGeneratingTutor(true);
     try {
-      const tutorPrompt = getTutorExplanationPrompt(
-        currentCard.prompt,
-        evaluation.userTranscription,
-        evaluation.correctedVersion,
-        evaluation.corrections,
-        tone
-      );
-      const explanation = await chatCompletion(
-        'You are a patient, encouraging English tutor. Explain mistakes clearly and provide helpful examples.',
-        tutorPrompt
-      );
+      const explanation = await explainCorrection({
+        prompt: currentCard.prompt,
+        userTranscription: evaluation.userTranscription,
+        correctedVersion: evaluation.correctedVersion,
+        corrections: evaluation.corrections,
+        tone,
+      });
       setTutorExplanation(explanation);
       setShowTutor(true);
     } catch (err) {
@@ -137,6 +140,9 @@ export function ReviewPage() {
       setCurrentIndex(prev => prev + 1);
       setEvaluation(null);
       setShowResults(false);
+      setShowDrill(false);
+      setTutorExplanation(null);
+      setShowTutor(false);
       setError(null);
     } else {
       setSessionComplete(true);
@@ -318,7 +324,30 @@ export function ReviewPage() {
 
           {showResults && evaluation && (
             <div className="space-y-4">
-              <EvaluationResults result={evaluation} showSaveButton={false} />
+              <EvaluationResults
+                result={evaluation}
+                showSaveButton={false}
+                drillSlot={
+                  showDrill && evaluation.correctedVersion ? (
+                    <FeedbackDrill
+                      target={evaluation.correctedVersion}
+                      original={evaluation.userTranscription}
+                    />
+                  ) : undefined
+                }
+              />
+
+              {!showDrill && evaluation.score < 9 && evaluation.correctedVersion && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setShowDrill(true)}
+                  className="w-full rounded-2xl cursor-pointer"
+                >
+                  <RotateCcw size={18} />
+                  Praticar a correção
+                </Button>
+              )}
 
               {evaluation.score < 8 && (
                 <div className="bg-gradient-to-r from-[var(--amber-soft)] to-[var(--leaf-soft)] rounded-2xl p-4">

@@ -18,6 +18,7 @@ import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorA
 import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import type { EvaluationResult } from '../../types/card';
+import { normalizeEvaluationResult } from '../../types/card';
 import type { ConversationTone } from '../../types/settings';
 
 interface SaveCardContext {
@@ -89,8 +90,9 @@ export function useExerciseEvaluation(
           evaluationResponseSchema,
         );
         const cleanResponse = cleanJson(evalResponse);
-        const evalResult: EvaluationResult = JSON.parse(cleanResponse);
-        evalResult.userTranscription = transcription;
+        const parsed: EvaluationResult = JSON.parse(cleanResponse);
+        parsed.userTranscription = transcription;
+        const evalResult = normalizeEvaluationResult(parsed);
 
         // Show evaluation immediately — user should always see their result
         dispatch({ type: 'EVALUATION_SUCCESS', result: evalResult });

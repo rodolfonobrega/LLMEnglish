@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LiveScenario, ConversationTurn, LiveSession as LiveSessionData } from '../../types/scenario';
 import { chatCompletion, textToSpeech } from '../../services/openai';
-import { getModelConfig, saveLiveSession, getConversationTone } from '../../services/storage';
+import { getModelConfig, saveLiveSession } from '../../services/storage';
+import { resolveContextualTone } from '../../services/tone';
 import { getConversationAnalysisPrompt, conversationAnalysisResponseSchema } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';
@@ -58,7 +59,20 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tone] = useState<ConversationTone>(() => getConversationTone());
+  const [tone] = useState<ConversationTone>(() =>
+    resolveContextualTone({
+      kind: 'live-roleplay',
+      contentHints: [
+        scenario.brandName,
+        scenario.location,
+        scenario.userRole,
+        scenario.aiRole,
+        scenario.theme,
+        scenario.characterSpeechStyle,
+        scenario.characterPersonality,
+      ].filter((v): v is string => typeof v === 'string' && v.length > 0),
+    }),
+  );
 
   // Audio state
   const [audioProgress, setAudioProgress] = useState<number>(0); // 0..totalLines for generation progress

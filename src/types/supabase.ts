@@ -145,12 +145,25 @@ export interface CardEvaluation {
   corrected_version: string
   better_alternatives: string[] | null
   highlights: string[] | null
-  corrections: ({ tip: string; example?: string } | string)[] | null
+  corrections: (
+    | { tip: string; example?: string; severity?: 'critical' | 'moderate' | 'polish'; canonical_pattern?: string }
+    | string
+  )[] | null
+  /** Wave 2 — rich corrections live here when present. Legacy rows still use `corrections`. */
+  corrections_json: Json | null
+  /** Wave 2 — 5D scorecard payload: {naturalness, accuracy, fluency, pragmatics, completeness}. */
+  scores5d: Json | null
+  /** Wave 2 — single-axis "primary" dimension the tutor highlights. NULL for legacy rows. */
+  primary_dimension: 'naturalness' | 'accuracy' | 'fluency' | 'pragmatics' | 'completeness' | null
+  /** Wave 2 — optional fluency metrics (e.g. {"wpm": 135}). */
+  fluency_stats: Json | null
   overall_feedback: string
   created_at: string
 }
 
-export type CardEvaluationInsert = Omit<CardEvaluation, 'id' | 'created_at'>
+export type CardEvaluationInsert =
+  Omit<CardEvaluation, 'id' | 'created_at' | 'corrections_json' | 'scores5d' | 'primary_dimension' | 'fluency_stats'>
+  & Partial<Pick<CardEvaluation, 'corrections_json' | 'scores5d' | 'primary_dimension' | 'fluency_stats'>>
 export type CardEvaluationUpdate = Partial<CardEvaluationInsert>
 
 // ============================================================================
@@ -371,9 +384,13 @@ export interface ErrorPatternRow {
   examples: Json
   trend: 'improving' | 'stable' | 'worsening'
   recent_scores: number[]
+  /** Wave 2 — canonical pattern id (e.g. past_continuous_in_interrupted_narrative). NULL for legacy fallback rows. */
+  canonical_pattern: string | null
 }
 
-export type ErrorPatternInsert = Omit<ErrorPatternRow, 'id'>
+export type ErrorPatternInsert =
+  Omit<ErrorPatternRow, 'id' | 'canonical_pattern'>
+  & Partial<Pick<ErrorPatternRow, 'canonical_pattern'>>
 export type ErrorPatternUpdate = Partial<ErrorPatternInsert>
 
 export interface ErrorSnapshotRow {

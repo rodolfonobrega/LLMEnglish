@@ -1,7 +1,8 @@
 import { getCurrentUser } from './supabase/auth'
 import { supabase } from './supabase/client'
 import { getCards } from './storage'
-import type { Card, EvaluationResult } from '../types/card'
+import type { Card, EvaluationResult, CorrectionItem } from '../types/card'
+import { normalizeCorrectionItem } from '../types/card'
 import type {
   ErrorCategory,
   ErrorCurrency,
@@ -13,6 +14,10 @@ import type {
   WeakAreas,
 } from '../types/errors'
 import type { ErrorPatternRow, ErrorSnapshotRow } from '../types/supabase'
+import {
+  buildPatternFromCanonicalId,
+  softFallbackPattern,
+} from './patterns'
 
 const ERROR_CATEGORIES: ErrorCategory[] = [
   'grammar',
@@ -174,7 +179,18 @@ function getCategoryFocus(category: ErrorCategory): string {
 }
 
 /**
- * Extract error patterns from an evaluation result using AI
+ * Extract error patterns from an evaluation result.
+ *
+ * Resolution order per correction:
+ *   1. If the evaluator tagged the correction with a `canonical_pattern`,
+ *      resolve it via the catalogue. Unknown canonical ids are preserved
+ *      verbatim so new Master-suggested ids don't collapse under 'other'.
+ *   2. Otherwise, soft-fallback to a slug derived from the tip text, using
+ *      the legacy keyword heuristic only to pick the category bucket.
+ *
+ * The previous implementation used `correction.slice(0, 30)` to build ids,
+ * which caused unrelated tips to collide (e.g. "Use 'in' instead of 'on'"
+ * and "Use 'in' instead of 'at'" both hashed to the same bucket).
  */
 export async function extractErrorPatterns(
   evaluation: EvaluationResult,
@@ -183,19 +199,68 @@ export async function extractErrorPatterns(
 ): Promise<ErrorPattern[]> {
   const patterns: ErrorPattern[] = []
 
-  for (const correction of evaluation.corrections) {
-    const tipText = typeof correction === 'string' ? correction : correction.tip
-    const category = guessCategory(tipText)
-    const pattern = createPatternFromCorrection(tipText, category, cardPrompt, evaluation, cardId)
+  for (const rawCorrection of evaluation.corrections) {
+    const correction = normalizeCorrectionItem(rawCorrection)
+    const pattern = buildPatternForCorrection(correction, cardPrompt, evaluation, cardId)
     if (pattern) patterns.push(pattern)
   }
 
   return patterns
 }
 
+function buildPatternForCorrection(
+  correction: CorrectionItem,
+  prompt: string,
+  evaluation: EvaluationResult,
+  cardId: string,
+): ErrorPattern | null {
+  const { id, label, category } = resolvePatternIdentity(correction)
+
+  return {
+    id,
+    pattern: label,
+    category,
+    occurrences: 1,
+    firstSeen: new Date().toISOString(),
+    lastSeen: new Date().toISOString(),
+    examples: [{
+      cardId,
+      date: new Date().toISOString(),
+      userTranscription: evaluation.userTranscription,
+      correctedVersion: evaluation.correctedVersion,
+      score: evaluation.score,
+      prompt,
+    }],
+    trend: 'stable',
+    recentScores: [evaluation.score],
+  }
+}
+
+function resolvePatternIdentity(correction: CorrectionItem): {
+  id: string
+  label: string
+  category: ErrorCategory
+} {
+  if (correction.canonical_pattern) {
+    const canonical = buildPatternFromCanonicalId(correction.canonical_pattern)
+    return {
+      id: canonical.id,
+      label: correction.tip || canonical.label,
+      category: canonical.category,
+    }
+  }
+
+  const category = guessCategory(correction.tip)
+  return softFallbackPattern(correction.tip, category)
+}
+
+/**
+ * Legacy keyword-based category guesser. Kept only as a fallback when the
+ * evaluator didn't provide a `canonical_pattern`. Category assignment is less
+ * critical here because the pattern id no longer collides on tip prefixes.
+ */
 function guessCategory(correction: string): ErrorCategory {
   const lower = correction.toLowerCase()
-  // Check explicit category keywords first (highest priority)
   if (lower.includes('tense') || lower.includes('past') || lower.includes('present') || lower.includes('future')) {
     return 'verb-tense'
   }
@@ -220,47 +285,15 @@ function guessCategory(correction: string): ErrorCategory {
   if (lower.includes('fluency') || lower.includes('natural') || lower.includes('phrasing')) {
     return 'fluency'
   }
-  // Fallback: only match short substrings if they appear as corrections themselves
-  // (e.g., "Use 'in' instead of 'on'" -- the preposition IS the topic)
   if (/\b(in|on|at|to|for|with|by|from)\b.*\b(instead|rather|use|should)\b/i.test(lower) ||
       /\b(instead|rather|use|should)\b.*\b(in|on|at|to|for|with|by|from)\b/i.test(lower)) {
     return 'preposition'
   }
-  // Only use unambiguous articles 'an' and 'the' in fallback context — 'a' is too common
   if (/\b(an|the)\b.*\b(instead|use|should)\b/i.test(lower) ||
       /\b(instead|use|should)\b.*\b(an|the)\b/i.test(lower)) {
     return 'article'
   }
   return 'other'
-}
-
-function createPatternFromCorrection(
-  correction: string,
-  category: ErrorCategory,
-  prompt: string,
-  evaluation: EvaluationResult,
-  cardId: string
-): ErrorPattern | null {
-  const patternId = `${category}_${correction.slice(0, 30).replace(/\s+/g, '_')}`
-
-  return {
-    id: patternId,
-    pattern: correction,
-    category,
-    occurrences: 1,
-    firstSeen: new Date().toISOString(),
-    lastSeen: new Date().toISOString(),
-    examples: [{
-      cardId,
-      date: new Date().toISOString(),
-      userTranscription: evaluation.userTranscription,
-      correctedVersion: evaluation.correctedVersion,
-      score: evaluation.score,
-      prompt,
-    }],
-    trend: 'stable',
-    recentScores: [evaluation.score],
-  }
 }
 
 export async function recordErrorPatterns(patterns: ErrorPattern[]): Promise<void> {
@@ -316,10 +349,21 @@ export async function recordErrorPatterns(patterns: ErrorPattern[]): Promise<voi
         examples: newPattern.examples,
         trend: newPattern.trend,
         recent_scores: newPattern.recentScores,
+        canonical_pattern: deriveCanonicalId(newPattern.id),
       })
 
     if (insertError) throw new Error(`Failed to insert error pattern: ${insertError.message}`)
   }
+}
+
+/**
+ * Derive the canonical pattern id column value from the row id.
+ * Canonical-id rows were stored verbatim; fallback rows use the `fallback_*`
+ * prefix and should store NULL so the dashboard can filter them out later.
+ */
+function deriveCanonicalId(patternId: string): string | null {
+  if (patternId.startsWith('fallback_')) return null
+  return patternId
 }
 
 export async function getErrorStats(): Promise<ErrorStats> {

@@ -12,6 +12,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
+import { FeedbackDrill } from '../shared/FeedbackDrill';
 import { ThemeSelector } from '../shared/ThemeSelector';
 import { getConversationTone } from '../../services/storage';
 import type { ConversationTone } from '../../types/settings';
@@ -326,6 +327,14 @@ export function ExerciseShell({ config }: ExerciseShellProps) {
             void handleSaveToLibrary();
           }}
           showSaveButton={!saved}
+          drillSlot={
+            evaluation.score < 9 && evaluation.correctedVersion ? (
+              <FeedbackDrill
+                target={evaluation.correctedVersion}
+                original={evaluation.userTranscription}
+              />
+            ) : undefined
+          }
         />
 
         {saved && (

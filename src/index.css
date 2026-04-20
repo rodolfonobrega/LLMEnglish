@@ -79,6 +79,22 @@
     --mode-trails: 200 65% 50%;
     --mode-trails-soft: 200 65% 50% / 0.1;
 
+    /* Wave 4 — Focused Drills */
+    --mode-cloze: 231 66% 56%;
+    --mode-cloze-soft: 231 66% 56% / 0.1;
+    --mode-spotting: 350 65% 55%;
+    --mode-spotting-soft: 350 65% 55% / 0.1;
+    --mode-reaction: 45 90% 52%;
+    --mode-reaction-soft: 45 90% 52% / 0.1;
+    --mode-shadowing: 190 60% 45%;
+    --mode-shadowing-soft: 190 60% 45% / 0.1;
+    --mode-reformulation: 290 55% 55%;
+    --mode-reformulation-soft: 290 55% 55% / 0.1;
+    --mode-narrative: 15 70% 55%;
+    --mode-narrative-soft: 15 70% 55% / 0.1;
+    --mode-listening: 155 50% 42%;
+    --mode-listening-soft: 155 50% 42% / 0.1;
+
     /* Brand danger token */
     --danger: 0 60% 58%;
     --danger-soft: 0 60% 58% / 0.1;
@@ -164,6 +180,22 @@
     --mode-trails: 200 65% 60%;
     --mode-trails-soft: 200 65% 60% / 0.15;
 
+    /* Wave 4 — Focused Drills (dark) */
+    --mode-cloze: 231 66% 66%;
+    --mode-cloze-soft: 231 66% 66% / 0.15;
+    --mode-spotting: 350 65% 65%;
+    --mode-spotting-soft: 350 65% 65% / 0.15;
+    --mode-reaction: 45 90% 62%;
+    --mode-reaction-soft: 45 90% 62% / 0.15;
+    --mode-shadowing: 190 60% 55%;
+    --mode-shadowing-soft: 190 60% 55% / 0.15;
+    --mode-reformulation: 290 55% 65%;
+    --mode-reformulation-soft: 290 55% 65% / 0.15;
+    --mode-narrative: 15 70% 65%;
+    --mode-narrative-soft: 15 70% 65% / 0.15;
+    --mode-listening: 155 50% 52%;
+    --mode-listening-soft: 155 50% 52% / 0.15;
+
     /* Brand danger token (dark) */
     --danger: 0 60% 62%;
     --danger-soft: 0 60% 62% / 0.2;
@@ -216,6 +248,20 @@
   --color-mode-visual-soft: hsl(var(--mode-visual-soft));
   --color-mode-trails: hsl(var(--mode-trails));
   --color-mode-trails-soft: hsl(var(--mode-trails-soft));
+  --color-mode-cloze: hsl(var(--mode-cloze));
+  --color-mode-cloze-soft: hsl(var(--mode-cloze-soft));
+  --color-mode-spotting: hsl(var(--mode-spotting));
+  --color-mode-spotting-soft: hsl(var(--mode-spotting-soft));
+  --color-mode-reaction: hsl(var(--mode-reaction));
+  --color-mode-reaction-soft: hsl(var(--mode-reaction-soft));
+  --color-mode-shadowing: hsl(var(--mode-shadowing));
+  --color-mode-shadowing-soft: hsl(var(--mode-shadowing-soft));
+  --color-mode-reformulation: hsl(var(--mode-reformulation));
+  --color-mode-reformulation-soft: hsl(var(--mode-reformulation-soft));
+  --color-mode-narrative: hsl(var(--mode-narrative));
+  --color-mode-narrative-soft: hsl(var(--mode-narrative-soft));
+  --color-mode-listening: hsl(var(--mode-listening));
+  --color-mode-listening-soft: hsl(var(--mode-listening-soft));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));

@@ -6,6 +6,7 @@
 
 import type { ConversationTone } from '../types/settings';
 import type { CorrectionItem } from '../types/card';
+import type { Briefing } from '../types/master';
 import { CANONICAL_PATTERNS } from '../services/patterns';
 
 /**
@@ -727,3 +728,321 @@ Write the script as a theatrical script, clearly formatted for reading aloud and
 
 Respond ONLY with the generated Markdown text.`;
 }
+
+// ---------------------------------------------------------------------------
+// Wave 4 — Focused drill generators
+//
+// Every helper accepts an optional `briefing?: Briefing`. Wave 4 calls these
+// helpers with `briefing: undefined`; Wave 5 passes a real Briefing. Behaviour
+// when the briefing is absent is a random pedagogically safe default.
+//
+// Output shape notes: every helper is paired with a JSON schema passed to
+// `chatCompletion` so the model is forced into structured output.
+// ---------------------------------------------------------------------------
+
+function renderBriefingBlock(briefing?: Briefing): string {
+  if (!briefing) return '';
+  const required = briefing.required_elements.length
+    ? briefing.required_elements.map((r) => `  - ${r}`).join('\n')
+    : '  - (none)';
+  const forbidden = briefing.forbidden_elements.length
+    ? briefing.forbidden_elements.map((r) => `  - ${r}`).join('\n')
+    : '  - (none)';
+  return `
+
+BRIEFING CONSTRAINTS (silent — never mention these labels to the student):
+- Theme: ${briefing.disguise_theme}
+- Must naturally require: ${briefing.target_skill}${briefing.secondary_skill ? ` + ${briefing.secondary_skill}` : ''}
+- Expected difficulty: ${briefing.expected_difficulty}
+- Required elements:
+${required}
+- Forbidden elements:
+${forbidden}
+- Success criterion (internal): ${briefing.success_criteria}
+
+STEALTH RULE: Never include the words "target_skill", "briefing", "canonical_pattern", or any grammatical label in the output. The content must look organically motivated by the theme.`;
+}
+
+// F24 — Oral Cloze
+// -----------------------------------------------------------------------------
+
+export function getOralClozePrompt(briefing?: Briefing, tone?: ConversationTone): string {
+  return `You are generating one ORAL CLOZE round for a spoken English drill.
+
+${getToneInstruction(tone)}
+
+Produce a short natural spoken sentence (6-14 words) with exactly one content word blanked out. The student will hear the sentence with a beep instead of the blank word and must say the missing word aloud.
+
+RULES:
+- The blanked word MUST be a meaningful content word (noun, verb, adjective, adverb) — never an article, conjunction, or preposition.
+- The surrounding context must make the blank unambiguous (there is ONE natural answer).
+- The full sentence must sound like something a native would actually say aloud.
+- If a canonical pattern hint is provided below, the blank word should be the one that exercises that pattern (e.g. past tense verb for past-tense patterns).
+
+Canonical pattern hints available: ${CANONICAL_PATTERN_HINTS}.${renderBriefingBlock(briefing)}
+
+Return STRICT JSON with this shape:
+{
+  "sentence": "full sentence with the target word included",
+  "blank_token": "the exact word to be blanked",
+  "canonical_pattern": "id from the hints list if applicable, else omit",
+  "tts_sentence_with_beep": "same sentence but with the blank_token replaced by the token *BEEP*"
+}`;
+}
+
+export const oralClozeResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    sentence: { type: 'string' as const, description: 'Full sentence with the missing word present.' },
+    blank_token: { type: 'string' as const, description: 'Exact word that was blanked (single token, no trailing punctuation).' },
+    canonical_pattern: { type: 'string' as const, description: 'Optional canonical pattern id that this round exercises.' },
+    tts_sentence_with_beep: { type: 'string' as const, description: 'Sentence with the blank word replaced by the literal string "*BEEP*".' },
+  },
+  required: ['sentence', 'blank_token', 'tts_sentence_with_beep'],
+};
+
+// F27 — Error Spotting
+// -----------------------------------------------------------------------------
+
+export interface ErrorSpottingPromptInput {
+  target_canonical_pattern?: string;
+  briefing?: Briefing;
+  tone?: ConversationTone;
+}
+
+export function getErrorSpottingPrompt(input: ErrorSpottingPromptInput = {}): string {
+  const { target_canonical_pattern, briefing, tone } = input;
+  const patternLine = target_canonical_pattern
+    ? `- The planted error MUST exercise the canonical pattern: ${target_canonical_pattern}.`
+    : `- Pick any single common spoken-English mistake. Prefer patterns from: ${CANONICAL_PATTERN_HINTS}.`;
+  return `You are generating one ERROR SPOTTING round. A student will hear a spoken sentence containing ONE deliberate mistake and must say the corrected version aloud.
+
+${getToneInstruction(tone)}
+
+RULES:
+${patternLine}
+- The mistake must be realistic for an intermediate Portuguese-speaking learner — not obvious typos.
+- The sentence must be 6-14 words and plausibly said in conversation.
+- The correction fixes only the planted error. Do not also rewrite the style.${renderBriefingBlock(briefing)}
+
+Return STRICT JSON:
+{
+  "planted_sentence": "sentence with exactly one error",
+  "error_description": "short Portuguese note pointing out what is wrong (used by the judge, not shown raw)",
+  "correction": "the corrected sentence",
+  "canonical_pattern": "id of the exercised pattern"
+}`;
+}
+
+export const errorSpottingResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    planted_sentence: { type: 'string' as const },
+    error_description: { type: 'string' as const },
+    correction: { type: 'string' as const },
+    canonical_pattern: { type: 'string' as const },
+  },
+  required: ['planted_sentence', 'correction', 'canonical_pattern'],
+};
+
+// F29 — Reaction Drill
+// -----------------------------------------------------------------------------
+
+export function getReactionDrillPrompt(briefing?: Briefing, tone?: ConversationTone): string {
+  return `You are generating a REACTION DRILL session: a list of 8-12 short provocations that a student reacts to out loud under a time pressure (3-5 seconds each).
+
+${getToneInstruction(tone)}
+
+EACH LINE MUST:
+- Be a short, natural conversational prompt (5-12 words) that INVITES a quick verbal reaction in English. Examples: "Your friend just bought a new car. React naturally." "Someone sneezes next to you. What do you say?" "Your boss praises your work. How do you respond?"
+- Be varied: mix social reactions, agreements, disagreements, small talk, reassurances.
+- Target naturalness and speed, NOT grammar rules.
+- Provide 2-4 "expected_naturalness_markers" — conversational hallmarks we'd reward in a good reaction (e.g. "uses a tag question", "uses 'oh no' or 'I'm sorry'", "uses a natural filler"). These markers are INTERNAL; they are used to score the student silently.${renderBriefingBlock(briefing)}
+
+Return STRICT JSON:
+{
+  "lines": [
+    {
+      "provocation": "short prompt",
+      "expected_naturalness_markers": ["marker1", "marker2"]
+    }
+  ]
+}
+
+The array MUST contain 8-12 items.`;
+}
+
+export const reactionDrillResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    lines: {
+      type: 'array' as const,
+      description: '8-12 reaction drill rounds.',
+      items: {
+        type: 'object' as const,
+        properties: {
+          provocation: { type: 'string' as const },
+          expected_naturalness_markers: {
+            type: 'array' as const,
+            items: { type: 'string' as const },
+          },
+        },
+        required: ['provocation', 'expected_naturalness_markers'],
+      },
+    },
+  },
+  required: ['lines'],
+};
+
+// F23 — Active Shadowing
+// -----------------------------------------------------------------------------
+
+export function getShadowingLinePrompt(briefing?: Briefing, tone?: ConversationTone): string {
+  return `You are generating one SHADOWING line for a spoken English rhythm drill. The student will hear the line and must repeat it out loud matching pace and rhythm.
+
+${getToneInstruction(tone)}
+
+RULES:
+- 8-18 words, natural spoken English, something a native would actually say.
+- Must be speakable in 4-8 seconds at normal pace.
+- Include natural contractions and at least one discourse marker or filler where appropriate.${renderBriefingBlock(briefing)}
+
+Return STRICT JSON:
+{
+  "line": "the sentence to shadow",
+  "context_hint_pt": "optional 1-sentence Portuguese hint about the situation (kept short, may be omitted)"
+}`;
+}
+
+export const shadowingLineResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    line: { type: 'string' as const },
+    context_hint_pt: { type: 'string' as const },
+  },
+  required: ['line'],
+};
+
+// F26 — Reformulation
+// -----------------------------------------------------------------------------
+
+export type ReformulationStyle = 'more_casual' | 'more_formal' | 'shorter' | 'more_natural';
+
+export interface ReformulationPromptInput {
+  source_sentence?: string;
+  target_style: ReformulationStyle;
+  briefing?: Briefing;
+  tone?: ConversationTone;
+}
+
+export function getReformulationPrompt(input: ReformulationPromptInput): string {
+  const { source_sentence, target_style, briefing, tone } = input;
+  const sourceBlock = source_sentence
+    ? `Use this as the source sentence verbatim: "${source_sentence}"`
+    : `Generate a stiff or overly literal English sentence that a Portuguese-speaker might produce. 12-20 words.`;
+  return `You are generating one REFORMULATION round. The student will hear the source sentence and must rephrase it in a target style.
+
+${getToneInstruction(tone)}
+
+Target style: ${target_style}.
+${sourceBlock}
+
+RULES:
+- The source MUST be grammatical but awkward / overly formal / overly long / stilted depending on the target_style (so the student has room to improve it).
+- Provide 2-3 reference examples of acceptable reformulations, each clearly matching the target_style.${renderBriefingBlock(briefing)}
+
+Return STRICT JSON:
+{
+  "source": "the source sentence",
+  "target_style": "${target_style}",
+  "reference_examples": ["ex1", "ex2", "ex3"]
+}`;
+}
+
+export const reformulationResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    source: { type: 'string' as const },
+    target_style: { type: 'string' as const, enum: ['more_casual', 'more_formal', 'shorter', 'more_natural'] },
+    reference_examples: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+    },
+  },
+  required: ['source', 'target_style', 'reference_examples'],
+};
+
+// F28 — Open-Ended Narrative Continuation
+// -----------------------------------------------------------------------------
+
+export function getNarrativeSeedPrompt(briefing?: Briefing, tone?: ConversationTone): string {
+  return `You are generating an OPENING for a spoken-English narrative continuation exercise. The student will hear the opening and must continue the story out loud for up to 60 seconds.
+
+${getToneInstruction(tone)}
+
+RULES:
+- 2-3 opening sentences, 30-60 words total. Should end on a natural narrative pivot that invites continuation (a decision, surprise, or question).
+- Keep vocabulary accessible to B1-B2 learners unless the briefing overrides the difficulty.
+- Do NOT ask the student a direct question — just set up a scene begging to be continued.${renderBriefingBlock(briefing)}
+
+Return STRICT JSON:
+{
+  "opening_sentences": "the narrative opening",
+  "suggested_topic": "optional 1-2 word topic tag (may be omitted)"
+}`;
+}
+
+export const narrativeSeedResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    opening_sentences: { type: 'string' as const },
+    suggested_topic: { type: 'string' as const },
+  },
+  required: ['opening_sentences'],
+};
+
+// F25 — Directed Listening
+// -----------------------------------------------------------------------------
+
+export type ListeningAccent = 'us' | 'uk' | 'au' | 'neutral';
+
+export function getListeningPassagePrompt(briefing?: Briefing, tone?: ConversationTone): string {
+  return `You are generating a DIRECTED LISTENING round. The student will hear a short spoken passage once, then answer 2-3 comprehension questions out loud.
+
+${getToneInstruction(tone)}
+
+RULES:
+- The passage is a natural spoken monologue (news-style, anecdote, or explanation). 60-110 words. Uses natural rhythm and discourse markers.
+- Questions must test COMPREHENSION, not memorisation of trivia. Prefer questions about gist, intent, or inferences.
+- "expected_key_points" are internal anchors used to judge the student's answers. Each is a short bullet the correct answer would contain.
+- "accent_hint" suggests the TTS voice regional flavour and must be one of: us, uk, au, neutral.${renderBriefingBlock(briefing)}
+
+Return STRICT JSON:
+{
+  "passage": "the spoken passage",
+  "questions": ["q1", "q2", "q3"],
+  "expected_key_points": ["kp1", "kp2", "kp3"],
+  "accent_hint": "us" | "uk" | "au" | "neutral"
+}`;
+}
+
+export const listeningPassageResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    passage: { type: 'string' as const },
+    questions: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+    },
+    expected_key_points: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+    },
+    accent_hint: {
+      type: 'string' as const,
+      enum: ['us', 'uk', 'au', 'neutral'],
+    },
+  },
+  required: ['passage', 'questions', 'expected_key_points'],
+};
+

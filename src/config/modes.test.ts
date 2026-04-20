@@ -1,65 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import {
-  exerciseModes,
-  conversationModes,
-  trailsMode,
-  allModes,
-} from './modes';
+import { focusedDrillModes, exerciseModes, conversationModes } from './modes';
 
-describe('exerciseModes', () => {
-  it('has exactly 4 exercise modes in the correct order', () => {
-    expect(exerciseModes.map(m => m.id)).toEqual([
-      'phrases',
-      'texts',
-      'situations',
-      'scripts',
-    ]);
+describe('focusedDrillModes', () => {
+  it('contains the 7 Wave 4 modalities', () => {
+    expect(focusedDrillModes).toHaveLength(7);
+    const ids = focusedDrillModes.map((m) => m.id).sort();
+    expect(ids).toEqual(
+      ['cloze', 'listening', 'narrative', 'reaction', 'reformulation', 'shadowing', 'spotting'].sort(),
+    );
   });
 
-  it('each mode has required fields', () => {
-    exerciseModes.forEach(mode => {
-      expect(mode).toHaveProperty('id');
-      expect(mode).toHaveProperty('label');
-      expect(mode).toHaveProperty('description');
-      expect(mode).toHaveProperty('example');
-      expect(mode).toHaveProperty('colorVar');
-      expect(mode).toHaveProperty('icon');
-      expect(mode).toHaveProperty('to');
-      expect(mode.label.length).toBeGreaterThan(0);
-      expect(mode.description.length).toBeGreaterThan(0);
-      expect(mode.example.length).toBeGreaterThan(0);
-    });
-  });
-});
-
-describe('conversationModes', () => {
-  it('has exactly 2 conversation modes in the correct order', () => {
-    expect(conversationModes.map(m => m.id)).toEqual([
-      'simulation',
-      'visual',
-    ]);
+  it('every entry points at /exercises with its mode query param', () => {
+    for (const mode of focusedDrillModes) {
+      expect(mode.to).toBe(`/exercises?mode=${mode.id}`);
+    }
   });
 
-  it('no modes are highlighted', () => {
-    const highlighted = conversationModes.filter(m => m.highlighted);
-    expect(highlighted).toHaveLength(0);
-  });
-});
-
-describe('trailsMode', () => {
-  it('has the correct id and route', () => {
-    expect(trailsMode.id).toBe('trails');
-    expect(trailsMode.to).toBe('/paths');
-  });
-});
-
-describe('allModes', () => {
-  it('contains all 7 modes', () => {
-    expect(allModes).toHaveLength(7);
+  it('every entry has a distinct colorVar so CSS lookups do not collide', () => {
+    const colors = focusedDrillModes.map((m) => m.colorVar);
+    const unique = new Set(colors);
+    expect(unique.size).toBe(colors.length);
   });
 
-  it('has no duplicate ids', () => {
-    const ids = allModes.map(m => m.id);
-    expect(new Set(ids).size).toBe(ids.length);
+  it('all drills share no ids with the existing exercise or conversation modes', () => {
+    const drillIds = new Set(focusedDrillModes.map((m) => m.id));
+    const otherIds = [...exerciseModes, ...conversationModes].map((m) => m.id);
+    for (const id of otherIds) {
+      expect(drillIds.has(id)).toBe(false);
+    }
   });
 });

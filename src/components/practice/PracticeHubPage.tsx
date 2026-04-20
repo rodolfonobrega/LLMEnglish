@@ -1,7 +1,15 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { exerciseModes, conversationModes, trailsMode } from '../../config/modes';
+import { ChevronDown, Target } from 'lucide-react';
+import {
+  exerciseModes,
+  conversationModes,
+  trailsMode,
+  focusedDrillModes,
+} from '../../config/modes';
 import type { PracticeMode } from '../../config/modes';
 import { PracticeModeCard } from '../shared/PracticeModeCard';
+import { cn } from '../../utils/cn';
 
 const soloModes: readonly PracticeMode[] = [
   ...exerciseModes,
@@ -15,6 +23,7 @@ const liveModes: readonly PracticeMode[] = [
 
 export function PracticeHubPage() {
   const navigate = useNavigate();
+  const [drillsOpen, setDrillsOpen] = useState(false);
 
   return (
     <div className="space-y-8 pb-20">
@@ -61,6 +70,44 @@ export function PracticeHubPage() {
             />
           ))}
         </div>
+      </section>
+
+      {/* Treinos Dirigidos Section — collapsed by default to protect visual load */}
+      <section>
+        <button
+          type="button"
+          onClick={() => setDrillsOpen((v) => !v)}
+          aria-expanded={drillsOpen}
+          aria-controls="focused-drills-list"
+          className="flex items-center gap-2 mb-4 w-full text-left group cursor-pointer"
+        >
+          <div className="w-2 h-2 rounded-full bg-primary" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Target size={12} />
+            Treinos Dirigidos
+          </span>
+          <span className="text-[10px] font-medium text-muted-foreground/80 ml-1">
+            {focusedDrillModes.length} exercícios
+          </span>
+          <ChevronDown
+            size={16}
+            className={cn(
+              'ml-auto text-muted-foreground transition-transform duration-200',
+              drillsOpen && 'rotate-180',
+            )}
+          />
+        </button>
+        {drillsOpen && (
+          <div id="focused-drills-list" className="flex flex-col gap-3">
+            {focusedDrillModes.map((mode) => (
+              <PracticeModeCard
+                key={mode.id}
+                mode={mode}
+                onClick={() => navigate(mode.to)}
+              />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

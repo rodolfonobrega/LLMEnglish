@@ -42,6 +42,7 @@ import {
   getSnapshot,
   patchSnapshot,
   resetSnapshot,
+  setMasterUserOverride,
   setSnapshot,
   subscribe,
 } from '../services/runtimeConfigSnapshot'
@@ -68,8 +69,20 @@ interface RuntimeConfigProviderProps {
 }
 
 export function RuntimeConfigProvider({ children }: RuntimeConfigProviderProps) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const state = useSyncExternalStore(subscribe, getSnapshot)
+
+  // Hydrate the per-user Master override from profile.master_enabled.
+  // `null` means "not yet loaded" — the env flag decides until we know.
+  useEffect(() => {
+    if (!profile) {
+      setMasterUserOverride(null)
+      return
+    }
+    setMasterUserOverride(
+      typeof profile.master_enabled === 'boolean' ? profile.master_enabled : null,
+    )
+  }, [profile])
 
   const setModelConfig = useCallback((config: ModelConfig) => {
     patchSnapshot({ modelConfig: config })
@@ -127,6 +140,7 @@ export function RuntimeConfigProvider({ children }: RuntimeConfigProviderProps) 
         groq: groqKey || envCredentials.groq || '',
         openrouter: openrouterKey || envCredentials.openrouter || '',
       },
+      masterUserOverride: null,
     })
   }, [])
 

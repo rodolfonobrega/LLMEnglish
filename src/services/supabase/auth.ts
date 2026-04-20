@@ -5,7 +5,7 @@
  */
 
 import { supabase } from './client'
-import type { Profile } from '../../types/supabase'
+import type { Profile, ProfileInsert } from '../../types/supabase'
 import { storeSessionToken, clearSessionToken } from '../../utils/encryption'
 
 export interface AuthUser {
@@ -175,7 +175,7 @@ export async function getOrCreateProfile(userId: string, email?: string): Promis
 
   // Profile doesn't exist, create it
   if (fetchError?.code === 'PGRST116') {
-    const newProfile: Omit<Profile, 'created_at' | 'updated_at'> = {
+    const newProfile: ProfileInsert = {
       id: userId,
       email: email || null,
       profile: '',

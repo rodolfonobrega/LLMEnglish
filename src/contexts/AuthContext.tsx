@@ -43,6 +43,7 @@ const MOCK_PROFILE: Profile = {
   goals: 'Fluent conversation',
   current_level: 'Intermediate',
   conversation_tone: 'balanced',
+  master_enabled: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

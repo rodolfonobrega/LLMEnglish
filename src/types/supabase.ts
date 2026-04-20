@@ -48,6 +48,9 @@ export interface Database {
       encrypted_api_keys: TableDefinition<EncryptedApiKeys, EncryptedApiKeysInsert, EncryptedApiKeysUpdate>
       error_patterns: TableDefinition<ErrorPatternRow, ErrorPatternInsert, ErrorPatternUpdate>
       error_snapshots: TableDefinition<ErrorSnapshotRow, ErrorSnapshotInsert, ErrorSnapshotUpdate>
+      learner_models: TableDefinition<LearnerModelRow, LearnerModelInsert, LearnerModelUpdate>
+      learner_model_history: TableDefinition<LearnerModelHistoryRow, LearnerModelHistoryInsert, LearnerModelHistoryUpdate>
+      master_usage: TableDefinition<MasterUsageRow, MasterUsageInsert, MasterUsageUpdate>
     }
     Views: {
       [_ in never]: never
@@ -83,11 +86,15 @@ export interface Profile {
   goals: string
   current_level: string
   conversation_tone: ConversationTone
+  /** Wave 3 — per-user override for the Master pedagogical agent. NULL pre-migration. */
+  master_enabled: boolean | null
   created_at: string
   updated_at: string
 }
 
-export type ProfileInsert = Omit<Profile, 'created_at' | 'updated_at'>
+export type ProfileInsert =
+  Omit<Profile, 'created_at' | 'updated_at' | 'master_enabled'>
+  & Partial<Pick<Profile, 'master_enabled'>>
 export type ProfileUpdate = Partial<ProfileInsert>
 
 // ============================================================================
@@ -406,3 +413,49 @@ export interface ErrorSnapshotRow {
 
 export type ErrorSnapshotInsert = Omit<ErrorSnapshotRow, 'id'>
 export type ErrorSnapshotUpdate = Partial<ErrorSnapshotInsert>
+
+// ============================================================================
+// MASTER PEDAGOGICAL AGENT (Wave 3+)
+// ============================================================================
+
+export interface LearnerModelRow {
+  id: string
+  model: Json
+  version: number
+  updated_at: string
+}
+
+export type LearnerModelInsert = Omit<LearnerModelRow, 'updated_at'> & {
+  updated_at?: string
+}
+export type LearnerModelUpdate = Partial<LearnerModelInsert>
+
+export interface LearnerModelHistoryRow {
+  id: string
+  user_id: string
+  patch_ops: Json
+  reason: string | null
+  /**
+   * Wave 3 enumerates 'evaluate'|'update_model'|'reset'|'lesson_boost'.
+   * Wave 6 extends with 'breakthrough_event' via an ALTER migration.
+   */
+  source: 'evaluate' | 'update_model' | 'reset' | 'lesson_boost' | 'breakthrough_event' | null
+  created_at: string
+}
+
+export type LearnerModelHistoryInsert = Omit<LearnerModelHistoryRow, 'id' | 'created_at'>
+export type LearnerModelHistoryUpdate = Partial<LearnerModelHistoryInsert>
+
+export interface MasterUsageRow {
+  id: string
+  user_id: string
+  role: 'prescribe' | 'evaluate' | 'update_model' | 'compose_lesson' | 'render_moment'
+  tokens_in: number
+  tokens_out: number
+  model: string | null
+  latency_ms: number | null
+  created_at: string
+}
+
+export type MasterUsageInsert = Omit<MasterUsageRow, 'id' | 'created_at'>
+export type MasterUsageUpdate = Partial<MasterUsageInsert>

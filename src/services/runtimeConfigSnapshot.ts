@@ -54,11 +54,28 @@ export const envCredentials: SourceCredentials = useEnvCredentials
     }
   : {}
 
+/**
+ * Env flag for the Master pedagogical agent. Evaluated once at module load.
+ * `true`, `"1"`, or `"yes"` are accepted; anything else disables the flag.
+ * A per-user override (see `snapshot.masterUserOverride`) takes precedence.
+ */
+const MASTER_ENV_FLAG = (() => {
+  const raw = import.meta.env.VITE_MASTER_ENABLED
+  if (typeof raw !== 'string') return false
+  const normalized = raw.trim().toLowerCase()
+  return normalized === 'true' || normalized === '1' || normalized === 'yes'
+})()
+
 export interface RuntimeConfigSnapshot {
   modelConfig: ModelConfig
   conversationTone: ConversationTone
   gamification: GamificationState
   credentials: SourceCredentials
+  /**
+   * Per-user Master override hydrated from `profiles.master_enabled`.
+   * `null` means "unknown / not loaded yet" — the env flag decides.
+   */
+  masterUserOverride: boolean | null
 }
 
 function createDefaultSnapshot(): RuntimeConfigSnapshot {
@@ -67,6 +84,7 @@ function createDefaultSnapshot(): RuntimeConfigSnapshot {
     conversationTone: 'balanced',
     gamification: { ...DEFAULT_GAMIFICATION },
     credentials: { ...envCredentials },
+    masterUserOverride: null,
   }
 }
 
@@ -127,6 +145,29 @@ export function getApiKey(source: keyof SourceCredentials): string | undefined {
   const cred = snapshot.credentials[source]
   if (source === 'vertex') return undefined // vertex uses project-based auth
   return typeof cred === 'string' ? cred : undefined
+}
+
+/**
+ * Whether the Master pedagogical agent is active for the current user.
+ *
+ * Resolution order (first defined wins):
+ *   1. `snapshot.masterUserOverride` — per-user flag from `profiles.master_enabled`.
+ *   2. `VITE_MASTER_ENABLED` env flag — global kill switch.
+ *
+ * Every Master entry point MUST call this and return early when it returns false.
+ */
+export function masterEnabled(): boolean {
+  if (snapshot.masterUserOverride !== null) {
+    return snapshot.masterUserOverride
+  }
+  return MASTER_ENV_FLAG
+}
+
+/** Hydrate the per-user Master override (from `profiles.master_enabled`). */
+export function setMasterUserOverride(value: boolean | null): void {
+  if (snapshot.masterUserOverride === value) return
+  snapshot = { ...snapshot, masterUserOverride: value }
+  notify()
 }
 
 // Merge credential patch into the snapshot. Used by the storage facade when

@@ -8,13 +8,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRuntimeConfig } from '../../contexts/RuntimeConfigContext';
 import type { ModelConfig, ConversationTone } from '../../types/settings';
 import { DEFAULT_MODEL_CONFIG, normalizeTtsVoice } from '../../types/settings';
-import { Shield, Save, Check, Loader2 } from 'lucide-react';
+import { Shield, Save, Check, Loader2, Sparkles, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { ApiKeysSection } from './sections/ApiKeysSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { ModelConfigSection } from './sections/ModelConfigSection';
 import { SignOutButton } from './sections/AppearanceSection';
+import { AlertDialog } from '../ui/AlertDialog';
+import { masterEnabled } from '../../services/runtimeConfigSnapshot';
+import { resetLearnerModel } from '../../services/learnerModel';
 
 export function SettingsPage() {
   const { user, profile, signOut: authSignOut, refreshProfile } = useAuth();
@@ -31,6 +34,11 @@ export function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const showMasterSection = masterEnabled();
 
   useEffect(() => {
     Promise.all([
@@ -88,6 +96,23 @@ export function SettingsPage() {
 
   const handleReset = () => setConfig({ ...DEFAULT_MODEL_CONFIG });
 
+  const handleMasterReset = async () => {
+    if (!showMasterSection) return;
+    setResetting(true);
+    setResetError(null);
+    try {
+      await resetLearnerModel('manual reset from settings');
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 4000);
+    } catch (error) {
+      console.error('Error resetting learner model:', error);
+      setResetError('Erro ao resetar tutor. Tente novamente.');
+    } finally {
+      setResetting(false);
+      setResetOpen(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
       {/* Header with User Profile */}
@@ -142,6 +167,57 @@ export function SettingsPage() {
       <ProfileSection tone={tone} onToneChange={setTone} />
 
       <ModelConfigSection config={config} onConfigChange={updateConfig} onReset={handleReset} />
+
+      {showMasterSection && (
+        <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+              <Sparkles size={16} className="text-accent" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-foreground font-bold text-sm">Tutor Adaptativo</h4>
+              <p className="text-muted-foreground text-xs mt-1 text-pretty">
+                O tutor silencioso aprende com seus exercícios para personalizar a prática.
+                Resetar apaga o modelo atual e começa de novo em modo diagnóstico.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setResetOpen(true)}
+            disabled={resetting}
+            className="w-full"
+          >
+            {resetting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <RotateCcw size={16} />
+            )}
+            {resetting ? 'Resetando...' : 'Resetar meu tutor'}
+          </Button>
+          {resetDone && (
+            <div className="rounded-xl border border-leaf/30 bg-leaf-soft px-3 py-2 text-xs font-medium text-leaf">
+              Tutor resetado com sucesso.
+            </div>
+          )}
+          {resetError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+              {resetError}
+            </div>
+          )}
+        </div>
+      )}
+
+      <AlertDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title="Resetar tutor adaptativo?"
+        description="Esta ação apaga o modelo de aprendizado atual e reinicia o tutor em modo diagnóstico. Seu histórico de exercícios e cards é preservado, apenas o perfil adaptativo é zerado."
+        confirmLabel="Resetar"
+        cancelLabel="Cancelar"
+        onConfirm={handleMasterReset}
+      />
 
       {/* Save */}
       <div className="space-y-3">

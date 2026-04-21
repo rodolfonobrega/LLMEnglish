@@ -4,15 +4,27 @@ vi.mock('../openai', () => ({
   chatCompletion: vi.fn(),
 }));
 
-vi.mock('../runtimeConfigSnapshot', () => ({
-  masterEnabled: vi.fn(),
-}));
+vi.mock('../runtimeConfigSnapshot', async () => {
+  const actual =
+    await vi.importActual<typeof import('../runtimeConfigSnapshot')>(
+      '../runtimeConfigSnapshot',
+    );
+  return {
+    ...actual,
+    masterEnabled: vi.fn(),
+  };
+});
 
 vi.mock('../masterTelemetry', () => ({
   recordMasterUsage: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { clearPrescribeCache, prescribe } from './prescribe';
+import {
+  buildReExposureEntry,
+  clearPrescribeCache,
+  pickDueReExposure,
+  prescribe,
+} from './prescribe';
 import { chatCompletion } from '../openai';
 import { masterEnabled } from '../runtimeConfigSnapshot';
 import { createDiagnosticModel } from '../../types/learnerModel';
@@ -163,5 +175,214 @@ describe('Master.prescribe', () => {
     const b = await prescribe('u1', { learnerModel: model });
     expect(b?.target_skill).toBe('safe_fallback');
     expect(b?.rationale).toMatch(/hard_for_user/);
+  });
+
+  // --- Phase 2 (F-P2-05) -----------------------------------------------------
+
+  it('defaults Live briefings to session_size "mini"', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ modality_choice: 'live' }),
+    );
+    const b = await prescribe('u1', { learnerModel: createDiagnosticModel() });
+    expect(b?.modality_choice).toBe('live');
+    expect(b?.session_size).toBe('mini');
+  });
+
+  it('respects an explicit session_size "standard" from the LLM', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ modality_choice: 'live', session_size: 'standard' }),
+    );
+    const b = await prescribe('u1', { learnerModel: createDiagnosticModel() });
+    expect(b?.session_size).toBe('standard');
+  });
+
+  // --- Phase 2 (F-P2-06) — theme diversity bias ------------------------------
+
+  it('rewrites disguise_theme when it dominates the Live window (>= 40%)', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ modality_choice: 'live', disguise_theme: 'coffee shop' }),
+    );
+    const model = createDiagnosticModel();
+    model.engagement_profile = {
+      ...model.engagement_profile,
+      themes_that_land: ['coffee shop', 'weekend plans', 'pets'],
+    };
+    model.live_fluency_profile = {
+      sessions_considered: ['s1', 's2', 's3', 's4'],
+      distinct_themes_in_window: 2,
+      themes_in_window: ['coffee shop', 'coffee shop', 'coffee shop', 'music'],
+      avg_turn_length_words: 6,
+      median_turn_length_words: 6,
+      longest_turn_words: 10,
+      avg_response_latency_ms: 900,
+      abandoned_turn_rate: 0,
+      lexical_diversity_estimate: 0.5,
+      session_points: [],
+      trajectory: 'stable',
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.disguise_theme).not.toBe('coffee shop');
+    expect(b?.rationale).toMatch(/theme_diversity/);
+  });
+
+  it('does not rewrite disguise_theme when the window is balanced', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ modality_choice: 'live', disguise_theme: 'cooking' }),
+    );
+    const model = createDiagnosticModel();
+    model.live_fluency_profile = {
+      sessions_considered: ['s1', 's2', 's3', 's4'],
+      distinct_themes_in_window: 4,
+      themes_in_window: ['cooking', 'music', 'pets', 'travel'],
+      avg_turn_length_words: 6,
+      median_turn_length_words: 6,
+      longest_turn_words: 10,
+      avg_response_latency_ms: 900,
+      abandoned_turn_rate: 0,
+      lexical_diversity_estimate: 0.5,
+      session_points: [],
+      trajectory: 'stable',
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.disguise_theme).toBe('cooking');
+    expect(b?.rationale ?? '').not.toMatch(/theme_diversity/);
+  });
+
+  // --- Phase 7 (F-P7-03) — scheduled re-exposure ----------------------------
+
+  it('honours a due re-exposure probe over the LLM briefing', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ target_skill: 'llm_picked', modality_choice: 'phrase' }),
+    );
+    const model = createDiagnosticModel();
+    model.next_step_plan = {
+      ...model.next_step_plan,
+      primary_goal: 'current_goal',
+      re_exposure_queue: [
+        {
+          pattern_id: 'probe_target',
+          scheduled_for: new Date(Date.now() - 60_000).toISOString(),
+          preferred_modality: 'live',
+          reason: 'post-mastery probe',
+        },
+      ],
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.target_skill).toBe('probe_target');
+    expect(b?.modality_choice).toBe('live');
+    expect(b?.session_size).toBe('mini');
+    expect(b?.rationale).toMatch(/re_exposure/);
+  });
+
+  it('ignores a re-exposure probe that is not yet due', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ target_skill: 'llm_picked' }),
+    );
+    const model = createDiagnosticModel();
+    model.next_step_plan = {
+      ...model.next_step_plan,
+      re_exposure_queue: [
+        {
+          pattern_id: 'future_probe',
+          scheduled_for: new Date(Date.now() + 3_600_000).toISOString(),
+          preferred_modality: 'live',
+        },
+      ],
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.target_skill).toBe('llm_picked');
+  });
+
+  it('does not pick a due probe whose pattern is hard_for_user blacklisted', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ target_skill: 'llm_picked' }),
+    );
+    const model = createDiagnosticModel();
+    model.hard_for_user = [
+      {
+        id: 'blacklisted_probe',
+        next_retry_at: new Date(Date.now() + 3_600_000).toISOString(),
+        reason: 'weak_delta',
+      },
+    ];
+    model.next_step_plan = {
+      ...model.next_step_plan,
+      re_exposure_queue: [
+        {
+          pattern_id: 'blacklisted_probe',
+          scheduled_for: new Date(Date.now() - 60_000).toISOString(),
+          preferred_modality: 'live',
+        },
+      ],
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.target_skill).toBe('llm_picked');
+  });
+
+  it('pickDueReExposure returns the earliest due entry', () => {
+    const model = createDiagnosticModel();
+    model.next_step_plan = {
+      ...model.next_step_plan,
+      re_exposure_queue: [
+        {
+          pattern_id: 'late',
+          scheduled_for: new Date(Date.now() - 10_000).toISOString(),
+        },
+        {
+          pattern_id: 'earliest',
+          scheduled_for: new Date(Date.now() - 60_000).toISOString(),
+        },
+      ],
+    };
+    expect(pickDueReExposure(model)?.pattern_id).toBe('earliest');
+  });
+
+  it('buildReExposureEntry schedules 24h out by default and doubles per prior probe', () => {
+    const now = new Date('2030-01-01T00:00:00Z');
+    const first = buildReExposureEntry({
+      patternId: 'p1',
+      themesToExclude: ['cooking'],
+      now,
+    });
+    expect(first.pattern_id).toBe('p1');
+    expect(first.preferred_modality).toBe('live');
+    expect(first.preferred_theme_exclude).toEqual(['cooking']);
+    expect(Date.parse(first.scheduled_for) - now.getTime()).toBe(24 * 3600 * 1000);
+
+    const second = buildReExposureEntry({ patternId: 'p1', priorProbes: 1, now });
+    expect(Date.parse(second.scheduled_for) - now.getTime()).toBe(48 * 3600 * 1000);
+
+    const fourth = buildReExposureEntry({ patternId: 'p1', priorProbes: 10, now });
+    expect(Date.parse(fourth.scheduled_for) - now.getTime()).toBe(7 * 24 * 3600 * 1000);
+  });
+
+  it('does not rewrite disguise_theme for non-Live modalities', async () => {
+    masterEnabledMock.mockReturnValue(true);
+    chatCompletionMock.mockResolvedValueOnce(
+      validBriefingJSON({ modality_choice: 'phrase', disguise_theme: 'coffee shop' }),
+    );
+    const model = createDiagnosticModel();
+    model.live_fluency_profile = {
+      sessions_considered: ['s1', 's2', 's3'],
+      distinct_themes_in_window: 1,
+      themes_in_window: ['coffee shop', 'coffee shop', 'coffee shop'],
+      avg_turn_length_words: 6,
+      median_turn_length_words: 6,
+      longest_turn_words: 10,
+      avg_response_latency_ms: 900,
+      abandoned_turn_rate: 0,
+      lexical_diversity_estimate: 0.5,
+      session_points: [],
+      trajectory: 'stable',
+    };
+    const b = await prescribe('u1', { learnerModel: model });
+    expect(b?.disguise_theme).toBe('coffee shop');
   });
 });

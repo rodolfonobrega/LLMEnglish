@@ -34,6 +34,7 @@ import { ScorecardDisplay } from '../shared/ScorecardDisplay';
 import { addXP } from '../../services/gamification';
 import { recordErrorPatterns } from '../../services/errorAnalysis';
 import { buildPatternFromCanonicalId } from '../../services/patterns';
+import { runMasterPipeline } from '../../services/master/runPipeline';
 import type { Briefing } from '../../types/master';
 import type { EvaluationResult } from '../../types/card';
 import { normalizeCorrectionItem, normalizeEvaluationResult } from '../../types/card';
@@ -222,7 +223,16 @@ export function Reformulation({ briefing }: ReformulationProps) {
         console.warn('[Reformulation] error pattern recording failed', err);
       }
     }
-  }, []);
+
+    const lastOutcome = finalResults[finalResults.length - 1];
+    if (lastOutcome) {
+      void runMasterPipeline({
+        evaluationResult: lastOutcome.evaluation,
+        briefing,
+        fallbackModality: 'reformulation',
+      });
+    }
+  }, [briefing]);
 
   useEffect(() => {
     if (!audioBlob || !round) return;

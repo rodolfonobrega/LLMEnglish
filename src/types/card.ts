@@ -182,6 +182,22 @@ export interface ReviewEntry {
   userTranscription: string;
 }
 
+/**
+ * Phase 9 — one entry in a card's variation history. Each time the
+ * Master emits a `varyCard` result that is actually shown to the
+ * student, a `VariationLineageEntry` is appended.
+ */
+export interface VariationLineageEntry {
+  prompt: string;
+  context?: string;
+  theme?: string;
+  verbs?: string[];
+  shown_at: string;
+  evaluation_id?: string;
+  /** Reason why the variant was generated (e.g. "diversity_guard", "stealth_rewrite"). */
+  reason?: string;
+}
+
 export interface Card {
   id: string;
   type: CardType;
@@ -205,4 +221,24 @@ export interface Card {
   // Audio
   userAudioBlob?: string; // base64 encoded
   aiAudioCache?: string; // base64 encoded TTS
+  /**
+   * Phase 9 — Master variation metadata. All optional so that legacy
+   * cards (pre-Phase-9) keep working without migration.
+   *
+   * `canonical_pattern`  — stable target pattern id for this card; if
+   *                        missing, `varyCard` falls back to the
+   *                        original prompt.
+   * `original_prompt`    — snapshot of the very first prompt shown,
+   *                        used to anchor diversity checks.
+   * `variation_seed`     — deterministic seed used to round-trip
+   *                        variants under tests.
+   * `variation_lineage`  — full history of variants actually shown.
+   * `pin_to_original`    — if true, the student explicitly asked to
+   *                        always see the original prompt (escape valve).
+   */
+  canonical_pattern?: CanonicalPatternId;
+  original_prompt?: string;
+  variation_seed?: number;
+  variation_lineage?: VariationLineageEntry[];
+  pin_to_original?: boolean;
 }

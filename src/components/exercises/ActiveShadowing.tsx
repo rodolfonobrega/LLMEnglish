@@ -30,6 +30,7 @@ import { cleanJson } from '../../utils/cleanJson';
 import { Button } from '../ui/Button';
 import { SkeletonText } from '../ui/Skeleton';
 import { addXP } from '../../services/gamification';
+import { recordDrillOutcome } from '../../services/master/runPipeline';
 import type { Briefing } from '../../types/master';
 
 interface ActiveShadowingProps {
@@ -223,7 +224,14 @@ export function ActiveShadowing({ briefing }: ActiveShadowingProps) {
         console.warn('[ActiveShadowing] XP award failed', err);
       }
     }
-  }, []);
+
+    const correctCount = finalResults.filter((r) => r.rhythmScore >= 60).length;
+    void recordDrillOutcome(briefing, {
+      attempts: finalResults.length,
+      correct: correctCount,
+      modality: 'shadowing',
+    });
+  }, [briefing]);
 
   useEffect(() => {
     if (!audioBlob || !round) return;

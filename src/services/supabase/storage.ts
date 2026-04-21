@@ -827,6 +827,10 @@ export async function getModelConfig(): Promise<ModelConfig> {
     ttsFallbackProvider: config.tts_fallback_provider || undefined,
     ttsFallbackSource: config.tts_fallback_source || undefined,
     ttsFallbackVoice: config.tts_fallback_voice || undefined,
+    // Phase 5 — per-role Master model overrides. May be missing on rows
+    // created before the migration ran; in that case we leave it undefined
+    // and `resolveMasterModel` falls back to the main chat model.
+    masterModels: config.master_models ?? undefined,
   }
 
   return migrateModelConfig(raw as Record<string, unknown>)
@@ -863,6 +867,13 @@ export async function saveModelConfig(config: ModelConfig): Promise<void> {
     tts_fallback_model: config.ttsFallbackModel || null,
     tts_fallback_source: config.ttsFallbackSource || null,
     tts_fallback_voice: config.ttsFallbackVoice || null,
+    // Phase 5 — per-role Master model overrides. Written as JSONB; NULL means
+    // "inherit chat_model". Requires the 20260421_phase5_master_models.sql
+    // migration to be applied (see docs/pending-ops-todos.md). Until then the
+    // writes will 400 on this column — the Settings UI's MasterModelSection
+    // only writes it when the user actually picks an override, so the default
+    // UX continues to work.
+    master_models: config.masterModels ?? null,
   }
 
   if (existing) {

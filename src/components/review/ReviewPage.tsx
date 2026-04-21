@@ -1,8 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCardsDueForReview, updateCard, getConversationTone } from '../../services/storage';
 import { updateCardSchedule } from '../../services/spacedRepetition';
 import { getPrioritizedReviewCards } from '../../services/errorAnalysis';
 import { extractErrorPatterns, recordErrorPatterns, recordSessionSnapshot } from '../../services/errorAnalysis';
+import { runMasterPipeline } from '../../services/master/runPipeline';
+import { varyCard, appendLineage, type VaryCardResult } from '../../services/master/varyCard';
+import { buildPatternReviewSession, groupCardsByPattern } from '../../services/master/patternReview';
+import { recordNudgeEvent } from '../../services/master/nudgeEngine';
+import { loadLearnerModel } from '../../services/learnerModel';
+import { generateSessionReflection } from '../../services/master/generateSessionReflection';
+import type { SessionRecap } from '../../services/master/summarizeSession';
+import type { StoredSessionReflection } from '../../services/sessionReflections';
+import { ReflectionCard } from '../master/ReflectionCard';
 import { AudioRecorder } from '../shared/AudioRecorder';
 import { EvaluationResults } from '../shared/EvaluationResults';
 import { FeedbackDrill } from '../shared/FeedbackDrill';
@@ -22,7 +31,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../utils/cn';
 
-type ReviewMode = 'standard' | 'intelligent';
+type ReviewMode = 'standard' | 'intelligent' | 'pattern';
 
 export function ReviewPage() {
   const navigate = useNavigate();
@@ -41,6 +50,23 @@ export function ReviewPage() {
   const [isGeneratingTutor, setIsGeneratingTutor] = useState(false);
   const [showDrill, setShowDrill] = useState(false);
   const [tone, setTone] = useState<ConversationTone>('balanced');
+  const [variant, setVariant] = useState<VaryCardResult | null>(null);
+  const [isGeneratingVariant, setIsGeneratingVariant] = useState(false);
+  const variantRequestRef = useRef<string | null>(null);
+  // Phase 3 — accumulate recap signal as the session progresses so we
+  // can ask the Master for a reflection when the student finishes.
+  const sessionRecapRef = useRef<{
+    themes: Set<string>;
+    patternsCorrect: Set<string>;
+    patternsIncorrect: Set<string>;
+    sessionStartKey: string;
+  }>({
+    themes: new Set(),
+    patternsCorrect: new Set(),
+    patternsIncorrect: new Set(),
+    sessionStartKey: new Date().toISOString(),
+  });
+  const [reflection, setReflection] = useState<StoredSessionReflection | null>(null);
 
   useEffect(() => {
     setTone(getConversationTone());
@@ -48,9 +74,23 @@ export function ReviewPage() {
 
   const loadDueCards = useCallback(async (mode: ReviewMode = reviewMode) => {
     setIsLoadingCards(true)
-    const cards = mode === 'intelligent'
-      ? await getPrioritizedReviewCards(20)
-      : await getCardsDueForReview()
+    let cards: Card[];
+    if (mode === 'intelligent') {
+      cards = await getPrioritizedReviewCards(20);
+    } else if (mode === 'pattern') {
+      // Phase 9 (F-P9-05) — collapse the queue into a pattern-review
+      // session around the largest eligible group. If no group has
+      // enough cards, silently fall back to the standard queue.
+      const all = await getCardsDueForReview();
+      const groups = groupCardsByPattern(all);
+      if (groups.length > 0 && groups[0]) {
+        cards = buildPatternReviewSession(groups[0], Math.min(5, groups[0].cards.length));
+      } else {
+        cards = all;
+      }
+    } else {
+      cards = await getCardsDueForReview();
+    }
 
     setDueCards(cards);
     setCurrentIndex(0);
@@ -68,6 +108,55 @@ export function ReviewPage() {
 
   const currentCard = dueCards[currentIndex];
 
+  // Phase 9 (F-P9-03) — generate a fresh variant whenever the active
+  // card changes. On soft-fails (no canonical_pattern, Master off,
+  // pinned) `varyCard` returns the original prompt, so we never block
+  // Review on this. We also track the request id to avoid a late
+  // response from a previous card overwriting the current one.
+  useEffect(() => {
+    if (!currentCard) {
+      setVariant(null);
+      return;
+    }
+    const requestId = `${currentCard.id}@${currentIndex}`;
+    variantRequestRef.current = requestId;
+    setIsGeneratingVariant(true);
+    (async () => {
+      try {
+        const learnerModel = await loadLearnerModel();
+        const result = await varyCard({ card: currentCard, learnerModel });
+        if (variantRequestRef.current === requestId) {
+          setVariant(result);
+        }
+      } catch (err) {
+        console.warn('[ReviewPage] varyCard failed, falling back to original:', err);
+        if (variantRequestRef.current === requestId) {
+          setVariant({
+            prompt: currentCard.prompt,
+            context: currentCard.context,
+            theme: currentCard.theme ?? 'general',
+            verbs: [],
+            source: 'fallback',
+            lineageEntry: {
+              prompt: currentCard.prompt,
+              context: currentCard.context,
+              theme: currentCard.theme ?? 'general',
+              shown_at: new Date().toISOString(),
+              reason: 'varyCard threw — fallback to original.',
+            },
+          });
+        }
+      } finally {
+        if (variantRequestRef.current === requestId) {
+          setIsGeneratingVariant(false);
+        }
+      }
+    })();
+  }, [currentCard, currentIndex]);
+
+  const displayPrompt = variant?.prompt ?? currentCard?.prompt ?? '';
+  const displayContext = variant?.context ?? currentCard?.context;
+
   const handleAudioReady = async (blob: Blob) => {
     if (!currentCard) return;
     setIsEvaluating(true);
@@ -76,7 +165,11 @@ export function ReviewPage() {
     setTutorExplanation(null);
     try {
       const transcription = await speechToText(blob);
-      const evalPrompt = getEvaluationPrompt(currentCard.prompt, transcription, `${currentCard.type} review`, tone);
+      // Phase 9 — evaluate AGAINST the variant the student actually saw,
+      // never the original prompt. Falls back to the card prompt if the
+      // variant pipeline is still running (edge case on very slow LLMs).
+      const promptShown = variant?.prompt ?? currentCard.prompt;
+      const evalPrompt = getEvaluationPrompt(promptShown, transcription, `${currentCard.type} review`, tone);
       const evalResponse = await chatCompletion('You are an expert English language evaluator. Respond only with valid JSON.', evalPrompt, undefined, evaluationResponseSchema);
       let parsed: EvaluationResult;
       try {
@@ -93,21 +186,83 @@ export function ReviewPage() {
       setShowResults(true);
       setShowDrill(false);
 
-      const updatedCard = updateCardSchedule(currentCard, evalResult.score);
+      let updatedCard = updateCardSchedule(currentCard, evalResult.score);
       updatedCard.reviews.push({
         date: new Date().toISOString(),
         score: evalResult.score,
         userTranscription: transcription,
       });
       updatedCard.latestEvaluation = evalResult;
+      // Phase 9 (F-P9-03) — persist the variant history on the card so
+      // the next visit sees this turn in `variation_lineage`. Also
+      // backfills `original_prompt` for pre-Phase-9 cards.
+      if (variant) {
+        updatedCard = appendLineage(updatedCard, {
+          ...variant.lineageEntry,
+          evaluation_id: `${updatedCard.id}_${updatedCard.reviews.length}`,
+        });
+      }
       await updateCard(updatedCard)
 
-      const patterns = await extractErrorPatterns(evalResult, currentCard.prompt, currentCard.id);
+      const patterns = await extractErrorPatterns(evalResult, promptShown, currentCard.id);
       await recordErrorPatterns(patterns)
 
       setSessionScores(prev => [...prev, evalResult.score]);
 
+      // Phase 3 — feed the running recap used by the end-of-session
+      // reflection. We prefer the canonical_pattern + theme the student
+      // actually saw (variant beats the card's birth theme).
+      {
+        const theme = variant?.theme ?? currentCard.theme;
+        if (theme) sessionRecapRef.current.themes.add(theme);
+        const cp = currentCard.canonical_pattern;
+        if (cp) {
+          if (evalResult.score >= 7) {
+            sessionRecapRef.current.patternsCorrect.add(cp);
+          } else {
+            sessionRecapRef.current.patternsIncorrect.add(cp);
+          }
+        }
+      }
+
+      // Phase 4 (F-P4-03) — emit a nudge engine event whenever a card
+      // with a canonical_pattern is scored. Low scores on patterns that
+      // the LearnerModel already flagged as chronic feed the "3 in a
+      // row" rule; everything else resets the streak.
+      {
+        const cp = currentCard.canonical_pattern;
+        if (cp) {
+          try {
+            const lm = await loadLearnerModel();
+            const isChronic = lm.chronic_errors.some((e) => e.id === cp);
+            if (isChronic && evalResult.score < 7) {
+              recordNudgeEvent({ type: 'review_miss_chronic', pattern_id: cp });
+            } else {
+              recordNudgeEvent({ type: 'review_hit_other', pattern_id: cp });
+            }
+          } catch (err) {
+            console.warn('[ReviewPage] nudge event record failed', err);
+          }
+        }
+      }
+
       await addXP(XP_PER_REVIEW)
+
+      void runMasterPipeline({
+        evaluationResult: evalResult,
+        briefing: null,
+        fallbackModality: currentCard.type === 'image'
+          ? 'visual'
+          : currentCard.type === 'text'
+            ? 'text'
+            : currentCard.type === 'roleplay'
+              ? 'roleplay'
+              : 'phrase',
+        // Phase 9 — carry the variant's theme forward so evidence
+        // accumulation in `runMasterPipeline` records the theme the
+        // student actually practiced, not the card's birth theme.
+        fallbackTheme: variant?.theme ?? currentCard.theme,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha na avaliação');
     } finally {
@@ -120,7 +275,7 @@ export function ReviewPage() {
     setIsGeneratingTutor(true);
     try {
       const explanation = await explainCorrection({
-        prompt: currentCard.prompt,
+        prompt: variant?.prompt ?? currentCard.prompt,
         userTranscription: evaluation.userTranscription,
         correctedVersion: evaluation.correctedVersion,
         corrections: evaluation.corrections,
@@ -147,6 +302,27 @@ export function ReviewPage() {
     } else {
       setSessionComplete(true);
       await recordSessionSnapshot()
+
+      // Phase 3 — fire an end-of-session reflection. Non-blocking: the
+      // summary screen renders immediately; the card fades in when the
+      // Master responds.
+      const ref = sessionRecapRef.current;
+      const recap: SessionRecap = {
+        surface: 'review',
+        themes: Array.from(ref.themes),
+        patterns_correct: Array.from(ref.patternsCorrect) as SessionRecap['patterns_correct'],
+        patterns_incorrect: Array.from(ref.patternsIncorrect) as SessionRecap['patterns_incorrect'],
+        attempts: sessionScores.length + 1,
+        avg_score:
+          sessionScores.length > 0
+            ? sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length
+            : undefined,
+        had_live: false,
+      };
+      const sessionKey = `review-${ref.sessionStartKey}`;
+      void generateSessionReflection({ recap, sessionKey }).then((result) => {
+        if (result.reflection) setReflection(result.reflection);
+      });
     }
   };
 
@@ -223,6 +399,12 @@ export function ReviewPage() {
             Ver Pontos Fracos
           </Button>
         </div>
+
+        {reflection && (
+          <div className="w-full max-w-xl">
+            <ReflectionCard reflection={reflection} onClose={() => setReflection(null)} />
+          </div>
+        )}
       </div>
     );
   }
@@ -257,28 +439,43 @@ export function ReviewPage() {
             void loadDueCards('standard');
           }}
           className={cn(
-            'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
+            'flex-1 py-3 px-3 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
             reviewMode === 'standard'
               ? 'bg-primary text-white'
               : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
           )}
         >
           <CheckCircle2 size={16} className="inline mr-1" />
-          Revisão Padrão
+          Padrão
         </button>
         <button
           onClick={() => {
             void loadDueCards('intelligent');
           }}
           className={cn(
-            'flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
+            'flex-1 py-3 px-3 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
             reviewMode === 'intelligent'
               ? 'bg-primary text-white'
               : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
           )}
         >
           <Brain size={16} className="inline mr-1" />
-          Revisão Inteligente
+          Inteligente
+        </button>
+        <button
+          onClick={() => {
+            void loadDueCards('pattern');
+          }}
+          className={cn(
+            'flex-1 py-3 px-3 rounded-xl font-semibold text-sm transition-colors duration-200 cursor-pointer',
+            reviewMode === 'pattern'
+              ? 'bg-primary text-white'
+              : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+          )}
+          data-testid="review-mode-pattern"
+        >
+          <Compass size={16} className="inline mr-1" />
+          Por padrão
         </button>
       </div>
 
@@ -304,7 +501,17 @@ export function ReviewPage() {
             <div className="flex items-center gap-2 mb-3">
               <Badge className="capitalize">{currentCard.type}</Badge>
             </div>
-            <p className="text-lg text-foreground leading-relaxed text-pretty">{currentCard.prompt}</p>
+            {isGeneratingVariant ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-sm">Preparando card...</span>
+              </div>
+            ) : (
+              <p className="text-lg text-foreground leading-relaxed text-pretty">{displayPrompt}</p>
+            )}
+            {displayContext && !isGeneratingVariant && (
+              <p className="mt-2 text-sm text-muted-foreground italic">{displayContext}</p>
+            )}
             {currentCard.imageUrl && (
               <img src={currentCard.imageUrl} alt="Card" className="mt-4 w-full max-h-48 object-cover rounded-xl" />
             )}

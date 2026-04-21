@@ -1,4 +1,5 @@
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { ExerciseMode } from '../discovery/ExerciseMode';
 import { ImageMode } from '../discovery/ImageMode';
@@ -11,6 +12,7 @@ import { ActiveShadowing } from './ActiveShadowing';
 import { Reformulation } from './Reformulation';
 import { NarrativeContinuation } from './NarrativeContinuation';
 import { DirectedListening } from './DirectedListening';
+import type { Briefing } from '../../types/master';
 
 const MODE_MAP: Record<string, ExerciseType> = {
   phrases: 'phrase',
@@ -33,7 +35,7 @@ const SUBTITLE_MAP: Record<ExerciseType, string> = {
 interface FocusedDrillMeta {
   title: string;
   subtitle: string;
-  Component: React.ComponentType;
+  Component: React.ComponentType<{ briefing?: Briefing }>;
 }
 
 const FOCUSED_DRILL_MAP: Record<string, FocusedDrillMeta> = {
@@ -77,7 +79,12 @@ const FOCUSED_DRILL_MAP: Record<string, FocusedDrillMeta> = {
 export function ExercisesPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const mode = searchParams.get('mode');
+  const briefing = useMemo<Briefing | undefined>(() => {
+    const raw = (location.state as { briefing?: Briefing } | null)?.briefing;
+    return raw ?? undefined;
+  }, [location.state]);
 
   if (mode === 'visual') {
     return (
@@ -97,7 +104,7 @@ export function ExercisesPage() {
             Veja uma imagem e descreva o que acontece em inglês.
           </p>
         </div>
-        <ImageMode />
+        <ImageMode briefing={briefing} />
       </div>
     );
   }
@@ -120,7 +127,7 @@ export function ExercisesPage() {
           <h1 className="text-2xl font-extrabold text-foreground">{drill.title}</h1>
           <p className="text-muted-foreground text-sm mt-1">{drill.subtitle}</p>
         </div>
-        <Component />
+        <Component briefing={briefing} />
       </div>
     );
   }

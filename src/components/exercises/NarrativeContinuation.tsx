@@ -34,6 +34,7 @@ import { ScorecardDisplay } from '../shared/ScorecardDisplay';
 import { addXP } from '../../services/gamification';
 import { recordErrorPatterns } from '../../services/errorAnalysis';
 import { buildPatternFromCanonicalId } from '../../services/patterns';
+import { runMasterPipeline } from '../../services/master/runPipeline';
 import { normalizeEvaluationResult, normalizeCorrectionItem } from '../../types/card';
 import type { EvaluationResult } from '../../types/card';
 import type { Briefing } from '../../types/master';
@@ -228,7 +229,16 @@ export function NarrativeContinuation({ briefing }: NarrativeContinuationProps) 
         console.warn('[NarrativeContinuation] error pattern recording failed', err);
       }
     }
-  }, []);
+
+    const lastOutcome = finalResults[finalResults.length - 1];
+    if (lastOutcome) {
+      void runMasterPipeline({
+        evaluationResult: lastOutcome.evaluation,
+        briefing,
+        fallbackModality: 'narrative',
+      });
+    }
+  }, [briefing]);
 
   const handleStartRecording = useCallback(async () => {
     if (!round) return;

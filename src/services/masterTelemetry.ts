@@ -13,14 +13,36 @@
 
 import { supabase } from './supabase/client';
 import { getCurrentUser } from './supabase/auth';
-import { masterEnabled } from './runtimeConfigSnapshot';
+import { masterEnabled, getModelConfig } from './runtimeConfigSnapshot';
+import { recordLlmUsage, estimateTokensFromText } from './llmTelemetry';
+import type { Source } from '../types/settings';
 
 export type MasterRole =
   | 'prescribe'
   | 'evaluate'
   | 'update_model'
   | 'compose_lesson'
-  | 'render_moment';
+  | 'render_moment'
+  /**
+   * Phase 2 — post-conversation Live evaluation. Requires extending the
+   * `master_usage.role` CHECK constraint (migration tracked in
+   * `docs/pending-ops-todos.md`). Until the migration lands, inserts with
+   * role `live_meta` will be rejected by the DB; the catch block below
+   * swallows the error with a warning — no user-facing breakage.
+   */
+  | 'live_meta'
+  /**
+   * Phase 3 — end-of-session reflection. Same provenance story as
+   * `live_meta`: migration pending.
+   */
+  | 'summarize_session'
+  /**
+   * Phase 9 — card variation. Same provenance story as `live_meta` and
+   * `summarize_session`: until the DB CHECK constraint is extended
+   * (tracked in `docs/pending-ops-todos.md`), inserts with role
+   * `vary_card` get swallowed with a warning, never breaking the UX.
+   */
+  | 'vary_card';
 
 export interface MasterUsageRecord {
   role: MasterRole;
@@ -55,4 +77,51 @@ export async function recordMasterUsage(record: MasterUsageRecord): Promise<void
   } catch (err) {
     console.warn('[masterTelemetry] unexpected error', err);
   }
+
+  // Phase 5 — mirror the Master call into the unified `llm_usage` table
+  // so the cost dashboard can query Master calls alongside every other
+  // LLM call in the app. Non-blocking; a failure here is swallowed by
+  // `recordLlmUsage` itself (console.warn only).
+  try {
+    const config = getModelConfig();
+    const model = record.model ?? config.chatModel;
+    const source: Source = inferSourceFromModel(model, config.chatSource);
+    await recordLlmUsage({
+      provider: source,
+      model,
+      surface: 'master',
+      role: record.role,
+      operation: 'chat',
+      tokensIn: record.tokensIn,
+      tokensOut: record.tokensOut,
+      latencyMs: record.latencyMs,
+    });
+  } catch (err) {
+    console.warn('[masterTelemetry] llm_usage mirror failed', err);
+  }
 }
+
+/**
+ * Lightweight mirror of `src/services/openai.ts#detectSource` — kept
+ * inline so masterTelemetry doesn't have to import openai.ts and pull
+ * the audio cache / proxy dependencies into every caller.
+ */
+function inferSourceFromModel(modelId: string, fallback: Source): Source {
+  if (!modelId) return fallback;
+  if (modelId.startsWith('gemini')) return 'genai';
+  if (
+    modelId.startsWith('llama-') ||
+    modelId.startsWith('meta-llama/') ||
+    modelId.startsWith('qwen/') ||
+    modelId.startsWith('canopylabs/') ||
+    modelId.startsWith('whisper-large-v3') ||
+    modelId.startsWith('openai/gpt-oss')
+  ) {
+    return 'groq';
+  }
+  if (modelId.includes('/')) return 'openrouter';
+  return 'openai';
+}
+
+/** Re-exported for tests / cost-dashboard queries. */
+export { estimateTokensFromText };

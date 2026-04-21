@@ -17,6 +17,7 @@
 import { chatCompletion } from '../openai';
 import { masterEnabled } from '../runtimeConfigSnapshot';
 import { recordMasterUsage } from '../masterTelemetry';
+import { resolveMasterModel } from './resolveMasterModel';
 import { cleanJson } from '../../utils/cleanJson';
 import { momentIsStealth } from './stealthDetector';
 import type {
@@ -168,10 +169,16 @@ export async function renderMoment(
   const userMessage = buildUserMessage(input, moment.role);
   const schema = schemas[moment.role];
 
+  const resolved = resolveMasterModel('render_moment');
   const started = Date.now();
   let raw: string;
   try {
-    raw = await chatCompletion(systemPrompt, userMessage, undefined, schema);
+    raw = await chatCompletion(
+      systemPrompt,
+      userMessage,
+      { model: resolved.model, source: resolved.source },
+      schema,
+    );
   } catch (err) {
     console.warn('[Master.render_moment] LLM call failed:', err);
     return null;
@@ -200,6 +207,7 @@ export async function renderMoment(
   try {
     await recordMasterUsage({
       role: 'render_moment',
+      model: resolved.model,
       latencyMs,
       tokensIn: estimateTokens(systemPrompt + userMessage),
       tokensOut: estimateTokens(raw),

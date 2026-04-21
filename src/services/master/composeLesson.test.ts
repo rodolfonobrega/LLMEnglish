@@ -4,9 +4,16 @@ vi.mock('../openai', () => ({
   chatCompletion: vi.fn(),
 }));
 
-vi.mock('../runtimeConfigSnapshot', () => ({
-  masterEnabled: vi.fn(),
-}));
+vi.mock('../runtimeConfigSnapshot', async () => {
+  const actual =
+    await vi.importActual<typeof import('../runtimeConfigSnapshot')>(
+      '../runtimeConfigSnapshot',
+    );
+  return {
+    ...actual,
+    masterEnabled: vi.fn(),
+  };
+});
 
 vi.mock('../masterTelemetry', () => ({
   recordMasterUsage: vi.fn().mockResolvedValue(undefined),

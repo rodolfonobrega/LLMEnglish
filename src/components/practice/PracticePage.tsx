@@ -4,8 +4,39 @@ import { Loader2, FileText, Download, Clapperboard } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { chatCompletion } from '../../services/openai';
 import { getConversationTone } from '../../services/storage';
-import { getCustomDialoguePrompt } from '../../utils/prompts';
+import { getCustomDialoguePrompt, type ScriptMasterHint } from '../../utils/prompts';
+import { recordEngagement } from '../../services/master/runPipeline';
+import { masterEnabled } from '../../services/runtimeConfigSnapshot';
+import { loadLearnerModel } from '../../services/learnerModel';
 import type { ConversationTone } from '../../types/settings';
+
+/**
+ * Phase 4 (F-P4-02) — load the student's top chronic pattern (most
+ * occurrences) and expose it as a script generator hint. Returns
+ * `undefined` when the Master is off, when the LearnerModel can't be
+ * loaded, or when the model has no chronic errors yet.
+ */
+async function resolveMasterHint(): Promise<ScriptMasterHint | undefined> {
+    if (!masterEnabled()) return undefined;
+    try {
+        const model = await loadLearnerModel();
+        if (!model.chronic_errors || model.chronic_errors.length === 0) {
+            return undefined;
+        }
+        const top = [...model.chronic_errors].sort(
+            (a, b) => b.occurrences - a.occurrences,
+        )[0];
+        return {
+            pattern_id: top.id,
+            description: top.hypothesis
+                ? top.hypothesis
+                : `naturally uses the pattern "${top.id}" in context`,
+        };
+    } catch (err) {
+        console.warn('[PracticePage] master hint resolution failed', err);
+        return undefined;
+    }
+}
 
 export function PracticePage() {
     const [situation, setSituation] = useState('');
@@ -32,9 +63,16 @@ export function PracticePage() {
         setGeneratedDialogue(null);
 
         try {
+            // Phase 4 (F-P4-02) — if the Master is on, weave the student's
+            // top chronic pattern into the prompt so the generated script
+            // naturally exercises it. Failures are non-fatal: we fall back
+            // to the plain prompt.
+            const masterHint = await resolveMasterHint();
+
             const prompt = getCustomDialoguePrompt(
                 situation,
-                tone
+                tone,
+                masterHint
             );
 
             const response = await chatCompletion(
@@ -43,6 +81,8 @@ export function PracticePage() {
             );
 
             setGeneratedDialogue(response);
+
+            void recordEngagement(situation, 'scripts_dialogue');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Falha ao gerar o script.');
         } finally {

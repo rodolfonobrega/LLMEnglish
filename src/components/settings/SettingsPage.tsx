@@ -14,6 +14,8 @@ import { cn } from '../../utils/cn';
 import { ApiKeysSection } from './sections/ApiKeysSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { ModelConfigSection } from './sections/ModelConfigSection';
+import { MasterModelSection } from './sections/MasterModelSection';
+import { CostDashboardSection } from './sections/CostDashboardSection';
 import { SignOutButton } from './sections/AppearanceSection';
 import { AlertDialog } from '../ui/AlertDialog';
 import { masterEnabled } from '../../services/runtimeConfigSnapshot';
@@ -41,12 +43,18 @@ export function SettingsPage() {
   const [resetError, setResetError] = useState<string | null>(null);
   const [lessonsOptIn, setLessonsOptIn] = useState<boolean>(true);
   const [lessonsOptInSaving, setLessonsOptInSaving] = useState(false);
+  const [reflectionsOptIn, setReflectionsOptIn] = useState<boolean>(true);
+  const [reflectionsOptInSaving, setReflectionsOptInSaving] = useState(false);
   const showMasterSection = masterEnabled();
 
   useEffect(() => {
     // `null` is treated as opt-in (default) to preserve backward-compat.
     setLessonsOptIn(profile?.lessons_opt_in !== false);
   }, [profile?.lessons_opt_in]);
+
+  useEffect(() => {
+    setReflectionsOptIn(profile?.reflections_opt_in !== false);
+  }, [profile?.reflections_opt_in]);
 
   const handleLessonsOptInChange = async (next: boolean) => {
     setLessonsOptIn(next);
@@ -59,6 +67,20 @@ export function SettingsPage() {
       setLessonsOptIn(!next);
     } finally {
       setLessonsOptInSaving(false);
+    }
+  };
+
+  const handleReflectionsOptInChange = async (next: boolean) => {
+    setReflectionsOptIn(next);
+    setReflectionsOptInSaving(true);
+    try {
+      await updateProfile({ reflections_opt_in: next });
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error updating reflections_opt_in:', error);
+      setReflectionsOptIn(!next);
+    } finally {
+      setReflectionsOptInSaving(false);
     }
   };
 
@@ -191,6 +213,12 @@ export function SettingsPage() {
       <ModelConfigSection config={config} onConfigChange={updateConfig} onReset={handleReset} />
 
       {showMasterSection && (
+        <MasterModelSection config={config} onConfigChange={updateConfig} />
+      )}
+
+      <CostDashboardSection />
+
+      {showMasterSection && (
         <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
           <div className="flex items-center gap-3">
             <div className="size-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
@@ -232,6 +260,23 @@ export function SettingsPage() {
               onChange={(e) => handleLessonsOptInChange(e.target.checked)}
               disabled={lessonsOptInSaving}
               data-testid="lessons-opt-in-toggle"
+              className="size-5 accent-primary cursor-pointer disabled:cursor-wait"
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+            <span className="text-sm text-foreground">
+              Receber reflexões ao fim da sessão
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                Pequena mensagem sobre como você falou hoje e o que praticar na próxima.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={reflectionsOptIn}
+              onChange={(e) => handleReflectionsOptInChange(e.target.checked)}
+              disabled={reflectionsOptInSaving}
+              data-testid="reflections-opt-in-toggle"
               className="size-5 accent-primary cursor-pointer disabled:cursor-wait"
             />
           </label>

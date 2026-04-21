@@ -1,0 +1,14 @@
+# Development image: Node + git. Do not run `git config` here — identity stays outside the image.
+FROM node:20-bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bind-mounted repos are owned by host UID; git 2.35+ refuses root unless marked safe.
+RUN git config --system --add safe.directory /workspace
+
+WORKDIR /workspace
+
+# Default command is overridden by compose / Dev Containers.
+CMD ["bash", "-lc", "exec bash"]

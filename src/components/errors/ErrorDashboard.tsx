@@ -22,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { MasterErrorOverlay } from './MasterErrorOverlay';
 
 const CATEGORY_LABELS: Record<ErrorCategory, string> = {
   grammar: 'Gramática',
@@ -124,6 +125,13 @@ export function ErrorDashboard() {
           Limpar
         </Button>
       </div>
+
+      {/* Phase 3 (F-P3-03) — Master's current reading. Renders above the
+          raw error dashboard so students get the tutor's priority lens
+          before they dive into the frequency list. Safe to render when
+          no errors exist yet — the overlay short-circuits when the
+          LearnerModel is empty. */}
+      <MasterErrorOverlay />
 
       {stats.totalErrors === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">

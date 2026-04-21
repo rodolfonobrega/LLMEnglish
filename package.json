@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . && npm run lint:master",
+    "lint:master": "node scripts/lint-master-coverage.mjs",
     "preview": "vite preview",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",

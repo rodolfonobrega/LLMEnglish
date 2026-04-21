@@ -13,13 +13,19 @@ import { addCard, getConversationTone } from '../../services/storage';
 import { addXP, syncGamificationState } from '../../services/gamification';
 import { XP_PER_EXERCISE, XP_PER_PERFECT_SCORE } from '../../types/gamification';
 import { extractErrorPatterns, recordErrorPatterns } from '../../services/errorAnalysis';
+import { runMasterPipeline } from '../../services/master/runPipeline';
 import type { EvaluationResult } from '../../types/card';
 import { normalizeEvaluationResult } from '../../types/card';
 import type { ConversationTone } from '../../types/settings';
+import type { Briefing } from '../../types/master';
 import { Button } from '../ui/Button';
 import { Skeleton, SkeletonText } from '../ui/Skeleton';
 
-export function ImageMode() {
+interface ImageModeProps {
+  briefing?: Briefing;
+}
+
+export function ImageMode({ briefing }: ImageModeProps = {}) {
   const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState('');
   const [question, setQuestion] = useState('');
@@ -89,6 +95,12 @@ export function ImageMode() {
       if (evalResult.score >= 9) xp += XP_PER_PERFECT_SCORE;
       await addXP(xp);
       await syncGamificationState();
+
+      void runMasterPipeline({
+        evaluationResult: evalResult,
+        briefing,
+        fallbackModality: 'visual',
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Evaluation failed');
     } finally {

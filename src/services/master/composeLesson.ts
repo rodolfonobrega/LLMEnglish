@@ -20,6 +20,7 @@
 import { chatCompletion } from '../openai';
 import { masterEnabled } from '../runtimeConfigSnapshot';
 import { recordMasterUsage } from '../masterTelemetry';
+import { resolveMasterModel } from './resolveMasterModel';
 import { cleanJson } from '../../utils/cleanJson';
 import { lessonTitleIsThematic } from './stealthDetector';
 import type { LearnerModel, LessonPlan, LessonMoment } from '../../types/learnerModel';
@@ -129,10 +130,16 @@ export async function composeLesson(
   const systemPrompt = buildSystemPrompt();
   const userMessage = buildUserMessage(input);
 
+  const resolved = resolveMasterModel('compose_lesson');
   const started = Date.now();
   let raw: string;
   try {
-    raw = await chatCompletion(systemPrompt, userMessage, undefined, lessonPlanSchema);
+    raw = await chatCompletion(
+      systemPrompt,
+      userMessage,
+      { model: resolved.model, source: resolved.source },
+      lessonPlanSchema,
+    );
   } catch (err) {
     console.warn('[Master.compose_lesson] LLM call failed:', err);
     return null;
@@ -160,6 +167,7 @@ export async function composeLesson(
   try {
     await recordMasterUsage({
       role: 'compose_lesson',
+      model: resolved.model,
       latencyMs,
       tokensIn: estimateTokens(systemPrompt + userMessage),
       tokensOut: estimateTokens(raw),

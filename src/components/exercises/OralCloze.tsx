@@ -24,6 +24,7 @@ import { SkeletonText } from '../ui/Skeleton';
 import { addXP } from '../../services/gamification';
 import { recordErrorPatterns } from '../../services/errorAnalysis';
 import { buildPatternFromCanonicalId } from '../../services/patterns';
+import { recordDrillOutcome } from '../../services/master/runPipeline';
 import type { Briefing } from '../../types/master';
 import type { ErrorPattern } from '../../types/errors';
 
@@ -172,8 +173,17 @@ export function OralCloze({ briefing }: OralClozeProps) {
           console.warn('[OralCloze] error pattern recording failed', err);
         }
       }
+
+      const dominantPattern = finalResults.find((r) => r.round.canonical_pattern)
+        ?.round.canonical_pattern;
+      void recordDrillOutcome(briefing, {
+        canonicalPattern: dominantPattern,
+        attempts: finalResults.length,
+        correct: correctCount,
+        modality: 'cloze',
+      });
     },
-    [],
+    [briefing],
   );
 
   useEffect(() => {

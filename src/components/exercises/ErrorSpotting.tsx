@@ -25,6 +25,7 @@ import { Button } from '../ui/Button';
 import { SkeletonText } from '../ui/Skeleton';
 import { addXP } from '../../services/gamification';
 import { recordErrorPatterns } from '../../services/errorAnalysis';
+import { recordDrillOutcome } from '../../services/master/runPipeline';
 import { buildPatternFromCanonicalId } from '../../services/patterns';
 import type { Briefing } from '../../types/master';
 import type { ErrorPattern } from '../../types/errors';
@@ -187,7 +188,16 @@ export function ErrorSpotting({ briefing }: ErrorSpottingProps) {
         console.warn('[ErrorSpotting] error pattern recording failed', err);
       }
     }
-  }, []);
+
+    const dominantPattern = finalResults.find((r) => r.round.canonical_pattern)
+      ?.round.canonical_pattern;
+    void recordDrillOutcome(briefing, {
+      canonicalPattern: dominantPattern,
+      attempts: finalResults.length,
+      correct: correctCount,
+      modality: 'spotting',
+    });
+  }, [briefing]);
 
   useEffect(() => {
     if (!audioBlob || !round) return;

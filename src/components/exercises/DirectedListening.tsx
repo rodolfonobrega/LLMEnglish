@@ -27,6 +27,7 @@ import { ScorecardDisplay } from '../shared/ScorecardDisplay';
 import { addXP } from '../../services/gamification';
 import { recordErrorPatterns } from '../../services/errorAnalysis';
 import { buildPatternFromCanonicalId } from '../../services/patterns';
+import { runMasterPipeline } from '../../services/master/runPipeline';
 import {
   normalizeCorrectionItem,
   normalizeEvaluationResult,
@@ -280,8 +281,14 @@ export function DirectedListening({ briefing }: DirectedListeningProps) {
           console.warn('[DirectedListening] error pattern recording failed', err);
         }
       }
+
+      void runMasterPipeline({
+        evaluationResult: evaluated,
+        briefing,
+        fallbackModality: 'listening',
+      });
     },
-    [],
+    [briefing],
   );
 
   const runJudge = useCallback(

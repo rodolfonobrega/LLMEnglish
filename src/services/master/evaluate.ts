@@ -18,6 +18,7 @@
 import { chatCompletion } from '../openai';
 import { masterEnabled } from '../runtimeConfigSnapshot';
 import { recordMasterUsage } from '../masterTelemetry';
+import { resolveMasterModel } from './resolveMasterModel';
 import { cleanJson } from '../../utils/cleanJson';
 import type { Briefing } from '../../types/master';
 import type { LearnerModel } from '../../types/learnerModel';
@@ -175,10 +176,16 @@ export async function masterEvaluate(
     input.learnerModel,
   );
 
+  const resolved = resolveMasterModel('evaluate');
   const started = Date.now();
   let raw: string;
   try {
-    raw = await chatCompletion(systemPrompt, userMessage, undefined, metaSchema);
+    raw = await chatCompletion(
+      systemPrompt,
+      userMessage,
+      { model: resolved.model, source: resolved.source },
+      metaSchema,
+    );
   } catch (err) {
     console.warn('[Master.evaluate] LLM call failed:', err);
     return null;
@@ -202,6 +209,7 @@ export async function masterEvaluate(
   try {
     await recordMasterUsage({
       role: 'evaluate',
+      model: resolved.model,
       latencyMs,
       tokensIn: estimateTokens(systemPrompt + userMessage),
       tokensOut: estimateTokens(raw),

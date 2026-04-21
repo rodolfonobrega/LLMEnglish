@@ -12,6 +12,10 @@ import {
   updateLearnerModel,
   computeLessonDeltaScore,
 } from '../../services/master/updateModel';
+import { generateSessionReflection } from '../../services/master/generateSessionReflection';
+import type { SessionRecap } from '../../services/master/summarizeSession';
+import type { StoredSessionReflection } from '../../services/sessionReflections';
+import { ReflectionCard } from '../master/ReflectionCard';
 import type {
   LessonPlan,
   MomentContent,
@@ -33,6 +37,7 @@ export function LessonPage() {
   const [lessonPlan, setLessonPlan] = useState<LessonPlan | null>(null);
   const [signals, setSignals] = useState<MomentSignal[]>([]);
   const [step, setStep] = useState<StepState>({ kind: 'loading' });
+  const [reflection, setReflection] = useState<StoredSessionReflection | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,6 +154,27 @@ export function LessonPage() {
       }
 
       setStep({ kind: 'done' });
+
+      // Phase 3 — end-of-lesson reflection. Non-blocking.
+      if (lessonPlan) {
+        const goalMetCount = nextSignals.filter((s) => s.goal_met).length;
+        const recap: SessionRecap = {
+          surface: 'lesson',
+          themes: [lessonPlan.engagement_context.theme].filter((t): t is string => Boolean(t)),
+          patterns_correct:
+            goalMetCount >= 3 ? [lessonPlan.target_canonical_pattern] : [],
+          patterns_incorrect:
+            goalMetCount < 3 ? [lessonPlan.target_canonical_pattern] : [],
+          attempts: nextSignals.length,
+          had_live: false,
+        };
+        void generateSessionReflection({
+          recap,
+          sessionKey: `lesson-${lessonId}`,
+        }).then((result) => {
+          if (result.reflection) setReflection(result.reflection);
+        });
+      }
     },
     [step, lessonId, lessonPlan, signals],
   );
@@ -188,6 +214,9 @@ export function LessonPage() {
       <div className="max-w-xl mx-auto p-6 space-y-4">
         <h1 className="text-2xl font-semibold">Lição concluída</h1>
         <p className="text-muted-foreground">Boa! Seu Mestre vai usar esse sinal pra ajustar os próximos exercícios.</p>
+        {reflection && (
+          <ReflectionCard reflection={reflection} onClose={() => setReflection(null)} />
+        )}
         <button
           type="button"
           className="px-4 py-2 rounded-xl bg-primary text-primary-foreground"

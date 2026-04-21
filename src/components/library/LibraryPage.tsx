@@ -14,9 +14,11 @@ import { Badge } from '../ui/Badge';
 import { Dialog } from '../ui/Dialog';
 import { AlertDialog } from '../ui/AlertDialog';
 import {
-  Trash2, Edit3, Volume2, Eye, Plus, X, Save, Search, Loader2, Compass, BookOpen,
+  Trash2, Edit3, Volume2, Eye, Plus, X, Save, Search, Loader2, Compass, BookOpen, Pin,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { useSessionIntent } from '../../hooks/useSessionIntent';
+import { MasterRecommendations } from './MasterRecommendations';
 
 export function LibraryPage() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -30,6 +32,8 @@ export function LibraryPage() {
   const [newPrompt, setNewPrompt] = useState('');
   const [newType, setNewType] = useState<'phrase' | 'text' | 'roleplay'>('phrase');
   const { speak, isLoading: ttsLoading } = useTTS();
+  const { intent, setIntent } = useSessionIntent();
+  const pinnedIds = new Set(intent?.review_focus ?? []);
 
   useEffect(() => {
     void loadCards()
@@ -74,6 +78,18 @@ export function LibraryPage() {
   const handleScheduleReview = async (card: Card) => {
     await updateCard({ ...card, nextReviewAt: new Date().toISOString() })
     await loadCards()
+  };
+
+  const handleTogglePin = (card: Card) => {
+    const already = pinnedIds.has(card.id);
+    const nextFocus = already
+      ? (intent?.review_focus ?? []).filter((id) => id !== card.id)
+      : [...(intent?.review_focus ?? []), card.id];
+    if (nextFocus.length === 0 && !intent?.requested_theme && !intent?.requested_vocabulary?.length) {
+      setIntent({ review_focus: [] });
+    } else {
+      setIntent({ review_focus: nextFocus });
+    }
   };
 
   const filteredCards = cards.filter(c =>
@@ -144,6 +160,15 @@ export function LibraryPage() {
           </Button>
         </div>
       )}
+
+      {/* Phase 4 (F-P4-01) — Master recommendations from chronic errors.
+          Hidden when the Master is disabled or when there are no matching
+          cards for the student's current chronic patterns. */}
+      <MasterRecommendations
+        cards={cards}
+        onSelectCard={setSelectedCard}
+        onCardsChanged={loadCards}
+      />
 
       {/* Search */}
       <Input
@@ -250,6 +275,19 @@ export function LibraryPage() {
                       + Revisão
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleTogglePin(card)}
+                    aria-label={pinnedIds.has(card.id) ? 'Desfixar para próxima sessão' : 'Fixar para próxima sessão'}
+                    className={cn(
+                      'cursor-pointer',
+                      pinnedIds.has(card.id) ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                    title={pinnedIds.has(card.id) ? 'Fixado para a próxima sessão' : 'Fixar para a próxima sessão'}
+                  >
+                    <Pin size={14} />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"

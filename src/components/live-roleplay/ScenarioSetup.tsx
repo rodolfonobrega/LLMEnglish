@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { chatCompletion, generateImage } from '../../services/openai';
 import { getImageConfigAuto } from '../../config/images';
-import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, getSkillScenarioPrompt, scenarioResponseSchema, skillScenarioResponseSchema } from '../../utils/prompts';
+import {
+  getScenarioGenerationPrompt,
+  getLiveRoleplaySystemPrompt,
+  getSkillScenarioPrompt,
+  scenarioResponseSchema,
+  skillScenarioResponseSchema,
+} from '../../utils/prompts';
+import type { MasterScenarioHints } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
-import type { LiveScenario, ScenarioIntensity } from '../../types/scenario';
+import type { LiveScenario, LiveSessionMode, ScenarioIntensity } from '../../types/scenario';
 import { getConversationTone } from '../../services/storage';
 import type { ConversationTone } from '../../types/settings';
+import type { Briefing } from '../../types/master';
 import { Sparkles, Briefcase, Coffee, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
@@ -16,6 +24,15 @@ import { SelectionDot } from '../shared/SelectionDot';
 
 interface ScenarioSetupProps {
   onScenarioReady: (scenario: LiveScenario) => void;
+  /**
+   * Phase 2 (F-P2-02) — When set (e.g. from Prática Sugerida or Paths),
+   * the Master-chosen `target_skill` / `disguise_theme` are injected as
+   * hints into the scenario generation prompt and the resulting scenario
+   * is tagged so `masterEvaluateLive` knows what to look for.
+   */
+  briefing?: Briefing | null;
+  /** Phase 2 (F-P2-05) — 'mini' biases the prompt toward 3-4 turn scenes. */
+  sessionMode?: LiveSessionMode;
 }
 
 type SimulationMode = 'everyday' | 'skill';
@@ -42,18 +59,31 @@ function getSceneImagePrompt(brandName: string, location: string, aiRole: string
   return `A ${style} illustration of ${brandName} in ${location}. The scene shows a ${aiRole} at work. Soft anime/cartoon style inspired by Studio Ghibli. Soft natural lighting, warm but NOT amber or sepia-toned. Color palette with wood browns, leafy greens, warm cream, soft pink, muted teal. Natural color variety, gentle bokeh, soft linework, no detailed faces, wide shot, no text overlays.`;
 }
 
-export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
+export function ScenarioSetup({ onScenarioReady, briefing, sessionMode }: ScenarioSetupProps) {
   const [searchParams] = useSearchParams();
   const initialMode: SimulationMode = searchParams.get('scenario') === 'interview' ? 'skill' : 'everyday';
 
   const [mode, setMode] = useState<SimulationMode>(initialMode);
   const [setupStep, setSetupStep] = useState<SetupStep>('mode');
-  const [theme, setTheme] = useState<string | null>('random');
+  const [theme, setTheme] = useState<string | null>(() => briefing?.disguise_theme ?? 'random');
   const [intensity, setIntensity] = useState<ScenarioIntensity>('adventurous');
   const [customDescription, setCustomDescription] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tone, setTone] = useState<ConversationTone>('balanced');
+
+  // Phase 2 (F-P2-02) — precompute Master hints once; none of these are
+  // shown to the student, they only enter the LLM prompt as a stealth
+  // brief. Kept memoised so prompt/deps stay stable.
+  const masterHints = useMemo<MasterScenarioHints | undefined>(() => {
+    if (!briefing && !sessionMode) return undefined;
+    return {
+      target_skill: briefing?.target_skill,
+      disguise_theme: briefing?.disguise_theme,
+      pedagogical_brief: briefing?.rationale,
+      session_size: sessionMode,
+    };
+  }, [briefing, sessionMode]);
 
   useEffect(() => {
     void (async () => {
@@ -109,13 +139,14 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         } else {
           if (theme !== 'random') themeForPrompt = theme ?? undefined;
         }
-        prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc, tone);
+        prompt = getScenarioGenerationPrompt(themeForPrompt, intensity, customDesc, tone, masterHints);
         schema = scenarioResponseSchema;
       } else {
         activeTheme = 'custom';
         prompt = getSkillScenarioPrompt(
           customDescription.trim(),
-          tone
+          tone,
+          masterHints,
         );
         schema = skillScenarioResponseSchema;
       }
@@ -140,7 +171,8 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         parsed.characterPersonality,
         parsed.characterSpeechStyle,
         parsed.openingLine,
-        tone
+        tone,
+        sessionMode,
       );
 
       const imagePromise = generateImage(
@@ -161,6 +193,9 @@ export function ScenarioSetup({ onScenarioReady }: ScenarioSetupProps) {
         characterPersonality: parsed.characterPersonality,
         characterSpeechStyle: parsed.characterSpeechStyle,
         suggestedVoice: parsed.suggestedVoice,
+        mode: sessionMode ?? 'standard',
+        ...(briefing?.target_skill ? { masterTargetSkill: briefing.target_skill } : {}),
+        ...(briefing?.disguise_theme ? { masterDisguiseTheme: briefing.disguise_theme } : {}),
       };
 
       const sceneImageUrl = await imagePromise;

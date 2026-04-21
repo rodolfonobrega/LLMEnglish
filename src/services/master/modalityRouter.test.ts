@@ -51,4 +51,19 @@ describe('routeModality', () => {
     const target = routeModality(b);
     expect(target.state?.briefing).toBe(b);
   });
+
+  it('defaults Live routes to sessionMode = "mini" (F-P2-05)', () => {
+    const target = routeModality(briefing('live'));
+    expect(target.state?.sessionMode).toBe('mini');
+  });
+
+  it('respects an explicit session_size on the briefing for Live routes', () => {
+    const target = routeModality({ ...briefing('live'), session_size: 'standard' });
+    expect(target.state?.sessionMode).toBe('standard');
+  });
+
+  it('does not emit sessionMode for non-Live routes', () => {
+    const target = routeModality(briefing('phrase'));
+    expect(target.state?.sessionMode).toBeUndefined();
+  });
 });

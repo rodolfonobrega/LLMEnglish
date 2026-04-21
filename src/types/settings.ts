@@ -60,7 +60,56 @@ export interface ModelConfig {
   ttsFallbackVoice?: string;
   imageFallbackModel?: string;
   imageFallbackSource?: 'genai' | 'vertex' | 'openai' | 'openrouter';
+
+  // --- Phase 5: per-role Master model overrides ---
+  //
+  // When a role is set here, `resolveMasterModel(role)` returns the
+  // override; otherwise the role inherits `chatModel` + `chatSource`.
+  // Fallback on failure still uses `chatFallbackModel` +
+  // `chatFallbackSource` — we don't duplicate that per role.
+  //
+  // Roles mirror `MasterRole` in `src/services/masterTelemetry.ts`.
+  // Keep them in sync if the telemetry enum grows.
+  masterModels?: MasterModelOverrides;
 }
+
+export interface MasterModelOverride {
+  model: string;
+  source: Source;
+}
+
+export interface MasterModelOverrides {
+  prescribe?: MasterModelOverride;
+  evaluate?: MasterModelOverride;
+  update_model?: MasterModelOverride;
+  compose_lesson?: MasterModelOverride;
+  render_moment?: MasterModelOverride;
+  live_meta?: MasterModelOverride;
+  summarize_session?: MasterModelOverride;
+  vary_card?: MasterModelOverride;
+}
+
+export const MASTER_ROLE_KEYS: readonly (keyof MasterModelOverrides)[] = [
+  'prescribe',
+  'evaluate',
+  'update_model',
+  'compose_lesson',
+  'render_moment',
+  'live_meta',
+  'summarize_session',
+  'vary_card',
+] as const;
+
+export const MASTER_ROLE_LABELS: Record<keyof MasterModelOverrides, string> = {
+  prescribe: 'Prescribe (suggest next practice)',
+  evaluate: 'Evaluate (score a student attempt)',
+  update_model: 'Update model (update the learner profile)',
+  compose_lesson: 'Compose lesson (build a full 5-moment lesson)',
+  render_moment: 'Render moment (write a lesson moment)',
+  live_meta: 'Live meta (post-live conversation eval)',
+  summarize_session: 'Summarize session (end-of-session reflection)',
+  vary_card: 'Vary card (review variant generator)',
+};
 
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   chatModel: 'gemini-3.1-flash-lite-preview',

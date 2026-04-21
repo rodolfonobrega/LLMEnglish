@@ -41,26 +41,54 @@ function detectSource(modelId: string): Source {
 
 // ===== Chat Completions =====
 
+/**
+ * `modelOverride` accepts either:
+ *   - a bare model id string (legacy behaviour — source is inferred
+ *     from `detectSource()`), or
+ *   - an explicit `{ model, source }` pair (Phase 5 master-role
+ *     overrides, where the source is NOT always heuristically
+ *     guessable from the model id — e.g. the same Gemini model can
+ *     live under 'genai' or 'vertex').
+ */
+export type ChatModelOverride = string | { model: string; source: Source };
+
 export async function chatCompletion(
   systemPrompt: string,
   userMessage: string,
-  modelOverride?: string,
+  modelOverride?: ChatModelOverride,
   responseSchema?: Record<string, unknown>,
 ): Promise<string> {
   const config = getModelConfig();
-  const model = modelOverride || config.chatModel;
-  const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
+
+  let model: string;
+  let source: Source;
+  let hasExplicitOverride = false;
+  if (!modelOverride) {
+    model = config.chatModel;
+    source = config.chatSource;
+  } else if (typeof modelOverride === 'string') {
+    model = modelOverride;
+    source = detectSource(modelOverride);
+    hasExplicitOverride = true;
+  } else {
+    model = modelOverride.model;
+    source = modelOverride.source;
+    hasExplicitOverride = true;
+  }
+
   // When no explicit override is used, thread the user's fallback config to the
   // Edge Function so it can retry server-side (G1). The client-side catch below
   // is kept as a belt-and-suspenders safety net for old Edge Function deploys.
-  const fallback = !modelOverride && config.chatFallbackModel && config.chatFallbackSource
+  // Per Phase 5, we intentionally do NOT duplicate per-role fallbacks — role
+  // overrides inherit the main fallback chain.
+  const fallback = !hasExplicitOverride && config.chatFallbackModel && config.chatFallbackSource
     ? { source: config.chatFallbackSource, model: config.chatFallbackModel }
     : undefined;
 
   try {
     return await proxyChat({ source, model, systemPrompt, userMessage, responseSchema, fallback });
   } catch (primaryError) {
-    if (!modelOverride && config.chatFallbackModel && config.chatFallbackSource) {
+    if (config.chatFallbackModel && config.chatFallbackSource) {
       console.warn('Primary chat failed, trying fallback:', primaryError);
       try {
         return await proxyChat({

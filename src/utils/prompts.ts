@@ -5,7 +5,7 @@
  */
 
 import type { ConversationTone } from '../types/settings';
-import type { CorrectionItem } from '../types/card';
+import type { CardType, CorrectionItem } from '../types/card';
 import type { Briefing } from '../types/master';
 import { CANONICAL_PATTERNS } from '../services/patterns';
 
@@ -256,7 +256,8 @@ export function getLiveRoleplaySystemPrompt(
   characterPersonality?: string,
   characterSpeechStyle?: string,
   openingLine?: string,
-  tone?: ConversationTone
+  tone?: ConversationTone,
+  sessionMode?: 'standard' | 'mini',
 ): string {
   let prompt = `You ARE ${aiRole} at ${brandName} in ${location}. The user is a ${userRole}.
 
@@ -304,11 +305,56 @@ CONVERSATION RULES:
 - If they struggle with English, your character can be patient but should NOT switch to "teaching mode" — stay in the scene.
 - Keep the conversation flowing naturally, the way real people talk — not scripted or robotic.`;
 
+  if (sessionMode === 'mini') {
+    prompt += `
+
+SESSION SIZE (MINI): This is a quick 3–4 turn exchange.
+- Steer the conversation toward a natural wrap-up inside 3–4 of the ${userRole}'s turns.
+- Do not stall or extend with extra topics; close the scene cleanly as soon as the user's intent is satisfied.
+- End in character with a short farewell so the session closes naturally (the app detects farewells to finish).`;
+  }
+
   return prompt;
 }
 
 
-export function getScenarioGenerationPrompt(theme?: string, intensity: string = 'normal', customDescription?: string, tone?: ConversationTone): string {
+/**
+ * Phase 2 (F-P2-02) — Optional hints provided by `Master.prescribe` to steer
+ * scenario generation toward a specific target skill without revealing it
+ * to the student (stealth). These append a short "Master brief" block at
+ * the end of the prompt. None of these fields should appear verbatim in
+ * character dialogue; the LLM must weave them into the scene naturally.
+ */
+export interface MasterScenarioHints {
+  /** Canonical pattern / skill the scene should naturally rehearse. */
+  target_skill?: string;
+  /** Surface theme chosen to disguise the target_skill. */
+  disguise_theme?: string;
+  /** Optional short brief explaining why the student was routed here. */
+  pedagogical_brief?: string;
+  /** Themes to avoid (already over-seen in recent Live sessions). */
+  avoid_themes?: string[];
+  /** Session size — 'mini' keeps scenes tight; 'standard' allows more build. */
+  session_size?: 'standard' | 'mini';
+}
+
+function formatMasterHintsBlock(hints?: MasterScenarioHints): string {
+  if (!hints) return '';
+  const lines: string[] = [];
+  if (hints.target_skill) lines.push(`- Target skill (STEALTH — do NOT mention to the student): ${hints.target_skill}`);
+  if (hints.disguise_theme) lines.push(`- Disguise theme / surface setting: ${hints.disguise_theme}`);
+  if (hints.pedagogical_brief) lines.push(`- Pedagogical brief: ${hints.pedagogical_brief}`);
+  if (hints.avoid_themes?.length) lines.push(`- Avoid these themes (already saturated in recent sessions): ${hints.avoid_themes.join(', ')}`);
+  if (hints.session_size === 'mini') {
+    lines.push('- Session size: MINI (3-4 turns max; choose a scene that resolves quickly).');
+  } else if (hints.session_size === 'standard') {
+    lines.push('- Session size: STANDARD (6-10 turns, room for a real arc).');
+  }
+  if (lines.length === 0) return '';
+  return `\n\nMASTER BRIEF (teacher context, NEVER show to the student):\n${lines.join('\n')}\n- The scenario MUST create natural, repeated opportunities for the target skill.\n- Nothing here should appear as explicit dialogue — weave it into the world.`;
+}
+
+export function getScenarioGenerationPrompt(theme?: string, intensity: string = 'normal', customDescription?: string, tone?: ConversationTone, masterHints?: MasterScenarioHints): string {
   const intensityGuide: Record<string, string> = {
     normal: `INTENSITY: NORMAL (everyday situations with a small twist)
 - Think: ordering coffee, checking into a hotel, buying groceries, asking for directions.
@@ -373,7 +419,7 @@ Respond in JSON format:
   "systemDetails": "<internal world-building for the AI: what the place offers, prices, specials, constraints, backstory. The richer the better.>",
   "suggestedVoice": "<pick the BEST voice for this character from this list based on their gender, age, energy, and personality: Zephyr (Bright), Kore (Firm), Puck (Upbeat), Fenrir (Excitable), Aoede (Breezy), Charon (Informative), Leda (Youthful), Algieba (Smooth), Algenib (Gravelly), Gacrux (Mature), Sulafat (Warm), Achernar (Soft), Enceladus (Breathy), Despina (Smooth), Alnilam (Firm), Achird (Friendly), Sadachbia (Lively), Umbriel (Easy-going), Schedar (Even), Autonoe (Bright), Rasalgethi (Informative), Pulcherrima (Forward), Vindemiatrix (Gentle). Return ONLY the voice name, e.g. 'Kore'.>"
 }
-
+${formatMasterHintsBlock(masterHints)}
 Respond ONLY with the JSON, nothing else.`;
 }
 
@@ -595,7 +641,8 @@ export const conversationAnalysisResponseSchema = {
 
 export function getSkillScenarioPrompt(
   customDescription: string,
-  tone?: ConversationTone
+  tone?: ConversationTone,
+  masterHints?: MasterScenarioHints,
 ): string {
   return `Generate a vivid, highly realistic Skill Training / Interview scenario for an English language learner.
 
@@ -632,7 +679,7 @@ Respond in JSON format:
   "systemDetails": "<internal constraints for the AI: what exactly they should evaluate, what specific things they should ask about the user's profile.>",
   "suggestedVoice": "<pick the BEST voice for this character from: Zephyr (Bright), Kore (Firm), Puck (Upbeat), Aoede (Breezy), Charon (Informative), Gacrux (Mature), Sulafat (Warm), Algieba (Smooth), Alnilam (Firm), Sadaltager (Knowledgeable), Schedar (Even), Rasalgethi (Informative). Return ONLY the voice name.>"
 }
-
+${formatMasterHintsBlock(masterHints)}
 Respond ONLY with the JSON, nothing else.`;
 }
 
@@ -710,15 +757,39 @@ STRICT LIMIT: Maximum 4 sentences total. Be concise — pick the single most imp
 // Custom Materials Generation Prompts
 // ---------------------------------------------------------------------------
 
+/**
+ * Phase 4 (F-P4-02) — optional `masterHint` lets us nudge the
+ * generator to weave the student's top chronic pattern into the
+ * dialogue without changing the user-facing behaviour. `pattern_id`
+ * is canonical (e.g. `past_continuous_in_interrupted_narrative`);
+ * `description` is a one-line natural hint ("scenes that naturally
+ * require telling a story interrupted by another event"). Stealth
+ * still applies — the model must never surface these labels.
+ */
+export interface ScriptMasterHint {
+  pattern_id: string;
+  description: string;
+}
+
 export function getCustomDialoguePrompt(
   situation: string,
-  tone?: ConversationTone
+  tone?: ConversationTone,
+  masterHint?: ScriptMasterHint
 ): string {
+  const hintBlock = masterHint
+    ? `
+
+PEDAGOGICAL HINT (silent — never mention this block or the label):
+- The student is currently working on "${masterHint.pattern_id}".
+- Shape the scene so the student naturally has opportunities to use: ${masterHint.description}.
+- Do not force it unnaturally. If the requested situation can't host this pattern gracefully, prefer naturalness over coverage.`
+    : '';
+
   return `You are an expert English script writer creating acting scripts for English speaking practice.
 
 ${getToneInstruction(tone)}
 
-SCENE: "${situation}"
+SCENE: "${situation}"${hintBlock}
 
 FORMAT:
 Write the script as a theatrical script, clearly formatted for reading aloud and acting.
@@ -1047,5 +1118,347 @@ export const listeningPassageResponseSchema = {
     },
   },
   required: ['passage', 'questions', 'expected_key_points'],
+};
+
+// ---------------------------------------------------------------------------
+// Phase 2 — post-conversation Live Master evaluation (F-P2-01)
+// ---------------------------------------------------------------------------
+
+/**
+ * Shape the Master consumes to produce a `LiveMetaAssessment` for a
+ * finished Live conversation. We deliberately hand the LLM the *turns*
+ * themselves rather than pre-analysed errors — Phase 7's Live-confirmed
+ * mastery gate reads explicit turn indices out of the output, so we want
+ * the LLM reasoning about the raw dialogue, not a summary of it.
+ */
+export interface LiveConversationPromptInput {
+  turns: Array<{ role: 'user' | 'ai'; text: string }>;
+  scenario: {
+    theme: string;
+    descriptionPt?: string;
+    userRole?: string;
+    aiRole?: string;
+    size?: 'standard' | 'mini';
+    target_skill?: string;
+    disguise_theme?: string;
+  };
+  learnerModel: {
+    cefr_level: string;
+    acquiring_patterns: Array<{ id: string; success_rate: number }>;
+    chronic_errors: Array<{ id: string; occurrences: number }>;
+    mastered_patterns: string[];
+  };
+}
+
+export function getLiveConversationMasterPrompt(
+  input: LiveConversationPromptInput,
+): { system: string; user: string } {
+  const numberedDialogue = input.turns
+    .map((t, idx) => `Turn ${idx + 1} [${t.role.toUpperCase()}]: ${t.text}`)
+    .join('\n');
+
+  const system = `You are the Master evaluator for a finished Live conversation.
+Your job is to produce a compact LiveMetaAssessment JSON, nothing else.
+
+Context:
+- Live is this app's "final exam". Mastery is only awarded when a pattern
+  is produced correctly in spontaneous conversation across multiple
+  sessions AND multiple themes, separated by at least 72 hours. Downstream
+  code counts distinct correct live turns out of your output, so per-turn
+  indices must be precise.
+- Known canonical pattern ids (non-exhaustive): ${CANONICAL_PATTERN_HINTS}.
+  Use these ids when appropriate; if a pattern is outside the list but
+  clearly a stable phenomenon, propose a snake_case id that describes the
+  linguistic behaviour (not the topic).
+
+Stealth rules:
+- You are writing for a peer system, not the student. No user-facing
+  copy, no grammar labels in anything the student might ever see.
+- "evidence" may mention the pattern label because it's internal.
+- Set "respects_stealth" to false if you would have proposed user-facing
+  grammar-label language (so the caller can refuse the output).
+
+Scoring rules:
+- turns_correct[]: 1-based indices where the STUDENT (role=USER) produced
+  the pattern correctly in a meaningful, spontaneous way. Formulaic
+  "Yes." / "Me too." responses do NOT count, even if grammatically fine.
+- turns_incorrect[]: 1-based indices where the STUDENT attempted the
+  pattern and got it wrong or dropped it.
+- Every index you emit MUST correspond to a USER turn in the dialogue.
+  Do not cite AI turns. If unsure, omit the index.
+- automaticity_estimate: "high" when responses flow with few stalls,
+  "low" when the student frequently stalls or switches to Portuguese.
+- confidence_estimate uses: cold < recovering < warm < hot.
+- suggested_next_step is an internal note (one short sentence) that the
+  next prescribe call will read — no student-facing phrasing.
+- session_size: echo scenario.size ("mini" or "standard") verbatim.
+- theme: echo scenario.theme verbatim (lowercase).
+
+Output STRICT JSON matching the LiveMetaAssessment schema. No prose.`;
+
+  const user = `scenario:
+${JSON.stringify(input.scenario, null, 2)}
+
+learner_model:
+${JSON.stringify(input.learnerModel, null, 2)}
+
+dialogue (turn indices are 1-based):
+${numberedDialogue}`;
+
+  return { system, user };
+}
+
+export const liveConversationMasterResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    salient_patterns_observed: {
+      type: 'array' as const,
+      items: {
+        type: 'object' as const,
+        properties: {
+          canonical_pattern: { type: 'string' as const },
+          turns_correct: {
+            type: 'array' as const,
+            items: { type: 'integer' as const },
+          },
+          turns_incorrect: {
+            type: 'array' as const,
+            items: { type: 'integer' as const },
+          },
+          evidence: { type: 'string' as const },
+        },
+        required: ['canonical_pattern', 'turns_correct', 'turns_incorrect', 'evidence'],
+      },
+    },
+    automaticity_estimate: {
+      type: 'string' as const,
+      enum: ['low', 'moderate', 'high'],
+    },
+    confidence_estimate: {
+      type: 'string' as const,
+      enum: ['cold', 'recovering', 'warm', 'hot'],
+    },
+    suggested_next_step: { type: 'string' as const },
+    respects_stealth: { type: 'boolean' as const },
+    session_size: {
+      type: 'string' as const,
+      enum: ['standard', 'mini'],
+    },
+    theme: { type: 'string' as const },
+  },
+  required: [
+    'salient_patterns_observed',
+    'automaticity_estimate',
+    'confidence_estimate',
+    'suggested_next_step',
+    'respects_stealth',
+    'session_size',
+    'theme',
+  ],
+};
+
+// -----------------------------------------------------------------------------
+// Phase 9 (F-P9-02) — Card variation prompt
+// -----------------------------------------------------------------------------
+//
+// Produces a fresh variant of an existing review card that preserves the
+// target canonical pattern and difficulty but swaps the surface (theme,
+// verbs, specifics). This is the engine that makes Review actually
+// practice **transfer** instead of grinding memorization.
+//
+// Usage contract:
+// - The caller passes the original card, a small slice of the learner
+//   model (theme preferences + dominant Live themes to avoid), and the
+//   list of themes already consumed in recent variants (diversity guard).
+// - The LLM must return STRICT JSON, matching `cardVariationResponseSchema`.
+// - The output is stealth-safe (no grammar labels visible to the student),
+//   because the variant is shown user-facing.
+// - The iteration on this exact prompt happens OUTSIDE the repo per the
+//   prompt-optimization methodology in master-integration-plan.md §7b.
+//   Only the final string lives here.
+export interface CardVariationPromptInput {
+  card: {
+    id: string;
+    type: CardType;
+    prompt: string;
+    original_prompt?: string;
+    canonical_pattern?: string;
+    theme?: string;
+    targetVocabulary?: string[];
+  };
+  learnerModel: {
+    cefr_estimate: string;
+    themes_that_land: string[];
+    themes_in_live_window: string[];
+    mastered_patterns: string[];
+  };
+  themesToAvoid: string[];
+  verbsUsedRecently: string[];
+}
+
+export function getCardVariationPrompt(
+  input: CardVariationPromptInput,
+): { system: string; user: string } {
+  const system = `You are the Master's variant generator for a spaced-repetition review card.
+
+Your job: produce a SINGLE new prompt that:
+- Practices the SAME target canonical pattern as the original card.
+- Keeps the SAME card type (phrase / text / roleplay / image).
+- Keeps the approximate difficulty implied by the student's CEFR.
+- Uses a DIFFERENT surface: different theme, different core verbs,
+  different specific objects/people/places.
+- Is written in the SAME language as the original prompt (usually
+  Portuguese for the situation description). The response the student
+  will produce in English is NOT part of your output.
+
+Stealth rules (non-negotiable, because this is user-facing copy):
+- NEVER mention grammar labels, pattern names, linguistic jargon, or
+  anything that could tell the student WHY this card is being re-shown.
+- Never say "again", "once more", "revisão", or anything that frames the
+  prompt as a review. It must feel like a brand new card.
+- Never reference the original prompt's content. The variant must read
+  standalone.
+
+Diversity rules:
+- The new theme MUST be different from every theme in "themes_to_avoid".
+- The verbs used by the student to answer this card are likely to
+  overlap with "verbs_used_recently". Invent a prompt that naturally
+  steers the student toward a different verb set.
+- Prefer themes drawn from "themes_that_land" (student-engaging themes)
+  when they are not in the avoid list, but pick a fresh angle.
+
+Schema rules:
+- "prompt" is the NEW Portuguese (or source-language) situation text.
+- "context" is optional extra framing (same language).
+- "theme" is a lowercase single token ("work", "travel", "family"...).
+- "verbs" is an array of 2-5 core English verbs you expect the student
+  to produce (informational for the diversity guard downstream; NOT
+  shown to the student).
+
+Output STRICT JSON matching cardVariationResponseSchema. No prose, no
+markdown.`;
+
+  const user = `original_card:
+${JSON.stringify(input.card, null, 2)}
+
+learner_model:
+${JSON.stringify(input.learnerModel, null, 2)}
+
+themes_to_avoid:
+${JSON.stringify(input.themesToAvoid)}
+
+verbs_used_recently:
+${JSON.stringify(input.verbsUsedRecently)}`;
+
+  return { system, user };
+}
+
+export const cardVariationResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    prompt: { type: 'string' as const },
+    context: { type: 'string' as const },
+    theme: { type: 'string' as const },
+    verbs: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+    },
+  },
+  required: ['prompt', 'theme', 'verbs'],
+};
+
+// ---------------------------------------------------------------------------
+// Phase 3 — summarize_session prompt (F-P3-01b).
+// ---------------------------------------------------------------------------
+//
+// Builds the user-facing reflection shown at the end of a practice session.
+// Two sentences max, first-person, stealth-compliant — NEVER mentions
+// grammar labels, canonical pattern ids, or CEFR letters.
+//
+// The output is user-facing, so this prompt is iterated externally (see
+// master-integration-plan.md §7b). Only the final string lives here.
+export interface SummarizeSessionPromptInput {
+  surface: 'live' | 'mini-live' | 'review' | 'lesson' | 'exercises' | 'paths';
+  themes: string[];
+  patterns_correct: string[];
+  patterns_incorrect: string[];
+  attempts: number;
+  avg_score: number | null;
+  had_live: boolean;
+  longest_live_turn_words: number | null;
+  learner: {
+    cefr_estimate: string;
+    chronic_errors: string[];
+    strengths: string[];
+    themes_that_land: string[];
+  };
+}
+
+export function getSummarizeSessionPrompt(
+  input: SummarizeSessionPromptInput,
+): { system: string; user: string } {
+  const system = `You are the Master tutor producing a short end-of-session
+reflection for a Brazilian-Portuguese speaking student of English.
+
+Goal: write TWO short sentences (≤ 140 chars each) in Portuguese:
+- "strength_text":    what's going well, framed as an observation about
+                      HOW the student is speaking / practicing, NOT which
+                      grammar point they nailed.
+- "opportunity_text": what to practice next, framed as a gentle nudge,
+                      also speaker-level, not grammar-level.
+
+Stealth rules (non-negotiable):
+- NEVER mention any grammar label, pattern name, CEFR letter, or
+  linguistic jargon. Forbidden: "past continuous", "present perfect",
+  "condicional", "modal verb", "collocation", "A2", "B1", "fluency
+  rubric", etc.
+- NEVER say "errou" or "acertou". Lead with the student's ACTIVITY.
+- Speak AS the tutor, in FIRST person, addressing the student ("você").
+- Prefer content framing ("suas histórias", "quando você fala sobre
+  viagens", "o ritmo da sua conversa") over form framing.
+- Never reference internal fields (pattern ids, scores, themes array).
+
+Examples of GOOD reflections (do not copy verbatim):
+- Strength: "Suas histórias estão ficando mais longas — dá pra sentir
+  que você está pensando antes de falar."
+  Opportunity: "Tenta trazer uma situação de trabalho na próxima vez
+  e ver o que sai."
+- Strength: "Quando você fala sobre comida, você usa mais verbos
+  diferentes. Isso é progresso."
+  Opportunity: "Bora puxar uma conversa com um detalhe extra: o
+  porquê da escolha, não só o quê."
+
+Output STRICT JSON matching summarizeSessionResponseSchema. No prose,
+no markdown.`;
+
+  const user = `session_recap:
+${JSON.stringify(
+  {
+    surface: input.surface,
+    attempts: input.attempts,
+    avg_score: input.avg_score,
+    had_live: input.had_live,
+    longest_live_turn_words: input.longest_live_turn_words,
+    themes: input.themes.slice(0, 5),
+    patterns_correct_count: input.patterns_correct.length,
+    patterns_incorrect_count: input.patterns_incorrect.length,
+  },
+  null,
+  2,
+)}
+
+learner_context:
+${JSON.stringify(input.learner, null, 2)}`;
+
+  return { system, user };
+}
+
+export const summarizeSessionResponseSchema = {
+  type: 'object' as const,
+  properties: {
+    strength_text: { type: 'string' as const },
+    opportunity_text: { type: 'string' as const },
+  },
+  required: ['strength_text', 'opportunity_text'],
 };
 

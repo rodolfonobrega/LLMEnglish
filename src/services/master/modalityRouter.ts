@@ -12,12 +12,16 @@
  * about which modality to pick lives in `Master.prescribe`.
  */
 
-import type { Briefing, Modality } from '../../types/master';
+import type { Briefing, Modality, SessionSize } from '../../types/master';
 
 export interface RouteTarget {
   path: string;
-  /** Optional state payload to pass via `navigate(path, { state })`. */
-  state?: { briefing: Briefing };
+  /**
+   * Optional state payload to pass via `navigate(path, { state })`.
+   * When `sessionMode` is present, Live surfaces read it to adjust the
+   * target turn count (Phase 2 F-P2-05).
+   */
+  state?: { briefing: Briefing; sessionMode?: SessionSize };
 }
 
 const MODALITY_TO_PATH: Record<Modality, string> = {
@@ -41,5 +45,10 @@ const MODALITY_TO_PATH: Record<Modality, string> = {
  */
 export function routeModality(briefing: Briefing): RouteTarget {
   const path = MODALITY_TO_PATH[briefing.modality_choice] ?? MODALITY_TO_PATH.phrase;
-  return { path, state: { briefing } };
+  const state: NonNullable<RouteTarget['state']> = { briefing };
+  if (briefing.modality_choice === 'live') {
+    // Default Live sessions to `mini`; the briefing overrides when set.
+    state.sessionMode = briefing.session_size ?? 'mini';
+  }
+  return { path, state };
 }

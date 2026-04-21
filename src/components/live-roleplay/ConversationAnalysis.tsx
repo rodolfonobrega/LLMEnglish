@@ -9,7 +9,16 @@ import { base64ToAudioUrl, stopCurrentAudio } from '../../utils/audio';
 import { addXP, createSessionReport } from '../../services/gamification';
 import { XP_PER_LIVE_SESSION } from '../../types/gamification';
 import type { ConversationTone } from '../../types/settings';
+import type { Briefing } from '../../types/master';
 import { recordSessionSnapshot } from '../../services/errorAnalysis';
+import { runLivePipeline } from '../../services/master/runPipeline';
+import { recordNudgeEvent } from '../../services/master/nudgeEngine';
+import { loadLearnerModel } from '../../services/learnerModel';
+import { generateSessionReflection } from '../../services/master/generateSessionReflection';
+import type { SessionRecap } from '../../services/master/summarizeSession';
+import type { StoredSessionReflection } from '../../services/sessionReflections';
+import { ReflectionCard } from '../master/ReflectionCard';
+import type { LiveMetaAssessment } from '../../types/learnerModel';
 import { Loader2, Volume2, Play, Square, RotateCcw, CheckCircle2, AlertTriangle, Sparkles, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
@@ -27,6 +36,12 @@ interface ConversationAnalysisProps {
   turns: ConversationTurn[];
   onReset: () => void;
   onRetry?: () => void;
+  /**
+   * Phase 2 — Master briefing that shaped this Live session when the
+   * session came from Prática Sugerida / prescribe (F-P2-02 / F-P2-03).
+   * Piped into `runLivePipeline` so the evaluator knows the target_skill.
+   */
+  briefing?: Briefing | null;
 }
 
 interface AnalysisData {
@@ -41,6 +56,53 @@ const themeEmojis: Record<string, string> = {
   entertainment: '\uD83C\uDFAC', education: '\uD83D\uDCD6', random: '\uD83C\uDFB2',
 };
 
+/**
+ * Build a `SessionRecap` from the raw session data plus the Master's
+ * `LiveMetaAssessment`. When the meta is null (e.g., Master disabled or
+ * LLM failed) we still produce a recap with attempts and themes so the
+ * caller can decide whether to generate a reflection — `summarizeSession`
+ * itself short-circuits when there's nothing to reflect on.
+ */
+function buildLiveRecap(args: {
+  scenario: LiveScenario;
+  turns: ConversationTurn[];
+  meta: LiveMetaAssessment | null;
+}): SessionRecap {
+  const { scenario, turns, meta } = args;
+  const userTurns = turns.filter((t) => t.role === 'user');
+  const surface: SessionRecap['surface'] = scenario.mode === 'mini' ? 'mini-live' : 'live';
+
+  const longest = userTurns.reduce((acc, t) => {
+    const words = (t.text ?? '').trim().split(/\s+/).filter(Boolean).length;
+    return words > acc ? words : acc;
+  }, 0);
+
+  const patternsCorrect: string[] = [];
+  const patternsIncorrect: string[] = [];
+  if (meta) {
+    for (const p of meta.salient_patterns_observed) {
+      if (p.turns_correct.length > p.turns_incorrect.length) {
+        patternsCorrect.push(p.canonical_pattern);
+      } else if (p.turns_incorrect.length > 0) {
+        patternsIncorrect.push(p.canonical_pattern);
+      }
+    }
+  }
+
+  const theme =
+    scenario.masterDisguiseTheme?.trim() || scenario.theme?.trim() || 'general';
+
+  return {
+    surface,
+    themes: [theme],
+    patterns_correct: patternsCorrect as SessionRecap['patterns_correct'],
+    patterns_incorrect: patternsIncorrect as SessionRecap['patterns_incorrect'],
+    attempts: userTurns.length,
+    had_live: true,
+    longest_live_turn_words: longest || undefined,
+  };
+}
+
 /** Pick two distinct TTS voices: one for the user lines, another for the AI partner. */
 function getShadowingVoices(): { userVoice: string; aiVoice: string } {
   const config = getModelConfig();
@@ -54,7 +116,7 @@ function getShadowingVoices(): { userVoice: string; aiVoice: string } {
   return { userVoice: primary, aiVoice: VOICE_B };
 }
 
-export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: ConversationAnalysisProps) {
+export function ConversationAnalysis({ scenario, turns, onReset, onRetry, briefing }: ConversationAnalysisProps) {
   const navigate = useNavigate();
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,6 +148,10 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
   const [currentPlayingLine, setCurrentPlayingLine] = useState<number | null>(null);
   const isPlayingFullRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Phase 3 — end-of-session reflection. The card appears after the Master
+  // pipeline returns a LiveMetaAssessment; before that we show nothing.
+  const [reflection, setReflection] = useState<StoredSessionReflection | null>(null);
 
   const analyzeConversation = useCallback(async () => {
     setIsLoading(true);
@@ -137,6 +203,71 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
         );
 
         await recordSessionSnapshot();
+
+        // Phase 2 (F-P2-01 / F-P2-04) — feed the Master. The pipeline is
+        // fire-and-forget: it swallows all errors internally so a flaky LLM
+        // call never hides the analysis above. We intentionally do NOT
+        // await it inside the try/catch that controls the visible error
+        // banner — this call must never be able to surface a user-visible
+        // failure.
+        //
+        // Phase 3 — once the pipeline resolves we also request an
+        // end-of-session reflection. We chain with `.then` (not `await`)
+        // so the analysis view renders instantly and the reflection fades
+        // in whenever it's ready.
+        void runLivePipeline({
+          sessionId: sessionData.id,
+          scenario,
+          turns,
+          endedAt: sessionData.endedAt ?? new Date().toISOString(),
+          briefing: briefing ?? null,
+        }).then(async (pipelineResult) => {
+          try {
+            const recap = buildLiveRecap({
+              scenario,
+              turns,
+              meta: pipelineResult.meta,
+            });
+            const result = await generateSessionReflection({
+              recap,
+              sessionKey: `live-${sessionData.id}`,
+            });
+            if (result.reflection) {
+              setReflection(result.reflection);
+            }
+          } catch (reflectionErr) {
+            console.warn('[ConversationAnalysis] reflection failed (swallowed):', reflectionErr);
+          }
+
+          // Phase 4 (F-P4-03) — if a hard_for_user pattern showed up
+          // with more incorrect turns than correct ones, queue a nudge
+          // routing the student to OralCloze drills.
+          try {
+            const meta = pipelineResult.meta;
+            if (meta && meta.salient_patterns_observed.length > 0) {
+              const lm = await loadLearnerModel();
+              const hardIds = new Set(
+                (lm.hard_for_user ?? []).map((h) => h.id),
+              );
+              const fired = meta.salient_patterns_observed.find(
+                (p) =>
+                  hardIds.has(p.canonical_pattern) &&
+                  p.turns_incorrect.length > p.turns_correct.length,
+              );
+              if (fired) {
+                recordNudgeEvent({
+                  type: 'live_hard_pattern_fired',
+                  pattern_id: fired.canonical_pattern,
+                });
+              }
+            }
+          } catch (nudgeErr) {
+            console.warn(
+              '[ConversationAnalysis] nudge record failed (swallowed):',
+              nudgeErr,
+            );
+          }
+        });
       } catch (persistErr) {
         console.warn('Background persistence failed (analysis still shown):', persistErr);
       }
@@ -145,7 +276,7 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
     } finally {
       setIsLoading(false);
     }
-  }, [scenario, turns, tone]);
+  }, [scenario, turns, tone, briefing]);
 
   const generateDialogueAudio = useCallback(async (data: AnalysisData) => {
     setIsGeneratingAudio(true);
@@ -318,6 +449,11 @@ export function ConversationAnalysis({ scenario, turns, onReset, onRetry }: Conv
           <p className="text-muted-foreground leading-relaxed text-pretty">{analysis.overallFeedback}</p>
         </CardContent>
       </Card>
+
+      {/* Phase 3 — end-of-session reflection from the Master. */}
+      {reflection && (
+        <ReflectionCard reflection={reflection} onClose={() => setReflection(null)} />
+      )}
 
       {/* Improvements */}
       {analysis.improvements.length > 0 && (

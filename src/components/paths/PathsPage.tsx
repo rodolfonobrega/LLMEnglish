@@ -3,12 +3,15 @@ import { ChevronLeft, Check, Play, Sparkles, ChevronDown, ChevronUp } from 'luci
 import { chatCompletion, generateImage } from '../../services/openai';
 import { getImageConfigAuto } from '../../config/images';
 import { getScenarioGenerationPrompt, getLiveRoleplaySystemPrompt, scenarioResponseSchema } from '../../utils/prompts';
+import type { MasterScenarioHints } from '../../utils/prompts';
 import { cleanJson } from '../../utils/cleanJson';
 import { getTrailsForTheme, THEMES_WITH_TRAILS } from '../../utils/roleplayTrails';
 import type { ThemeMeta } from '../../utils/roleplayTrails';
 import type { LiveScenario, ConversationTurn, PathProgress, RoleplayTrail, RoleplayTrailStep } from '../../types/scenario';
 import { getPathProgress, markStepComplete, getConversationTone } from '../../services/storage';
 import type { ConversationTone } from '../../types/settings';
+import type { Briefing } from '../../types/master';
+import { recordEngagement } from '../../services/master/runPipeline';
 import { LiveSession } from '../live-roleplay/LiveSession';
 import { ConversationAnalysis } from '../live-roleplay/ConversationAnalysis';
 import { PathCard } from '../ui/custom/PathCard';
@@ -37,6 +40,10 @@ export function PathsPage() {
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [tone] = useState<ConversationTone>(() => getConversationTone());
+  // Phase 2 (F-P2-03) — the briefing we synthesise from the active
+  // trail+step. Fed to `ConversationAnalysis` so `runLivePipeline`
+  // knows the pedagogical intent behind this session.
+  const [activeBriefing, setActiveBriefing] = useState<Briefing | null>(null);
   const refreshProgress = useCallback(async () => {
     setProgress(await getPathProgress())
   }, [])
@@ -69,8 +76,29 @@ export function PathsPage() {
     setPhase('generating');
     setError(null);
 
+    // Phase 2 (F-P2-03) — synthesise a Briefing from the trail step so
+    // the Master evaluator has a pedagogical anchor. `target_skill` uses
+    // `trail:step` so downstream evidence groups under a stable id.
+    const stepBriefing: Briefing = {
+      target_skill: `trail:${trail.id}:${step.id}`,
+      modality_choice: 'live',
+      disguise_theme: theme.label,
+      required_elements: [],
+      forbidden_elements: [],
+      success_criteria: step.descriptionPt,
+      expected_difficulty: 'slight_stretch',
+      rationale: `Paths trail: ${trail.label} — step: ${step.label}`,
+    };
+    setActiveBriefing(stepBriefing);
+
+    const masterHints: MasterScenarioHints = {
+      target_skill: stepBriefing.target_skill,
+      disguise_theme: stepBriefing.disguise_theme,
+      pedagogical_brief: stepBriefing.rationale,
+    };
+
     try {
-      const prompt = getScenarioGenerationPrompt(theme.id, 'adventurous', step.scenarioContext, tone);
+      const prompt = getScenarioGenerationPrompt(theme.id, 'adventurous', step.scenarioContext, tone, masterHints);
 
       const response = await chatCompletion(
         'You are a world-class creative director who designs immersive role-play scenarios. You create vivid, specific characters with distinct voices and personalities. Respond only with valid JSON.',
@@ -92,6 +120,7 @@ export function PathsPage() {
         parsed.characterSpeechStyle,
         parsed.openingLine,
         tone,
+        'standard',
       );
 
       const imagePromise = generateImage(
@@ -112,6 +141,9 @@ export function PathsPage() {
         characterPersonality: parsed.characterPersonality,
         characterSpeechStyle: parsed.characterSpeechStyle,
         suggestedVoice: parsed.suggestedVoice,
+        mode: 'standard',
+        masterTargetSkill: stepBriefing.target_skill,
+        masterDisguiseTheme: stepBriefing.disguise_theme,
       };
 
       const sceneImageUrl = await imagePromise;
@@ -135,11 +167,17 @@ export function PathsPage() {
     setScenario(null);
     setTurns([]);
     setActiveStep(null);
+    setActiveBriefing(null);
   };
 
   const handleAnalysisDone = async () => {
     if (activeStep) {
       await markStepComplete(activeStep.trail.id, activeStep.step.id)
+      // Phase 2 (F-P2-03) — also record engagement with this theme so
+      // `engagement_profile.themes_that_land` reflects Paths usage.
+      // `runLivePipeline` already recorded the pedagogical evidence;
+      // this is a soft nudge on top of that.
+      void recordEngagement(activeStep.theme.label, `paths:${activeStep.trail.id}:${activeStep.step.id}`);
       await refreshProgress()
     }
     handleExit()
@@ -183,7 +221,12 @@ export function PathsPage() {
   if (phase === 'analysis' && scenario) {
     return (
       <div className="space-y-6">
-        <ConversationAnalysis scenario={scenario} turns={turns} onReset={() => { void handleAnalysisDone() }} />
+        <ConversationAnalysis
+          scenario={scenario}
+          turns={turns}
+          onReset={() => { void handleAnalysisDone() }}
+          briefing={activeBriefing}
+        />
       </div>
     );
   }

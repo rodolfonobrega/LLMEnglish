@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { clearLiveSessions, getLiveSessions } from '../../services/storage';
 import type { LiveSession } from '../../types/scenario';
-import { Clock, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { Clock, MessageCircle, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, ChevronLeft, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/card';
 import { cn } from '../../utils/cn';
+import {
+  listRecentReflections,
+  type StoredSessionReflection,
+} from '../../services/sessionReflections';
 
 const themeEmojis: Record<string, string> = {
   food: '🍽️', travel: '✈️', shopping: '🛍️', work: '💼',
@@ -31,7 +35,35 @@ function formatDate(iso: string): string {
   });
 }
 
-function SessionDetail({ session }: { session: LiveSession }) {
+/**
+ * Phase 3 (F-P3-02) — compact annotation shown inline in the history
+ * feed when a stored reflection matches the session. Never renders
+ * `salient_patterns` verbatim; those are metadata for future Master
+ * queries, not for the student.
+ */
+function ReflectionAnnotation({
+  reflection,
+}: {
+  reflection: StoredSessionReflection;
+}) {
+  return (
+    <div className="flex items-start gap-2 p-3 rounded-xl bg-accent/5 border border-accent/20">
+      <Sparkles size={14} className="text-accent mt-0.5 shrink-0" />
+      <div className="space-y-1 text-sm leading-snug">
+        <p className="text-foreground">{reflection.strength_text}</p>
+        <p className="text-muted-foreground">{reflection.opportunity_text}</p>
+      </div>
+    </div>
+  );
+}
+
+function SessionDetail({
+  session,
+  reflection,
+}: {
+  session: LiveSession;
+  reflection?: StoredSessionReflection;
+}) {
   return (
     <div className="space-y-4 animate-message-in">
       {/* Scene image */}
@@ -45,6 +77,9 @@ function SessionDetail({ session }: { session: LiveSession }) {
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
         </div>
       )}
+
+      {/* Phase 3 — Master reflection matching this session, when available. */}
+      {reflection && <ReflectionAnnotation reflection={reflection} />}
 
       {/* Feedback */}
       {session.analysis?.overallFeedback && (
@@ -114,10 +149,30 @@ export function HistoryPage() {
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [isLoading, setIsLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reflections, setReflections] = useState<StoredSessionReflection[]>([]);
 
   useEffect(() => {
     void loadSessions()
+    // Load reflections separately — the network call is unrelated to
+    // live-session storage and we don't want one failure to take the
+    // other down.
+    void (async () => {
+      try {
+        const rows = await listRecentReflections(100);
+        setReflections(rows);
+      } catch (err) {
+        console.warn('[HistoryPage] reflections load failed', err);
+      }
+    })();
   }, [])
+
+  const reflectionBySessionKey = useMemo(() => {
+    const map = new Map<string, StoredSessionReflection>();
+    for (const r of reflections) {
+      map.set(r.session_key, r);
+    }
+    return map;
+  }, [reflections]);
 
   const loadSessions = async () => {
     setIsLoading(true)
@@ -179,6 +234,7 @@ export function HistoryPage() {
             const isExpanded = expandedId === session.id;
             const duration = formatDuration(session.startedAt, session.endedAt);
             const userTurnCount = session.turns.filter(t => t.role === 'user').length;
+            const reflection = reflectionBySessionKey.get(`live-${session.id}`);
 
             return (
               <Card key={session.id} className="overflow-hidden">
@@ -190,8 +246,15 @@ export function HistoryPage() {
                     <div className="text-2xl shrink-0 mt-0.5">{emoji}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="font-bold text-foreground truncate">
+                        <p className="font-bold text-foreground truncate flex items-center gap-1.5">
                           {session.scenario.brandName || 'Simulação'}
+                          {reflection && (
+                            <Sparkles
+                              size={12}
+                              className="text-accent shrink-0"
+                              aria-label="Tem uma reflexão do Mestre"
+                            />
+                          )}
                         </p>
                         {isExpanded ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
                       </div>
@@ -214,7 +277,7 @@ export function HistoryPage() {
                 {isExpanded && (
                   <div className="px-4 pb-4 border-t border-border/50">
                     <div className="pt-4">
-                      <SessionDetail session={session} />
+                      <SessionDetail session={session} reflection={reflection} />
                     </div>
                   </div>
                 )}

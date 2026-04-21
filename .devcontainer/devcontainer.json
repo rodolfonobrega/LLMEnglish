@@ -1,0 +1,9 @@
+{
+  "name": "LLMEnglish",
+  "build": {
+    "dockerfile": "../Dockerfile.dev",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [5173]
+}

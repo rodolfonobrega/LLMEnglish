@@ -92,13 +92,15 @@ export interface Profile {
   master_enabled: boolean | null
   /** Wave 6 Stage B — global opt-out for Master's focused lessons. NULL pre-migration, defaults to TRUE. */
   lessons_opt_in: boolean | null
+  /** Phase 3 — global opt-out for end-of-session reflection cards. NULL pre-migration, defaults to TRUE. */
+  reflections_opt_in: boolean | null
   created_at: string
   updated_at: string
 }
 
 export type ProfileInsert =
-  Omit<Profile, 'created_at' | 'updated_at' | 'master_enabled' | 'lessons_opt_in'>
-  & Partial<Pick<Profile, 'master_enabled' | 'lessons_opt_in'>>
+  Omit<Profile, 'created_at' | 'updated_at' | 'master_enabled' | 'lessons_opt_in' | 'reflections_opt_in'>
+  & Partial<Pick<Profile, 'master_enabled' | 'lessons_opt_in' | 'reflections_opt_in'>>
 export type ProfileUpdate = Partial<ProfileInsert>
 
 // ============================================================================

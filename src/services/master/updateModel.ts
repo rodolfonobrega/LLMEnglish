@@ -24,8 +24,10 @@
 import { chatCompletion } from '../openai';
 import { masterEnabled } from '../runtimeConfigSnapshot';
 import { recordMasterUsage } from '../masterTelemetry';
+import { resolveMasterModel } from './resolveMasterModel';
 import { cleanJson } from '../../utils/cleanJson';
 import { applyPatches, savePatchedModel } from '../learnerModel';
+import { validatePatches } from './patchValidator';
 import type {
   LearnerModel,
   PatchOp,
@@ -76,6 +78,15 @@ export interface UpdateModelInput {
    * evidence patches, consolidation_until, hard_for_user on weak delta.
    */
   lessonBoost?: boolean | LessonBoostPayload;
+  /**
+   * Phase 7 (F-P7-01 + F-P7-04) — deterministic, caller-owned patches
+   * appended before the validator. Use this to feed
+   * `acquiring.evidence_append` / `acquiring.trajectory_set` produced by
+   * `runPipeline.ts` so the 7-rule gate sees them alongside the LLM's
+   * proposals. Never synthesise `mastered.add` here — the gate is the
+   * only path to promotion.
+   */
+  extraPatches?: PatchOp[];
 }
 
 // ---------------------------------------------------------------------------
@@ -315,10 +326,16 @@ export async function updateLearnerModel(
   const systemPrompt = buildSystemPrompt();
   const userMessage = buildUserMessage(input);
 
+  const resolved = resolveMasterModel('update_model');
   const started = Date.now();
   let raw: string;
   try {
-    raw = await chatCompletion(systemPrompt, userMessage, undefined, patchSchema);
+    raw = await chatCompletion(
+      systemPrompt,
+      userMessage,
+      { model: resolved.model, source: resolved.source },
+      patchSchema,
+    );
   } catch (err) {
     console.warn('[Master.update_model] LLM call failed:', err);
     return null;
@@ -363,6 +380,34 @@ export async function updateLearnerModel(
       `[lesson-boost] target=${boost.target_canonical_pattern} rounds=${boost.rounds} delta=${boost.delta_score.toFixed(2)}`;
   }
 
+  // Phase 7 — caller-owned deterministic patches. Appended AFTER lesson
+  // boost so evidence accumulation reflects the boosted attempt counts
+  // when a LessonBoostPayload was also present.
+  if (input.extraPatches && input.extraPatches.length > 0) {
+    patches = [...patches, ...input.extraPatches];
+  }
+
+  // Phase 7 (F-P7-02 + F-P7-05) — client-side guardrails. Strip any
+  // `mastered.add` that fails the 7-rule gate and reject the whole set
+  // if ladder memory is broken. This is the honest-promotion floor: the
+  // Master LLM proposes, the code decides.
+  const validation = validatePatches(patches, input.learnerModel);
+  if (validation.rejected.length > 0) {
+    for (const r of validation.rejected) {
+      console.warn('[Master.update_model] patch rejected:', r.reason);
+    }
+  }
+  if (validation.wholeSetRejected) {
+    console.warn(
+      '[Master.update_model] whole patch set rejected (ladder memory violation). Skipping update.',
+    );
+    return null;
+  }
+  patches = validation.patches;
+  if (validation.rejected.length > 0) {
+    reason = (reason ? reason + ' ' : '') + `[gate] rejected ${validation.rejected.length} patch(es).`;
+  }
+
   const nextModel = applyPatches(input.learnerModel, patches);
   const source: PatchSource = input.lessonBoost ? 'lesson_boost' : 'update_model';
 
@@ -370,6 +415,7 @@ export async function updateLearnerModel(
   try {
     await recordMasterUsage({
       role: 'update_model',
+      model: resolved.model,
       latencyMs,
       tokensIn: estimateTokens(systemPrompt + userMessage),
       tokensOut: estimateTokens(raw),

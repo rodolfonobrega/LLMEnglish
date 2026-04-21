@@ -23,6 +23,7 @@ import { cleanJson } from '../../utils/cleanJson';
 import { Button } from '../ui/Button';
 import { SkeletonText } from '../ui/Skeleton';
 import { addXP } from '../../services/gamification';
+import { recordDrillOutcome } from '../../services/master/runPipeline';
 import type { Briefing } from '../../types/master';
 
 interface ReactionDrillProps {
@@ -273,7 +274,14 @@ export function ReactionDrill({ briefing }: ReactionDrillProps) {
         console.warn('[ReactionDrill] XP award failed', err);
       }
     }
-  }, []);
+
+    const correctCount = final.filter((o) => !o.skipped && o.automaticity >= 60).length;
+    void recordDrillOutcome(briefing, {
+      attempts: final.length,
+      correct: correctCount,
+      modality: 'reaction',
+    });
+  }, [briefing]);
 
   useEffect(() => {
     if (!audioBlob || !currentLine) return;

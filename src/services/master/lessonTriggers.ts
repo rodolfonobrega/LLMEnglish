@@ -16,11 +16,12 @@
  *
  * Frequency caps: ≤ 3 offers/week, ≥ 48 h between offers.
  *
- * STAGE A BEHAVIOR:
- *   - Always writes with `status: 'would_offer'` and `dry_run: true`.
- *   - NO student-visible surface. This file exists to gather telemetry.
+ * CURRENT LIVE BEHAVIOR:
+ *   - Writes with `status: 'would_offer'` and `dry_run: false`.
+ *   - Practice Hub may surface the offer when the global opt-in is enabled.
  *
- * STAGE B will flip `dry_run` to false and wire the Practice Hub offer UI.
+ * Historical note: Stage A wrote `dry_run: true` rows only for silent
+ * telemetry gathering. Stage B flipped the insert default live.
  */
 
 import { supabase } from '../supabase/client';
@@ -234,7 +235,7 @@ async function fetchRecentOffers(userId: string): Promise<LessonOfferRow[]> {
 
 /**
  * Runs the trigger evaluator and persists the winning candidate (if any)
- * as a `would_offer` row with `dry_run: true`. Non-blocking — never throws
+ * as a live `would_offer` row with `dry_run: false`. Non-blocking — never throws
  * into the caller's flow.
  *
  * Short-circuits when:
@@ -261,7 +262,8 @@ export async function evaluateAndRecordTriggers(
       return null;
     }
   } catch (err) {
-    // If we can't read the profile we fail OPEN — Stage A behaviour.
+    // If we can't read the profile we fail open to avoid blocking lesson offers
+    // on a transient profile read failure.
     console.warn('[lessonTriggers] opt-in read failed, allowing:', err);
   }
 
@@ -275,7 +277,7 @@ export async function evaluateAndRecordTriggers(
       candidate_pattern: candidate.candidate_pattern,
       trigger_type: candidate.trigger_type,
       status: 'would_offer',
-      dry_run: true,
+      dry_run: false,
     });
     if (error) {
       console.warn('[lessonTriggers] insert failed:', error.message);

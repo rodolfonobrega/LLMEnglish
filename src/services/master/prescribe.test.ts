@@ -156,7 +156,6 @@ describe('Master.prescribe', () => {
     model.hard_for_user = [
       {
         id: 'hated_pattern',
-        added_at: new Date().toISOString(),
         next_retry_at: new Date(Date.now() + 3_600_000).toISOString(),
         reason: 'user_frustration',
       },

@@ -122,11 +122,28 @@ User data lives in Supabase:
 - live session history
 - encrypted per-user provider keys
 - error analytics snapshots and patterns
+- learner adaptation state in `learner_models` and `learner_model_history`
+- Master cost/latency telemetry in `master_usage`
 
 Client-only data stays local on purpose:
 
 - theme and UI preferences
 - browser cache such as generated TTS audio
+
+## Privacy notes
+
+- `learner_models` stores pedagogical metadata only: CEFR estimate, strengths, recurring patterns, engagement signals, next-step plan, and related adaptation state. It is intended to personalize practice, not to store free-form user diaries or unrelated personal notes.
+- `learner_model_history` is an audit trail of patch operations applied to that model. It stores patch metadata and reasons, not raw exercise transcripts by default.
+- `master_usage` stores operational telemetry only: `role`, `tokens_in`, `tokens_out`, `model`, and `latency_ms`. It does not persist prompt bodies, chat transcripts, or audio payloads.
+- RLS is enabled on these tables, so users can only read their own rows through the app.
+
+## Lesson opt-out
+
+Focused lesson offers from the Master can be disabled in `Configurações` via `Permitir atividades sugeridas pelo tutor`.
+
+- Backing field: `profiles.lessons_opt_in`
+- Default behavior: `true` for new rows; `null` is treated as opt-in for backward compatibility
+- Effect when disabled: the app stops surfacing new `LessonOfferCard` suggestions, while the rest of the practice flows keep working
 
 ## Commands
 

@@ -10,8 +10,15 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // CORS allowlist — configurable via ALLOWED_ORIGINS (comma-separated).
-// Falls back to local dev origin when unset.
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'http://localhost:5173')
+// Fallback keeps local development working and preserves the current hosted
+// app origin when the secret has not been populated yet.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://speaklab.app',
+].join(',')
+
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? DEFAULT_ALLOWED_ORIGINS)
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean)

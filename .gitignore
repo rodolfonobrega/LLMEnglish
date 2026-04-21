@@ -27,6 +27,7 @@ npm-debug.log*
 # Misc
 *.tgz
 coverage/
+bin/
 
 # Context-mode temp files
 context-mode-test-*.db

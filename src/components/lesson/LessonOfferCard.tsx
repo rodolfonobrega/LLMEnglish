@@ -65,7 +65,7 @@ export function LessonOfferCard() {
       const user = getCurrentUser();
       if (!user) throw new Error('Não autenticado.');
       const learnerModel = await loadLearnerModel(user.id);
-      const plan = await composeLesson(user.id, {
+      const plan = await composeLesson({
         learnerModel,
         candidate: offerToCandidate(offer),
       });

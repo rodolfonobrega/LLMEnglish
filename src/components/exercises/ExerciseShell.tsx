@@ -119,6 +119,17 @@ export function ExerciseShell({ config }: ExerciseShellProps) {
   const isEvaluating = state.status === 'evaluating';
   const { evaluation, saved, error, setupStep, prompt } = state;
 
+  const drillSlot = useMemo(
+    () =>
+      evaluation && evaluation.score < 9 && evaluation.correctedVersion ? (
+        <FeedbackDrill
+          target={evaluation.correctedVersion}
+          original={evaluation.userTranscription}
+        />
+      ) : undefined,
+    [evaluation],
+  );
+
   const handleReset = () => {
     reset();
   };
@@ -337,14 +348,7 @@ export function ExerciseShell({ config }: ExerciseShellProps) {
             void handleSaveToLibrary();
           }}
           showSaveButton={!saved}
-          drillSlot={
-            evaluation.score < 9 && evaluation.correctedVersion ? (
-              <FeedbackDrill
-                target={evaluation.correctedVersion}
-                original={evaluation.userTranscription}
-              />
-            ) : undefined
-          }
+          drillSlot={drillSlot}
         />
 
         {saved && (

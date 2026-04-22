@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
-  getModelConfig, saveModelConfig,
-  getConversationTone, saveConversationTone,
+  saveModelConfig,
+  saveConversationTone,
   saveApiKeys,
 } from '../../services/storage';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,16 +24,16 @@ import { updateProfile } from '../../services/supabase/auth';
 
 export function SettingsPage() {
   const { user, profile, signOut: authSignOut, refreshProfile } = useAuth();
-  const { setModelConfig, setConversationTone, hydrate } = useRuntimeConfig();
+  const { modelConfig: rtModelConfig, conversationTone: rtTone, credentials: rtCredentials, setModelConfig, setConversationTone, hydrate } = useRuntimeConfig();
   const isDevMode = !import.meta.env.VITE_SUPABASE_URL;
-  const [openaiKey, setOpenaiKeyState] = useState('');
-  const [geminiKey, setGeminiKeyState] = useState('');
-  const [groqKey, setGroqKeyState] = useState('');
-  const [openrouterKey, setOpenrouterKeyState] = useState('');
+  const [openaiKey, setOpenaiKeyState] = useState(rtCredentials.openai || '');
+  const [geminiKey, setGeminiKeyState] = useState(rtCredentials.genai || '');
+  const [groqKey, setGroqKeyState] = useState(rtCredentials.groq || '');
+  const [openrouterKey, setOpenrouterKeyState] = useState(rtCredentials.openrouter || '');
   const [vertexProjectId, setVertexProjectId] = useState('');
   const [vertexRegion, setVertexRegion] = useState('us-central1');
-  const [config, setConfig] = useState<ModelConfig>({ ...DEFAULT_MODEL_CONFIG });
-  const [tone, setTone] = useState<ConversationTone>('balanced');
+  const [config, setConfig] = useState<ModelConfig>({ ...rtModelConfig });
+  const [tone, setTone] = useState<ConversationTone>(rtTone);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,21 +84,22 @@ export function SettingsPage() {
     }
   };
 
+  // Sync local form state from the runtime config context whenever it
+  // changes (e.g. after hydration completes or after a save + re-hydrate).
   useEffect(() => {
-    Promise.all([
-      getModelConfig(),
-      getConversationTone(),
-    ]).then(([modelConfig, conversationTone]) => {
-      setConfig({
-        ...modelConfig,
-        ttsVoice: normalizeTtsVoice(modelConfig.ttsSource, modelConfig.ttsModel, modelConfig.ttsVoice),
-        ttsFallbackVoice: modelConfig.ttsFallbackSource && modelConfig.ttsFallbackModel
-          ? normalizeTtsVoice(modelConfig.ttsFallbackSource, modelConfig.ttsFallbackModel, modelConfig.ttsFallbackVoice)
-          : undefined,
-      });
-      setTone(conversationTone);
+    setConfig({
+      ...rtModelConfig,
+      ttsVoice: normalizeTtsVoice(rtModelConfig.ttsSource, rtModelConfig.ttsModel, rtModelConfig.ttsVoice),
+      ttsFallbackVoice: rtModelConfig.ttsFallbackSource && rtModelConfig.ttsFallbackModel
+        ? normalizeTtsVoice(rtModelConfig.ttsFallbackSource, rtModelConfig.ttsFallbackModel, rtModelConfig.ttsFallbackVoice)
+        : undefined,
     });
-  }, []);
+    setTone(rtTone);
+    setOpenaiKeyState(rtCredentials.openai || '');
+    setGeminiKeyState(rtCredentials.genai || '');
+    setGroqKeyState(rtCredentials.groq || '');
+    setOpenrouterKeyState(rtCredentials.openrouter || '');
+  }, [rtModelConfig, rtTone, rtCredentials]);
 
   const updateConfig = (partial: Partial<ModelConfig>) => {
     setConfig(prev => ({ ...prev, ...partial }));

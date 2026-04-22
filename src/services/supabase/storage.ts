@@ -877,14 +877,16 @@ export async function saveModelConfig(config: ModelConfig): Promise<void> {
   }
 
   if (existing) {
-    await supabase
+    const { error } = await supabase
       .from('model_config')
       .update(configData)
       .eq('id', existing.id)
+    if (error) throw new Error(`Failed to update model config: ${error.message}`)
   } else {
-    await supabase
+    const { error } = await supabase
       .from('model_config')
       .insert(configData)
+    if (error) throw new Error(`Failed to insert model config: ${error.message}`)
   }
 }
 
@@ -913,10 +915,12 @@ export async function getConversationTone(): Promise<ConversationTone> {
 export async function saveConversationTone(tone: ConversationTone): Promise<void> {
   const userId = getUserId()
 
-  await supabase
+  const { error } = await supabase
     .from('profiles')
     .update({ conversation_tone: tone })
     .eq('id', userId)
+
+  if (error) throw new Error(`Failed to save conversation tone: ${error.message}`)
 }
 
 // ============================================================================

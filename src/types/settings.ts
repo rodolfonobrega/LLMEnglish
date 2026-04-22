@@ -346,7 +346,8 @@ export const LIVE_MODELS: ModelOption[] = [
   { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (latest)', source: 'genai' },
   { value: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Native Audio', source: 'genai' },
   // Vertex AI
-  { value: 'gemini-live-2.5-flash-native-audio', label: 'Gemini Live 2.5 Flash Native Audio', source: 'vertex' },
+  { value: 'gemini-3.1-flash-live-preview', label: 'Gemini 3.1 Flash Live (latest)', source: 'vertex' },
+  { value: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Native Audio', source: 'vertex' },
   // OpenAI Realtime
   { value: 'gpt-realtime', label: 'GPT Realtime', source: 'openai' },
   { value: 'gpt-realtime-1.5', label: 'GPT Realtime 1.5', source: 'openai' },
@@ -426,49 +427,93 @@ export function migrateModelConfig(config: Record<string, unknown>): ModelConfig
 
   const migrated = { ...DEFAULT_MODEL_CONFIG } as ModelConfig;
 
-  if (config.chatProvider && !config.chatSource) {
+  // --- Chat ---
+  if (config.chatSource) {
+    migrated.chatModel = (config.chatModel as string) || DEFAULT_MODEL_CONFIG.chatModel;
+    migrated.chatSource = config.chatSource as Source;
+  } else if (config.chatProvider) {
     migrated.chatModel = (config.chatModel as string) || DEFAULT_MODEL_CONFIG.chatModel;
     migrated.chatSource = providerToSource(config.chatProvider as string);
   }
-  if (config.sttProvider && !config.sttSource) {
+
+  // --- STT ---
+  if (config.sttSource) {
+    migrated.sttModel = (config.sttModel as string) || DEFAULT_MODEL_CONFIG.sttModel;
+    migrated.sttSource = config.sttSource as Source;
+  } else if (config.sttProvider) {
     migrated.sttModel = (config.sttModel as string) || DEFAULT_MODEL_CONFIG.sttModel;
     migrated.sttSource = providerToSource(config.sttProvider as string);
   }
-  if (config.ttsProvider && !config.ttsSource) {
+
+  // --- TTS ---
+  if (config.ttsSource) {
+    migrated.ttsModel = (config.ttsModel as string) || DEFAULT_MODEL_CONFIG.ttsModel;
+    migrated.ttsVoice = (config.ttsVoice as string) || DEFAULT_MODEL_CONFIG.ttsVoice;
+    migrated.ttsSource = config.ttsSource as Source;
+  } else if (config.ttsProvider) {
     migrated.ttsModel = (config.ttsModel as string) || DEFAULT_MODEL_CONFIG.ttsModel;
     migrated.ttsVoice = (config.ttsVoice as string) || DEFAULT_MODEL_CONFIG.ttsVoice;
     migrated.ttsSource = providerToSource(config.ttsProvider as string);
   }
-  if (config.imageProvider && !config.imageSource) {
+
+  // --- Image ---
+  if (config.imageSource) {
     migrated.imageModel = (config.imageModel as string) || DEFAULT_MODEL_CONFIG.imageModel;
-    migrated.imageSource = providerToSource(config.imageProvider as string) as 'genai' | 'vertex' | 'openai' | 'openrouter';
+    migrated.imageSource = config.imageSource as Source;
+  } else if (config.imageProvider) {
+    migrated.imageModel = (config.imageModel as string) || DEFAULT_MODEL_CONFIG.imageModel;
+    migrated.imageSource = providerToSource(config.imageProvider as string) as Source;
   }
-  if (config.liveProvider && !config.liveSource) {
+
+  // --- Live ---
+  if (config.liveSource) {
     migrated.liveModel = (config.liveModel as string) || DEFAULT_MODEL_CONFIG.liveModel;
     migrated.liveVoice = (config.liveVoice as string) || DEFAULT_MODEL_CONFIG.liveVoice;
-    migrated.liveSource = providerToSource(config.liveProvider as string) as 'genai' | 'vertex' | 'openai';
+    migrated.liveSource = config.liveSource as Source;
+  } else if (config.liveProvider) {
+    migrated.liveModel = (config.liveModel as string) || DEFAULT_MODEL_CONFIG.liveModel;
+    migrated.liveVoice = (config.liveVoice as string) || DEFAULT_MODEL_CONFIG.liveVoice;
+    migrated.liveSource = providerToSource(config.liveProvider as string) as Source;
   }
-  // Fallbacks
-  if (config.chatFallbackProvider && !config.chatFallbackSource) {
+
+  // --- Fallbacks ---
+  if (config.chatFallbackSource) {
+    migrated.chatFallbackModel = config.chatFallbackModel as string | undefined;
+    migrated.chatFallbackSource = config.chatFallbackSource as Source;
+  } else if (config.chatFallbackProvider) {
     migrated.chatFallbackModel = config.chatFallbackModel as string | undefined;
     migrated.chatFallbackSource = providerToSource(config.chatFallbackProvider as string);
   }
-  if (config.sttFallbackProvider && !config.sttFallbackSource) {
+
+  if (config.sttFallbackSource) {
+    migrated.sttFallbackModel = config.sttFallbackModel as string | undefined;
+    migrated.sttFallbackSource = config.sttFallbackSource as Source;
+  } else if (config.sttFallbackProvider) {
     migrated.sttFallbackModel = config.sttFallbackModel as string | undefined;
     migrated.sttFallbackSource = providerToSource(config.sttFallbackProvider as string);
   }
-  if (config.ttsFallbackProvider && !config.ttsFallbackSource) {
+
+  if (config.ttsFallbackSource) {
+    migrated.ttsFallbackModel = config.ttsFallbackModel as string | undefined;
+    migrated.ttsFallbackSource = config.ttsFallbackSource as Source;
+    migrated.ttsFallbackVoice = config.ttsFallbackVoice as string | undefined;
+  } else if (config.ttsFallbackProvider) {
     migrated.ttsFallbackModel = config.ttsFallbackModel as string | undefined;
     migrated.ttsFallbackSource = providerToSource(config.ttsFallbackProvider as string);
     migrated.ttsFallbackVoice = config.ttsFallbackVoice as string | undefined;
   }
+
   if (config.imageFallbackSource) {
     migrated.imageFallbackModel = config.imageFallbackModel as string | undefined;
-    migrated.imageFallbackSource = config.imageFallbackSource as 'genai' | 'vertex' | 'openai' | 'openrouter';
-  }
-  if (config.imageFallbackProvider && !config.imageFallbackSource) {
+    migrated.imageFallbackSource = config.imageFallbackSource as Source;
+  } else if (config.imageFallbackProvider) {
     migrated.imageFallbackModel = config.imageFallbackModel as string | undefined;
-    migrated.imageFallbackSource = providerToSource(config.imageFallbackProvider as string) as 'genai' | 'vertex' | 'openai' | 'openrouter';
+    migrated.imageFallbackSource = providerToSource(config.imageFallbackProvider as string) as Source;
+  }
+
+  // --- Master per-role overrides (Phase 5) ---
+  if (config.masterModels) {
+    migrated.masterModels = config.masterModels as ModelConfig['masterModels'];
   }
 
   return migrated;

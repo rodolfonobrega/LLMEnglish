@@ -38,12 +38,11 @@ export const DEFAULT_GAMIFICATION: GamificationState = {
   badges: [],
 }
 
-// Previously loaded whenever Supabase was missing — that also fires in prod
-// builds where env was forgotten. Lock to `import.meta.env.DEV` so prod never
-// reads `VITE_*_API_KEY`.
-const useEnvCredentials =
-  import.meta.env.DEV &&
-  (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY)
+// Load VITE_*_API_KEY in DEV mode as fallback credentials, regardless of
+// whether Supabase is configured. The snapshot hydration in RuntimeConfigContext
+// prefers Supabase-stored keys; env keys fill the gap when none are stored yet.
+// Locked to `import.meta.env.DEV` so prod never reads `VITE_*_API_KEY`.
+const useEnvCredentials = import.meta.env.DEV
 
 export const envCredentials: SourceCredentials = useEnvCredentials
   ? {
@@ -56,14 +55,16 @@ export const envCredentials: SourceCredentials = useEnvCredentials
 
 /**
  * Env flag for the Master pedagogical agent. Evaluated once at module load.
- * `true`, `"1"`, or `"yes"` are accepted; anything else disables the flag.
- * A per-user override (see `snapshot.masterUserOverride`) takes precedence.
+ * Master is ON by default. Set `VITE_MASTER_ENABLED=false` (or `"0"` / `"no"`)
+ * to explicitly disable it. A per-user override (`masterUserOverride`) takes
+ * precedence over this flag.
  */
 const MASTER_ENV_FLAG = (() => {
   const raw = import.meta.env.VITE_MASTER_ENABLED
-  if (typeof raw !== 'string') return false
+  if (typeof raw !== 'string') return true
   const normalized = raw.trim().toLowerCase()
-  return normalized === 'true' || normalized === '1' || normalized === 'yes'
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') return false
+  return true
 })()
 
 export interface RuntimeConfigSnapshot {
@@ -152,7 +153,7 @@ export function getApiKey(source: keyof SourceCredentials): string | undefined {
  *
  * Resolution order (first defined wins):
  *   1. `snapshot.masterUserOverride` — per-user flag from `profiles.master_enabled`.
- *   2. `VITE_MASTER_ENABLED` env flag — global kill switch.
+ *   2. `VITE_MASTER_ENABLED` env flag — defaults to `true` (Master ON).
  *
  * Every Master entry point MUST call this and return early when it returns false.
  */

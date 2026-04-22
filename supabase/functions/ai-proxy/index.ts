@@ -14,7 +14,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // app origin when the secret has not been populated yet.
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5173',
+  'https://localhost:5173',
   'http://127.0.0.1:5173',
+  'https://127.0.0.1:5173',
   'https://speaklab.app',
 ].join(',')
 
@@ -344,6 +346,33 @@ interface ChatRequest {
   responseSchema?: Record<string, unknown>
 }
 
+interface UsagePayload {
+  tokens_in?: number
+  tokens_out?: number
+  seconds_used?: number
+  cost_usd_override?: number
+}
+
+interface TextResult {
+  content: string
+  usage?: UsagePayload
+}
+
+interface AudioResult {
+  audio: string
+  usage?: UsagePayload
+}
+
+interface STTResult {
+  text: string
+  usage?: UsagePayload
+}
+
+interface ImageResult {
+  image: string
+  usage?: UsagePayload
+}
+
 /**
  * Declarative endpoint definition for a chat provider.
  * Each provider supplies its URL, auth headers, request body shape,
@@ -354,7 +383,7 @@ interface ChatEndpoint {
   url: (req: ChatRequest) => string
   buildHeaders: (apiKey: string) => HeadersInit
   buildBody: (req: ChatRequest) => unknown
-  parseResponse: (raw: unknown) => string
+  parseResponse: (raw: unknown) => TextResult
 }
 
 /**
@@ -362,7 +391,7 @@ interface ChatEndpoint {
  * parses the response, and surfaces provider-labelled errors.
  * Applies a 60-second timeout so a hung provider cannot stall the function.
  */
-async function callChat(ep: ChatEndpoint, apiKey: string, req: ChatRequest): Promise<string> {
+async function callChat(ep: ChatEndpoint, apiKey: string, req: ChatRequest): Promise<TextResult> {
   const response = await fetch(ep.url(req), {
     method: 'POST',
     headers: ep.buildHeaders(apiKey),
@@ -376,11 +405,11 @@ async function callChat(ep: ChatEndpoint, apiKey: string, req: ChatRequest): Pro
   }
 
   const data = await response.json()
-  const content = ep.parseResponse(data)
-  if (!content) {
+  const parsed = ep.parseResponse(data)
+  if (!parsed.content) {
     throw new Error(`${ep.label} returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
   }
-  return content
+  return parsed
 }
 
 // --- Provider-specific body/parse helpers shared by OpenAI-compatible APIs ---
@@ -403,9 +432,69 @@ function openaiCompatBody(req: ChatRequest): Record<string, unknown> {
   return body
 }
 
-function openaiCompatParse(raw: unknown): string {
-  const data = raw as { choices?: Array<{ message?: { content?: string } }> }
-  return data.choices?.[0]?.message?.content ?? ''
+function groqCompatBody(req: ChatRequest): Record<string, unknown> {
+  let systemPrompt = req.systemPrompt;
+  if (req.responseSchema) {
+    systemPrompt += '\n\nYou must output valid JSON matching the requested schema.';
+  }
+  const body: Record<string, unknown> = {
+    model: req.model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: req.userMessage },
+    ],
+    temperature: req.temperature ?? 0.8,
+  }
+  if (req.responseSchema) {
+    body.response_format = { type: 'json_object' }
+  }
+  return body
+}
+
+function normalizeUsage(values: UsagePayload): UsagePayload | undefined {
+  const usage: UsagePayload = {}
+  if (typeof values.tokens_in === 'number' && Number.isFinite(values.tokens_in)) {
+    usage.tokens_in = Math.max(0, Math.floor(values.tokens_in))
+  }
+  if (typeof values.tokens_out === 'number' && Number.isFinite(values.tokens_out)) {
+    usage.tokens_out = Math.max(0, Math.floor(values.tokens_out))
+  }
+  if (typeof values.seconds_used === 'number' && Number.isFinite(values.seconds_used)) {
+    usage.seconds_used = Math.max(0, values.seconds_used)
+  }
+  if (typeof values.cost_usd_override === 'number' && Number.isFinite(values.cost_usd_override)) {
+    usage.cost_usd_override = values.cost_usd_override
+  }
+  return Object.keys(usage).length > 0 ? usage : undefined
+}
+
+function readOpenAICompatUsage(raw: unknown): UsagePayload | undefined {
+  const data = raw as {
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_cost?: number }
+  }
+  return normalizeUsage({
+    tokens_in: data.usage?.prompt_tokens,
+    tokens_out: data.usage?.completion_tokens,
+    cost_usd_override: data.usage?.total_cost,
+  })
+}
+
+function readGeminiUsage(raw: unknown): UsagePayload | undefined {
+  const data = raw as {
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
+  }
+  return normalizeUsage({
+    tokens_in: data.usageMetadata?.promptTokenCount,
+    tokens_out: data.usageMetadata?.candidatesTokenCount,
+  })
+}
+
+function openaiCompatParse(raw: unknown): TextResult {
+  const data = raw as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
+  return {
+    content: data.choices?.[0]?.message?.content ?? '',
+    usage: readOpenAICompatUsage(data),
+  }
 }
 
 function geminiCompatBody(req: ChatRequest): Record<string, unknown> {
@@ -421,9 +510,12 @@ function geminiCompatBody(req: ChatRequest): Record<string, unknown> {
   }
 }
 
-function geminiCompatParse(raw: unknown): string {
+function geminiCompatParse(raw: unknown): TextResult {
   const data = raw as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  return {
+    content: data.candidates?.[0]?.content?.parts?.[0]?.text ?? '',
+    usage: readGeminiUsage(data),
+  }
 }
 
 // --- Endpoint registry for text-only chat providers ---
@@ -456,7 +548,7 @@ const CHAT_ENDPOINTS: Record<'openai' | 'genai' | 'groq' | 'openrouter', ChatEnd
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     }),
-    buildBody: openaiCompatBody,
+    buildBody: groqCompatBody,
     parseResponse: openaiCompatParse,
   },
   openrouter: {
@@ -549,7 +641,7 @@ async function dispatchChat(
   userMessage: string,
   temperature: number | undefined,
   responseSchema: Record<string, unknown> | undefined,
-): Promise<string> {
+): Promise<TextResult> {
   const apiKey = await resolveKeyOrThrow(userId, source)
   if (source === 'vertex') {
     return vertexChat(apiKey, model, systemPrompt, userMessage, responseSchema)
@@ -586,7 +678,7 @@ async function dispatchChatWithImage(
   imageUrl: string,
   imageData: string,
   mimeType: string,
-): Promise<string> {
+): Promise<TextResult> {
   const apiKey = await resolveKeyOrThrow(userId, source)
 
   if (source === 'vertex') {
@@ -617,7 +709,10 @@ async function dispatchChatWithImage(
     }
 
     const geminiData = await geminiResp.json()
-    return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    return {
+      content: geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '',
+      usage: readGeminiUsage(geminiData),
+    }
   }
 
   if (source === 'openrouter') {
@@ -626,7 +721,11 @@ async function dispatchChatWithImage(
 
   // openai, groq — legacy behavior routed imageUrl as a message string.
   if (source === 'openai' || source === 'groq') {
-    return callChat(CHAT_ENDPOINTS[source], apiKey, { model, systemPrompt, userMessage: imageUrl })
+    return callChat(CHAT_ENDPOINTS[source], apiKey, {
+      model,
+      systemPrompt,
+      userMessage: imageUrl,
+    })
   }
 
   throw new Error(`Unsupported chat-with-image source: ${source}`)
@@ -638,7 +737,7 @@ async function dispatchTTS(
   model: string,
   voice: string,
   text: string,
-): Promise<string> {
+): Promise<AudioResult> {
   const apiKey = await resolveKeyOrThrow(userId, source)
   if (source === 'openai') return openaiTTS(apiKey, text, voice, model)
   if (source === 'groq') return groqTTS(apiKey, text, voice, model)
@@ -654,7 +753,7 @@ async function dispatchSTT(
   model: string,
   audioBase64: string,
   mimeType: string,
-): Promise<string> {
+): Promise<STTResult> {
   const apiKey = await resolveKeyOrThrow(userId, source)
   if (source === 'openai') return openaiSTT(apiKey, audioBase64, mimeType, model)
   if (source === 'groq') return groqSTT(apiKey, audioBase64, mimeType, model)
@@ -670,7 +769,7 @@ async function dispatchImage(
   model: string,
   prompt: string,
   options: Record<string, unknown>,
-): Promise<string> {
+): Promise<ImageResult> {
   const apiKey = await resolveKeyOrThrow(userId, source)
   if (source === 'vertex') return vertexImage(apiKey, model, prompt, options)
   if (source === 'openrouter') return openrouterImage(apiKey, prompt, model)
@@ -685,7 +784,12 @@ async function dispatchImage(
 /**
  * OpenAI TTS
  */
-async function openaiTTS(apiKey: string, text: string, voice: string, model: string): Promise<string> {
+async function openaiTTS(
+  apiKey: string,
+  text: string,
+  voice: string,
+  model: string,
+): Promise<AudioResult> {
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
     headers: {
@@ -707,13 +811,18 @@ async function openaiTTS(apiKey: string, text: string, voice: string, model: str
 
   const buffer = await response.arrayBuffer()
   const base64 = uint8ToBase64(new Uint8Array(buffer))
-  return base64
+  return { audio: base64 }
 }
 
 /**
  * Gemini TTS
  */
-async function geminiTTS(apiKey: string, text: string, voice: string, model: string): Promise<string> {
+async function geminiTTS(
+  apiKey: string,
+  text: string,
+  voice: string,
+  model: string,
+): Promise<AudioResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
   const response = await fetch(url, {
     method: 'POST',
@@ -741,13 +850,21 @@ async function geminiTTS(apiKey: string, text: string, voice: string, model: str
   }
 
   // Wrap PCM16 in WAV header
-  return pcm16ToWav(audioData, 24000)
+  return {
+    audio: pcm16ToWav(audioData, 24000),
+    usage: readGeminiUsage(data),
+  }
 }
 
 /**
  * Groq TTS
  */
-async function groqTTS(apiKey: string, text: string, voice: string, model: string): Promise<string> {
+async function groqTTS(
+  apiKey: string,
+  text: string,
+  voice: string,
+  model: string,
+): Promise<AudioResult> {
   const response = await fetch('https://api.groq.com/openai/v1/audio/speech', {
     method: 'POST',
     headers: {
@@ -769,13 +886,18 @@ async function groqTTS(apiKey: string, text: string, voice: string, model: strin
 
   const buffer = await response.arrayBuffer()
   const base64 = uint8ToBase64(new Uint8Array(buffer))
-  return base64
+  return { audio: base64 }
 }
 
 /**
  * OpenAI STT
  */
-async function openaiSTT(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
+async function openaiSTT(
+  apiKey: string,
+  audioBase64: string,
+  mimeType: string,
+  model: string,
+): Promise<STTResult> {
   const audioData = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))
   const blob = new Blob([audioData], { type: mimeType })
 
@@ -798,13 +920,21 @@ async function openaiSTT(apiKey: string, audioBase64: string, mimeType: string, 
   }
 
   const data = await response.json()
-  return data.text
+  return {
+    text: data.text,
+    usage: readOpenAICompatUsage(data),
+  }
 }
 
 /**
  * Gemini STT
  */
-async function geminiSTT(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
+async function geminiSTT(
+  apiKey: string,
+  audioBase64: string,
+  mimeType: string,
+  model: string,
+): Promise<STTResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
   const response = await fetch(url, {
     method: 'POST',
@@ -828,13 +958,21 @@ async function geminiSTT(apiKey: string, audioBase64: string, mimeType: string, 
   const data = await response.json()
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini STT returned no text')
-  return text.trim()
+  return {
+    text: text.trim(),
+    usage: readGeminiUsage(data),
+  }
 }
 
 /**
  * Groq STT
  */
-async function groqSTT(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
+async function groqSTT(
+  apiKey: string,
+  audioBase64: string,
+  mimeType: string,
+  model: string,
+): Promise<STTResult> {
   const audioData = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))
   const blob = new Blob([audioData], { type: mimeType })
 
@@ -857,7 +995,10 @@ async function groqSTT(apiKey: string, audioBase64: string, mimeType: string, mo
   }
 
   const data = await response.json()
-  return data.text
+  return {
+    text: data.text,
+    usage: readOpenAICompatUsage(data),
+  }
 }
 
 // ============================================================================
@@ -868,7 +1009,14 @@ async function groqSTT(apiKey: string, audioBase64: string, mimeType: string, mo
  * OpenRouter Chat Completion (OpenAI-compatible format).
  * Thin wrapper over `callChat` — see CHAT_ENDPOINTS.openrouter above.
  */
-async function openrouterChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, temperature = 0.8, responseSchema?: Record<string, unknown>): Promise<string> {
+async function openrouterChat(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userMessage: string,
+  temperature = 0.8,
+  responseSchema?: Record<string, unknown>,
+): Promise<TextResult> {
   return callChat(CHAT_ENDPOINTS.openrouter, apiKey, { model, systemPrompt, userMessage, temperature, responseSchema })
 }
 
@@ -876,7 +1024,12 @@ async function openrouterChat(apiKey: string, model: string, systemPrompt: strin
  * OpenRouter TTS — passes through to OpenAI-compatible audio endpoint.
  * Most OpenRouter models don't support TTS; only use with compatible models.
  */
-async function openrouterTTS(apiKey: string, text: string, voice: string, model: string): Promise<string> {
+async function openrouterTTS(
+  apiKey: string,
+  text: string,
+  voice: string,
+  model: string,
+): Promise<AudioResult> {
   const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
     method: 'POST',
     headers: {
@@ -897,14 +1050,19 @@ async function openrouterTTS(apiKey: string, text: string, voice: string, model:
   }
 
   const buffer = await response.arrayBuffer()
-  return uint8ToBase64(new Uint8Array(buffer))
+  return { audio: uint8ToBase64(new Uint8Array(buffer)) }
 }
 
 /**
  * OpenRouter STT — uses chat completions with input_audio content.
  * Models like openai/gpt-audio support audio via chat completions, not transcription endpoint.
  */
-async function openrouterSTT(apiKey: string, audioBase64: string, mimeType: string, model: string): Promise<string> {
+async function openrouterSTT(
+  apiKey: string,
+  audioBase64: string,
+  mimeType: string,
+  model: string,
+): Promise<STTResult> {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -931,14 +1089,17 @@ async function openrouterSTT(apiKey: string, audioBase64: string, mimeType: stri
   }
 
   const data = await response.json()
-  return data.choices?.[0]?.message?.content || ''
+  return {
+    text: data.choices?.[0]?.message?.content || '',
+    usage: readOpenAICompatUsage(data),
+  }
 }
 
 /**
  * OpenRouter Image Generation — uses chat completions with image modality.
  * OpenRouter doesn't support /images/generations; image models use chat completions.
  */
-async function openrouterImage(apiKey: string, prompt: string, model: string): Promise<string> {
+async function openrouterImage(apiKey: string, prompt: string, model: string): Promise<ImageResult> {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -965,10 +1126,9 @@ async function openrouterImage(apiKey: string, prompt: string, model: string): P
   // Check for images in response (OpenRouter format)
   if (msg?.images?.length) {
     const imageUrl = msg.images[0]?.image_url?.url
-    if (imageUrl) {
-      // data:image/png;base64,... or regular URL
-      return imageUrl.startsWith('data:') ? imageUrl : imageUrl
-    }
+      if (imageUrl) {
+        return { image: imageUrl.startsWith('data:') ? imageUrl : imageUrl, usage: readOpenAICompatUsage(data) }
+      }
   }
 
   // Check for inline content
@@ -1068,7 +1228,13 @@ async function getVertexConfig(userId: string): Promise<{ projectId: string; reg
 /**
  * Vertex AI Chat Completion (express mode with API key)
  */
-async function vertexChat(apiKey: string, model: string, systemPrompt: string, userMessage: string, responseSchema?: Record<string, unknown>): Promise<string> {
+async function vertexChat(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userMessage: string,
+  responseSchema?: Record<string, unknown>,
+): Promise<TextResult> {
   const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const generationConfig: Record<string, unknown> = { temperature: 0.8 }
@@ -1100,7 +1266,10 @@ async function vertexChat(apiKey: string, model: string, systemPrompt: string, u
   if (!text) {
     throw new Error(`Vertex returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
   }
-  return text
+  return {
+    content: text,
+    usage: readGeminiUsage(data),
+  }
 }
 
 /**
@@ -1112,7 +1281,7 @@ async function vertexChatWithImage(
   systemPrompt: string,
   imageBase64: string,
   imageMimeType: string,
-): Promise<string> {
+): Promise<TextResult> {
   const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const contents: Record<string, unknown>[] = [{
@@ -1145,13 +1314,21 @@ async function vertexChatWithImage(
   if (!text) {
     throw new Error(`Vertex returned unexpected response format: ${JSON.stringify(data).slice(0, 300)}`)
   }
-  return text
+  return {
+    content: text,
+    usage: readGeminiUsage(data),
+  }
 }
 
 /**
  * Vertex AI TTS (express mode with API key)
  */
-async function vertexTTS(apiKey: string, model: string, text: string, voice: string): Promise<string> {
+async function vertexTTS(
+  apiKey: string,
+  model: string,
+  text: string,
+  voice: string,
+): Promise<AudioResult> {
   const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const response = await fetch(url, {
@@ -1182,13 +1359,21 @@ async function vertexTTS(apiKey: string, model: string, text: string, voice: str
     throw new Error('Vertex AI TTS returned no audio data')
   }
 
-  return pcm16ToWav(audioData, 24000)
+  return {
+    audio: pcm16ToWav(audioData, 24000),
+    usage: readGeminiUsage(data),
+  }
 }
 
 /**
  * Vertex AI STT (express mode with API key)
  */
-async function vertexSTT(apiKey: string, model: string, audioBase64: string, mimeType: string): Promise<string> {
+async function vertexSTT(
+  apiKey: string,
+  model: string,
+  audioBase64: string,
+  mimeType: string,
+): Promise<STTResult> {
   const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent`
 
   const response = await fetch(url, {
@@ -1215,13 +1400,21 @@ async function vertexSTT(apiKey: string, model: string, audioBase64: string, mim
   const data = await response.json()
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Vertex AI STT returned no text')
-  return text.trim()
+  return {
+    text: text.trim(),
+    usage: readGeminiUsage(data),
+  }
 }
 
 /**
  * Vertex AI Image Generation (express mode with API key)
  */
-async function vertexImage(apiKey: string, model: string, prompt: string, options: Record<string, unknown>): Promise<string> {
+async function vertexImage(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  options: Record<string, unknown>,
+): Promise<ImageResult> {
   const isImagenModel = model.startsWith('imagen-')
 
   if (isImagenModel) {
@@ -1255,7 +1448,12 @@ async function vertexImage(apiKey: string, model: string, prompt: string, option
     const data = await response.json()
     if (data.predictions && data.predictions[0]) {
       const bytesBase64 = data.predictions[0].bytesBase64
-      if (bytesBase64) return `data:image/png;base64,${bytesBase64}`
+      if (bytesBase64) {
+        return {
+          image: `data:image/png;base64,${bytesBase64}`,
+          usage: readGeminiUsage(data),
+        }
+      }
     }
 
     throw new Error('Vertex AI did not return an image.')
@@ -1288,7 +1486,10 @@ async function vertexImage(apiKey: string, model: string, prompt: string, option
     for (const part of parts) {
       if (part.inlineData) {
         const mime = part.inlineData.mimeType || 'image/png'
-        return `data:${mime};base64,${part.inlineData.data}`
+        return {
+          image: `data:${mime};base64,${part.inlineData.data}`,
+          usage: readGeminiUsage(data),
+        }
       }
     }
 
@@ -1345,7 +1546,12 @@ function str2ab(str: string): ArrayBuffer {
 /**
  * OpenAI Image Generation
  */
-async function openaiImage(apiKey: string, prompt: string, model: string, options: Record<string, unknown>): Promise<string> {
+async function openaiImage(
+  apiKey: string,
+  prompt: string,
+  model: string,
+  options: Record<string, unknown>,
+): Promise<ImageResult> {
   const body: Record<string, unknown> = { model, prompt, n: 1 }
 
   if (options.size) body.size = options.size
@@ -1372,8 +1578,13 @@ async function openaiImage(apiKey: string, prompt: string, model: string, option
   const data = await response.json()
 
   if (data.data && data.data[0]) {
-    if (data.data[0].url) return data.data[0].url
-    if (data.data[0].b64_json) return `data:image/png;base64,${data.data[0].b64_json}`
+    if (data.data[0].url) return { image: data.data[0].url, usage: readOpenAICompatUsage(data) }
+    if (data.data[0].b64_json) {
+      return {
+        image: `data:image/png;base64,${data.data[0].b64_json}`,
+        usage: readOpenAICompatUsage(data),
+      }
+    }
   }
 
   throw new Error(`OpenAI response missing image: ${JSON.stringify(data)}`)
@@ -1382,7 +1593,12 @@ async function openaiImage(apiKey: string, prompt: string, model: string, option
 /**
  * Gemini Image Generation
  */
-async function geminiImage(apiKey: string, prompt: string, model: string, options: Record<string, unknown>): Promise<string> {
+async function geminiImage(
+  apiKey: string,
+  prompt: string,
+  model: string,
+  options: Record<string, unknown>,
+): Promise<ImageResult> {
   const isImagenModel = model.startsWith('imagen-')
 
   if (isImagenModel) {
@@ -1415,7 +1631,12 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
 
     if (data.predictions && data.predictions[0]) {
       const bytesBase64 = data.predictions[0].bytesBase64
-      if (bytesBase64) return `data:image/png;base64,${bytesBase64}`
+      if (bytesBase64) {
+        return {
+          image: `data:image/png;base64,${bytesBase64}`,
+          usage: readGeminiUsage(data),
+        }
+      }
     }
 
     throw new Error('Gemini did not return an image.')
@@ -1447,7 +1668,10 @@ async function geminiImage(apiKey: string, prompt: string, model: string, option
     for (const part of parts) {
       if (part.inlineData) {
         const mime = part.inlineData.mimeType || 'image/png'
-        return `data:${mime};base64,${part.inlineData.data}`
+        return {
+          image: `data:${mime};base64,${part.inlineData.data}`,
+          usage: readGeminiUsage(data),
+        }
       }
     }
 
@@ -1564,7 +1788,7 @@ serve(async (req) => {
         const model = body.model || (source === 'genai' || source === 'vertex' ? 'gemini-2.5-flash' : 'gpt-4o-mini')
         const fallback = parseFallback(body.fallback)
 
-        let content: string
+        let result: TextResult
 
         if (body.imageMode) {
           // Pre-fetch image bytes once so fallback doesn't re-download.
@@ -1585,7 +1809,7 @@ serve(async (req) => {
               ), label: `${fallback.source}:${fallback.model}` }
             : undefined
 
-          content = await withFallback(primaryRun, fallbackRun)
+          result = await withFallback(primaryRun, fallbackRun)
         } else {
           // Regular chat
           const schema = body.responseSchema || undefined
@@ -1604,10 +1828,10 @@ serve(async (req) => {
               ), label: `${fallback.source}:${fallback.model}` }
             : undefined
 
-          content = await withFallback(primaryRun, fallbackRun)
+          result = await withFallback(primaryRun, fallbackRun)
         }
 
-        return new Response(JSON.stringify({ content }), { headers: cors })
+        return new Response(JSON.stringify(result), { headers: cors })
       }
 
       // TTS
@@ -1628,9 +1852,9 @@ serve(async (req) => {
             ), label: `${fallback.source}:${fallback.model}` }
           : undefined
 
-        const audio = await withFallback(primaryRun, fallbackRun)
+        const result = await withFallback(primaryRun, fallbackRun)
 
-        return new Response(JSON.stringify({ audio }), { headers: cors })
+        return new Response(JSON.stringify(result), { headers: cors })
       }
 
       // STT
@@ -1645,9 +1869,9 @@ serve(async (req) => {
               label: `${fallback.source}:${fallback.model}` }
           : undefined
 
-        const text = await withFallback(primaryRun, fallbackRun)
+        const result = await withFallback(primaryRun, fallbackRun)
 
-        return new Response(JSON.stringify({ text }), { headers: cors })
+        return new Response(JSON.stringify(result), { headers: cors })
       }
 
       // Image Generation
@@ -1677,9 +1901,11 @@ serve(async (req) => {
 
         const result = await withFallback(primaryRun, fallbackRun)
 
-        const isBase64 = result.startsWith('data:')
+        const isBase64 = result.image.startsWith('data:')
         return new Response(
-          JSON.stringify(isBase64 ? { imageData: result } : { imageUrl: result }),
+          JSON.stringify(isBase64
+            ? { imageData: result.image, usage: result.usage }
+            : { imageUrl: result.image, usage: result.usage }),
           { headers: cors }
         )
       }

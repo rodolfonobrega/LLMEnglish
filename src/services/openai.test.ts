@@ -8,6 +8,7 @@ const {
   proxyTTSMock,
   proxySTTMock,
   proxyImageMock,
+  waitUntilHydratedMock,
 } = vi.hoisted(() => ({
   getModelConfigMock: vi.fn(),
   proxyChatMock: vi.fn(),
@@ -15,6 +16,7 @@ const {
   proxyTTSMock: vi.fn(),
   proxySTTMock: vi.fn(),
   proxyImageMock: vi.fn(),
+  waitUntilHydratedMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('./supabase/aiProxy', () => ({
@@ -27,6 +29,7 @@ vi.mock('./supabase/aiProxy', () => ({
 
 vi.mock('./runtimeConfigSnapshot', () => ({
   getModelConfig: getModelConfigMock,
+  waitUntilHydrated: waitUntilHydratedMock,
 }));
 
 import {

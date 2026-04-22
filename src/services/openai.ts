@@ -14,7 +14,7 @@ import {
   speechToText as proxySTT,
   generateImage as proxyImage,
 } from './supabase/aiProxy';
-import { getModelConfig } from './runtimeConfigSnapshot';
+import { getModelConfig, waitUntilHydrated } from './runtimeConfigSnapshot';
 import { getAudioCache } from './audioCache';
 
 // ---------------------------------------------------------------------------
@@ -58,6 +58,7 @@ export async function chatCompletion(
   modelOverride?: ChatModelOverride,
   responseSchema?: Record<string, unknown>,
 ): Promise<string> {
+  await waitUntilHydrated();
   const config = getModelConfig();
 
   let model: string;
@@ -113,6 +114,7 @@ export async function chatCompletionWithImage(
   imageUrl: string,
   modelOverride?: string
 ): Promise<string> {
+  await waitUntilHydrated();
   const config = getModelConfig();
   const model = modelOverride || config.chatModel;
   const source = modelOverride ? detectSource(modelOverride) : config.chatSource;
@@ -151,6 +153,7 @@ export async function textToSpeech(
   text: string,
   voiceOverride?: string
 ): Promise<string> {
+  await waitUntilHydrated();
   const config = getModelConfig();
   const source = config.ttsSource;
   const model = config.ttsModel;
@@ -211,6 +214,7 @@ export async function textToSpeech(
 // ===== Speech to Text =====
 
 export async function speechToText(audioBlob: Blob): Promise<string> {
+  await waitUntilHydrated();
   const config = getModelConfig();
   const source = config.sttSource;
   const model = config.sttModel;
@@ -259,6 +263,7 @@ export async function generateImage(
   prompt: string,
   options?: ImageGenerationOptions
 ): Promise<string> {
+  await waitUntilHydrated();
   const config = getModelConfig();
   const source = config.imageSource;
   const model = config.imageModel;

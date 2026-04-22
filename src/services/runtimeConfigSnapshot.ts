@@ -102,6 +102,22 @@ function notify(): void {
   listeners.forEach((listener) => listener())
 }
 
+// Hydration gate — prevents services from reading stale defaults before
+// the Provider finishes its first async load. The Promise starts resolved
+// so tests and non-Provider flows are unaffected. Only `beginHydration()`
+// (called by RuntimeConfigProvider) flips it to pending; `setSnapshot()`
+// resolves it.
+let hydrateResolve: (() => void) | undefined
+let hydratePromise: Promise<void> = Promise.resolve()
+
+export function beginHydration(): void {
+  hydratePromise = new Promise<void>((resolve) => { hydrateResolve = resolve })
+}
+
+export function waitUntilHydrated(): Promise<void> {
+  return hydratePromise
+}
+
 export function subscribe(listener: Listener): () => void {
   listeners.add(listener)
   return () => {
@@ -116,6 +132,10 @@ export function getSnapshot(): RuntimeConfigSnapshot {
 export function setSnapshot(next: RuntimeConfigSnapshot): void {
   snapshot = next
   notify()
+  if (hydrateResolve) {
+    hydrateResolve()
+    hydrateResolve = undefined
+  }
 }
 
 export function patchSnapshot(patch: Partial<RuntimeConfigSnapshot>): void {
@@ -126,6 +146,8 @@ export function patchSnapshot(patch: Partial<RuntimeConfigSnapshot>): void {
 export function resetSnapshot(): void {
   snapshot = createDefaultSnapshot()
   notify()
+  hydratePromise = Promise.resolve()
+  hydrateResolve = undefined
 }
 
 // Convenience readers used by the deprecation shim and by services that

@@ -1,0 +1,625 @@
+{
+  "scenarioResponseSchema": {
+    "type": "object",
+    "properties": {
+      "descriptionPt": {
+        "type": "string",
+        "description": "2-4 sentence vivid description of the situation in Brazilian Portuguese. Paint the scene. NO roles, NO objectives, NO instructions."
+      },
+      "brandName": {
+        "type": "string",
+        "description": "Specific place/business name. MUST be in English."
+      },
+      "location": {
+        "type": "string",
+        "description": "City + specific area in English, e.g. 'Maui, North Shore' or 'London, Camden Market'."
+      },
+      "userRole": {
+        "type": "string",
+        "description": "What the user is: customer/tourist/visitor/etc. MUST be in English."
+      },
+      "aiRole": {
+        "type": "string",
+        "description": "Specific role in English, e.g. 'surfboard shaper' not just 'salesperson'."
+      },
+      "characterPersonality": {
+        "type": "string",
+        "description": "2-3 sentences IN ENGLISH describing WHO this person is. Their vibe, attitude, background. e.g. 'A 60-year-old ex-pro surfer who now shapes boards by hand. Mellow, philosophical, calls everyone dude.'"
+      },
+      "characterSpeechStyle": {
+        "type": "string",
+        "description": "2-3 sentences IN ENGLISH about HOW they talk. e.g. 'Speaks slowly with lots of pauses. Uses surf slang (gnarly, stoked, sick). Asks rhetorical questions.'"
+      },
+      "openingLine": {
+        "type": "string",
+        "description": "The FIRST thing the character says to the user. MUST be in ENGLISH. Must be 100% in character. e.g. 'Heyyy, welcome welcome! You look like someone who knows their way around a wave. Am I right?'"
+      },
+      "systemDetails": {
+        "type": "string",
+        "description": "Internal world-building IN ENGLISH for the AI: what the place offers, prices, specials, constraints, backstory."
+      },
+      "suggestedVoice": {
+        "type": "string",
+        "description": "Pick the BEST voice name for this character from: Zephyr, Kore, Puck, Fenrir, Aoede, Charon, Leda, Algieba, Algenib, Gacrux, Sulafat, Achernar, Enceladus, Despina, Alnilam, Achird, Sadachbia, Umbriel, Schedar, Autonoe, Rasalgethi, Pulcherrima, Vindemiatrix. Return ONLY the voice name.",
+        "enum": [
+          "Zephyr",
+          "Kore",
+          "Puck",
+          "Fenrir",
+          "Aoede",
+          "Charon",
+          "Leda",
+          "Algieba",
+          "Algenib",
+          "Gacrux",
+          "Sulafat",
+          "Achernar",
+          "Enceladus",
+          "Despina",
+          "Alnilam",
+          "Achird",
+          "Sadachbia",
+          "Umbriel",
+          "Schedar",
+          "Autonoe",
+          "Rasalgethi",
+          "Pulcherrima",
+          "Vindemiatrix"
+        ]
+      }
+    },
+    "required": [
+      "descriptionPt",
+      "brandName",
+      "location",
+      "userRole",
+      "aiRole",
+      "characterPersonality",
+      "characterSpeechStyle",
+      "openingLine",
+      "systemDetails",
+      "suggestedVoice"
+    ],
+    "additionalProperties": false
+  },
+  "skillScenarioResponseSchema": {
+    "type": "object",
+    "properties": {
+      "descriptionPt": {
+        "type": "string",
+        "description": "2-4 sentence vivid description of the situation in Brazilian Portuguese. Make them FEEL the pressure/context."
+      },
+      "brandName": {
+        "type": "string",
+        "description": "Specific company/organization name in English."
+      },
+      "location": {
+        "type": "string",
+        "description": "Location in English, e.g. 'Remote Google Meet' or 'New York Office'."
+      },
+      "userRole": {
+        "type": "string",
+        "description": "The user's role in English, e.g. 'Candidate', 'Presenter'."
+      },
+      "aiRole": {
+        "type": "string",
+        "description": "AI's role in English, e.g. 'Senior Recruiter'."
+      },
+      "characterPersonality": {
+        "type": "string",
+        "description": "Professional personality IN ENGLISH, e.g. 'Direct, polite, asks probing questions.'"
+      },
+      "characterSpeechStyle": {
+        "type": "string",
+        "description": "How they talk IN ENGLISH, e.g. 'Professional but uses industry jargon naturally. Asks clear questions and pauses.'"
+      },
+      "openingLine": {
+        "type": "string",
+        "description": "The FIRST thing the character says. MUST be in ENGLISH. e.g. 'Hi there, thanks for joining. I see your background is in React.'"
+      },
+      "systemDetails": {
+        "type": "string",
+        "description": "Internal constraints IN ENGLISH for the AI: what to evaluate, what to ask about the user profile."
+      },
+      "suggestedVoice": {
+        "type": "string",
+        "description": "Pick the BEST voice name for this character from: Zephyr, Kore, Puck, Aoede, Charon, Gacrux, Sulafat, Algieba, Alnilam, Sadaltager, Schedar, Rasalgethi. Return ONLY the voice name.",
+        "enum": [
+          "Zephyr",
+          "Kore",
+          "Puck",
+          "Aoede",
+          "Charon",
+          "Gacrux",
+          "Sulafat",
+          "Algieba",
+          "Alnilam",
+          "Sadaltager",
+          "Schedar",
+          "Rasalgethi"
+        ]
+      }
+    },
+    "required": [
+      "descriptionPt",
+      "brandName",
+      "location",
+      "userRole",
+      "aiRole",
+      "characterPersonality",
+      "characterSpeechStyle",
+      "openingLine",
+      "systemDetails",
+      "suggestedVoice"
+    ],
+    "additionalProperties": false
+  },
+  "evaluationResponseSchema": {
+    "type": "object",
+    "properties": {
+      "score": {
+        "type": "number",
+        "description": "Convenience 0-10 scalar derived from the 5D axes. 0 = incomprehensible, 10 = perfect native-like spoken English."
+      },
+      "scores5d": {
+        "type": "object",
+        "description": "Five-dimensional scorecard. Each axis is an INTEGER 0-100 and is INDEPENDENT of the others.",
+        "properties": {
+          "naturalness": {
+            "type": "number",
+            "description": "0-100. Sounds like a native speaker in the target register."
+          },
+          "accuracy": {
+            "type": "number",
+            "description": "0-100. Grammar, vocabulary, and word-choice correctness."
+          },
+          "fluency": {
+            "type": "number",
+            "description": "0-100. Rhythm, fillers, connected speech."
+          },
+          "pragmatics": {
+            "type": "number",
+            "description": "0-100. Register, politeness, situational fit."
+          },
+          "completeness": {
+            "type": "number",
+            "description": "0-100. Covers what the prompt actually asked for."
+          }
+        },
+        "required": [
+          "naturalness",
+          "accuracy",
+          "fluency",
+          "pragmatics",
+          "completeness"
+        ],
+        "additionalProperties": false
+      },
+      "primaryDimension": {
+        "type": "string",
+        "description": "The single axis that most held this response back.",
+        "enum": [
+          "naturalness",
+          "accuracy",
+          "fluency",
+          "pragmatics",
+          "completeness"
+        ]
+      },
+      "correctedVersion": {
+        "type": "string",
+        "description": "The corrected English version — how a native speaker would actually say it out loud."
+      },
+      "betterAlternatives": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "At least 2 alternative native English ways to say the same thing. 100% English, no Portuguese."
+      },
+      "highlights": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Things the student did well, in Portuguese (pt-br). Empty array if nothing to highlight."
+      },
+      "corrections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "tip": {
+              "type": "string",
+              "description": "Short, direct feedback in Portuguese — what was wrong + quick suggestion."
+            },
+            "example": {
+              "type": "string",
+              "description": "Optional full English example sentence showing the fix in context."
+            },
+            "severity": {
+              "type": "string",
+              "description": "How impactful the fix is for this utterance.",
+              "enum": [
+                "critical",
+                "moderate",
+                "polish"
+              ]
+            },
+            "canonical_pattern": {
+              "type": "string",
+              "description": "Optional stable snake_case id naming the underlying phenomenon. Use one from the canonical list when it fits exactly, or propose a new semantic id (not a slice of the tip). Reuse ids across corrections only for the same phenomenon."
+            }
+          },
+          "required": [
+            "tip"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Array of corrections with tips in Portuguese and optional English examples, ordered from most to least impactful."
+      },
+      "overallFeedback": {
+        "type": "string",
+        "description": "Encouraging, constructive overall feedback in Portuguese (pt-br)."
+      }
+    },
+    "required": [
+      "score",
+      "scores5d",
+      "primaryDimension",
+      "correctedVersion",
+      "betterAlternatives",
+      "highlights",
+      "corrections",
+      "overallFeedback"
+    ],
+    "additionalProperties": false
+  },
+  "conversationAnalysisResponseSchema": {
+    "type": "object",
+    "properties": {
+      "improvements": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Specific improvement tips in Portuguese (pt-br). At least 3. Include English examples inside each tip."
+      },
+      "cleanDialogue": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "description": "Either 'user' or 'ai'.",
+              "enum": [
+                "user",
+                "ai"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "description": "Cleaned up, natural English version of what was said."
+            }
+          },
+          "required": [
+            "role",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "description": "The full conversation cleaned up to sound native. All text in English."
+      },
+      "overallFeedback": {
+        "type": "string",
+        "description": "Overall constructive feedback in Portuguese (pt-br). Praise before critique."
+      }
+    },
+    "required": [
+      "improvements",
+      "cleanDialogue",
+      "overallFeedback"
+    ],
+    "additionalProperties": false
+  },
+  "oralClozeResponseSchema": {
+    "type": "object",
+    "properties": {
+      "sentence": {
+        "type": "string",
+        "description": "Full sentence with the missing word present."
+      },
+      "blank_token": {
+        "type": "string",
+        "description": "Exact word that was blanked (single token, no trailing punctuation)."
+      },
+      "canonical_pattern": {
+        "type": "string",
+        "description": "Optional canonical pattern id that this round exercises."
+      },
+      "tts_sentence_with_beep": {
+        "type": "string",
+        "description": "Sentence with the blank word replaced by the literal string \"*BEEP*\"."
+      }
+    },
+    "required": [
+      "sentence",
+      "blank_token",
+      "tts_sentence_with_beep"
+    ],
+    "additionalProperties": false
+  },
+  "errorSpottingResponseSchema": {
+    "type": "object",
+    "properties": {
+      "planted_sentence": {
+        "type": "string"
+      },
+      "error_description": {
+        "type": "string"
+      },
+      "correction": {
+        "type": "string"
+      },
+      "canonical_pattern": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "planted_sentence",
+      "correction",
+      "canonical_pattern"
+    ],
+    "additionalProperties": false
+  },
+  "reactionDrillResponseSchema": {
+    "type": "object",
+    "properties": {
+      "lines": {
+        "type": "array",
+        "description": "8-12 reaction drill rounds.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "provocation": {
+              "type": "string"
+            },
+            "expected_naturalness_markers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "provocation",
+            "expected_naturalness_markers"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "lines"
+    ],
+    "additionalProperties": false
+  },
+  "shadowingLineResponseSchema": {
+    "type": "object",
+    "properties": {
+      "line": {
+        "type": "string"
+      },
+      "context_hint_pt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "line"
+    ],
+    "additionalProperties": false
+  },
+  "reformulationResponseSchema": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string"
+      },
+      "target_style": {
+        "type": "string",
+        "enum": [
+          "more_casual",
+          "more_formal",
+          "shorter",
+          "more_natural"
+        ]
+      },
+      "reference_examples": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "source",
+      "target_style",
+      "reference_examples"
+    ],
+    "additionalProperties": false
+  },
+  "narrativeSeedResponseSchema": {
+    "type": "object",
+    "properties": {
+      "opening_sentences": {
+        "type": "string"
+      },
+      "suggested_topic": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "opening_sentences"
+    ],
+    "additionalProperties": false
+  },
+  "listeningPassageResponseSchema": {
+    "type": "object",
+    "properties": {
+      "passage": {
+        "type": "string"
+      },
+      "questions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "expected_key_points": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "accent_hint": {
+        "type": "string",
+        "enum": [
+          "us",
+          "uk",
+          "au",
+          "neutral"
+        ]
+      }
+    },
+    "required": [
+      "passage",
+      "questions",
+      "expected_key_points"
+    ],
+    "additionalProperties": false
+  },
+  "liveConversationMasterResponseSchema": {
+    "type": "object",
+    "properties": {
+      "salient_patterns_observed": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "canonical_pattern": {
+              "type": "string"
+            },
+            "turns_correct": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "turns_incorrect": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "evidence": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "canonical_pattern",
+            "turns_correct",
+            "turns_incorrect",
+            "evidence"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "automaticity_estimate": {
+        "type": "string",
+        "enum": [
+          "low",
+          "moderate",
+          "high"
+        ]
+      },
+      "confidence_estimate": {
+        "type": "string",
+        "enum": [
+          "cold",
+          "recovering",
+          "warm",
+          "hot"
+        ]
+      },
+      "suggested_next_step": {
+        "type": "string"
+      },
+      "respects_stealth": {
+        "type": "boolean"
+      },
+      "session_size": {
+        "type": "string",
+        "enum": [
+          "standard",
+          "mini"
+        ]
+      },
+      "theme": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "salient_patterns_observed",
+      "automaticity_estimate",
+      "confidence_estimate",
+      "suggested_next_step",
+      "respects_stealth",
+      "session_size",
+      "theme"
+    ],
+    "additionalProperties": false
+  },
+  "cardVariationResponseSchema": {
+    "type": "object",
+    "properties": {
+      "prompt": {
+        "type": "string"
+      },
+      "context": {
+        "type": "string"
+      },
+      "theme": {
+        "type": "string"
+      },
+      "verbs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "prompt",
+      "theme",
+      "verbs"
+    ],
+    "additionalProperties": false
+  },
+  "summarizeSessionResponseSchema": {
+    "type": "object",
+    "properties": {
+      "strength_text": {
+        "type": "string"
+      },
+      "opportunity_text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "strength_text",
+      "opportunity_text"
+    ],
+    "additionalProperties": false
+  }
+}

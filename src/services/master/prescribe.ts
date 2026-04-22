@@ -22,7 +22,7 @@
  */
 
 import { chatCompletion } from '../openai';
-import { masterEnabled } from '../runtimeConfigSnapshot';
+import { masterEnabled, waitUntilHydrated } from '../runtimeConfigSnapshot';
 import { recordMasterUsage } from '../masterTelemetry';
 import { resolveMasterModel } from './resolveMasterModel';
 import { cleanJson } from '../../utils/cleanJson';
@@ -254,6 +254,7 @@ export async function prescribe(
   input: PrescribeInput,
 ): Promise<Briefing | null> {
   if (!masterEnabled()) return null;
+  await waitUntilHydrated();
 
   const key = cacheKey(userId, input.requestedExerciseType);
   const cached = briefingCache.get(key);

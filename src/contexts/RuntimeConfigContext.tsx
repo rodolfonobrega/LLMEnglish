@@ -38,6 +38,7 @@ import {
 } from '../services/supabase/storage'
 import {
   DEFAULT_GAMIFICATION,
+  beginHydration,
   envCredentials,
   getSnapshot,
   patchSnapshot,
@@ -176,6 +177,7 @@ export function RuntimeConfigProvider({ children }: RuntimeConfigProviderProps) 
   useEffect(() => {
     if (devModeNoSupabase) return
     if (user) {
+      beginHydration()
       void hydrate()
     } else {
       reset()

@@ -414,6 +414,26 @@ async function callChat(ep: ChatEndpoint, apiKey: string, req: ChatRequest): Pro
 
 // --- Provider-specific body/parse helpers shared by OpenAI-compatible APIs ---
 
+/** Gemini rejects `additionalProperties` in schemas — strip recursively. */
+function stripForGemini(schema: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === 'additionalProperties') continue
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      out[key] = stripForGemini(value as Record<string, unknown>)
+    } else if (Array.isArray(value)) {
+      out[key] = value.map((item) =>
+        item && typeof item === 'object' && !Array.isArray(item)
+          ? stripForGemini(item as Record<string, unknown>)
+          : item,
+      )
+    } else {
+      out[key] = value
+    }
+  }
+  return out
+}
+
 function openaiCompatBody(req: ChatRequest): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: req.model,
@@ -426,27 +446,26 @@ function openaiCompatBody(req: ChatRequest): Record<string, unknown> {
   if (req.responseSchema) {
     body.response_format = {
       type: 'json_schema',
-      json_schema: { name: 'scenario', strict: true, schema: req.responseSchema },
+      json_schema: { name: 'scenario', strict: false, schema: req.responseSchema },
     }
   }
   return body
 }
 
 function groqCompatBody(req: ChatRequest): Record<string, unknown> {
-  let systemPrompt = req.systemPrompt;
-  if (req.responseSchema) {
-    systemPrompt += '\n\nYou must output valid JSON matching the requested schema.';
-  }
   const body: Record<string, unknown> = {
     model: req.model,
     messages: [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: req.systemPrompt },
       { role: 'user', content: req.userMessage },
     ],
     temperature: req.temperature ?? 0.8,
   }
   if (req.responseSchema) {
-    body.response_format = { type: 'json_object' }
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'scenario', strict: false, schema: req.responseSchema },
+    }
   }
   return body
 }
@@ -501,7 +520,7 @@ function geminiCompatBody(req: ChatRequest): Record<string, unknown> {
   const generationConfig: Record<string, unknown> = { temperature: req.temperature ?? 0.8 }
   if (req.responseSchema) {
     generationConfig.responseMimeType = 'application/json'
-    generationConfig.responseSchema = req.responseSchema
+    generationConfig.responseSchema = stripForGemini(req.responseSchema)
   }
   return {
     system_instruction: { parts: [{ text: req.systemPrompt }] },
@@ -1240,7 +1259,7 @@ async function vertexChat(
   const generationConfig: Record<string, unknown> = { temperature: 0.8 }
   if (responseSchema) {
     generationConfig.responseMimeType = 'application/json'
-    generationConfig.responseSchema = responseSchema
+    generationConfig.responseSchema = stripForGemini(responseSchema)
   }
 
   const response = await fetch(url, {

@@ -152,6 +152,7 @@ const briefingSchema = {
     'success_criteria',
     'expected_difficulty',
   ],
+  additionalProperties: false,
 };
 
 function buildSystemPrompt(): string {

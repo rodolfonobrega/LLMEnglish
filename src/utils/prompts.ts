@@ -481,6 +481,7 @@ export const scenarioResponseSchema = {
     },
   },
   required: ['descriptionPt', 'brandName', 'location', 'userRole', 'aiRole', 'characterPersonality', 'characterSpeechStyle', 'openingLine', 'systemDetails', 'suggestedVoice'],
+  additionalProperties: false,
 };
 
 export const skillScenarioResponseSchema = {
@@ -529,6 +530,7 @@ export const skillScenarioResponseSchema = {
     },
   },
   required: ['descriptionPt', 'brandName', 'location', 'userRole', 'aiRole', 'characterPersonality', 'characterSpeechStyle', 'openingLine', 'systemDetails', 'suggestedVoice'],
+  additionalProperties: false,
 };
 
 export const evaluationResponseSchema = {
@@ -549,6 +551,7 @@ export const evaluationResponseSchema = {
         completeness: { type: 'number' as const, description: '0-100. Covers what the prompt actually asked for.' },
       },
       required: ['naturalness', 'accuracy', 'fluency', 'pragmatics', 'completeness'],
+      additionalProperties: false,
     },
     primaryDimension: {
       type: 'string' as const,
@@ -593,6 +596,7 @@ export const evaluationResponseSchema = {
           },
         },
         required: ['tip'],
+        additionalProperties: false,
       },
       description: 'Array of corrections with tips in Portuguese and optional English examples, ordered from most to least impactful.',
     },
@@ -602,6 +606,7 @@ export const evaluationResponseSchema = {
     },
   },
   required: ['score', 'scores5d', 'primaryDimension', 'correctedVersion', 'betterAlternatives', 'highlights', 'corrections', 'overallFeedback'],
+  additionalProperties: false,
 };
 
 export const conversationAnalysisResponseSchema = {
@@ -628,6 +633,7 @@ export const conversationAnalysisResponseSchema = {
           },
         },
         required: ['role', 'text'],
+        additionalProperties: false,
       },
       description: 'The full conversation cleaned up to sound native. All text in English.',
     },
@@ -637,6 +643,7 @@ export const conversationAnalysisResponseSchema = {
     },
   },
   required: ['improvements', 'cleanDialogue', 'overallFeedback'],
+  additionalProperties: false,
 };
 
 export function getSkillScenarioPrompt(
@@ -873,6 +880,7 @@ export const oralClozeResponseSchema = {
     tts_sentence_with_beep: { type: 'string' as const, description: 'Sentence with the blank word replaced by the literal string "*BEEP*".' },
   },
   required: ['sentence', 'blank_token', 'tts_sentence_with_beep'],
+  additionalProperties: false,
 };
 
 // F27 — Error Spotting
@@ -917,6 +925,7 @@ export const errorSpottingResponseSchema = {
     canonical_pattern: { type: 'string' as const },
   },
   required: ['planted_sentence', 'correction', 'canonical_pattern'],
+  additionalProperties: false,
 };
 
 // F29 — Reaction Drill
@@ -962,10 +971,12 @@ export const reactionDrillResponseSchema = {
           },
         },
         required: ['provocation', 'expected_naturalness_markers'],
+        additionalProperties: false,
       },
     },
   },
   required: ['lines'],
+  additionalProperties: false,
 };
 
 // F23 — Active Shadowing
@@ -995,6 +1006,7 @@ export const shadowingLineResponseSchema = {
     context_hint_pt: { type: 'string' as const },
   },
   required: ['line'],
+  additionalProperties: false,
 };
 
 // F26 — Reformulation
@@ -1044,6 +1056,7 @@ export const reformulationResponseSchema = {
     },
   },
   required: ['source', 'target_style', 'reference_examples'],
+  additionalProperties: false,
 };
 
 // F28 — Open-Ended Narrative Continuation
@@ -1073,6 +1086,7 @@ export const narrativeSeedResponseSchema = {
     suggested_topic: { type: 'string' as const },
   },
   required: ['opening_sentences'],
+  additionalProperties: false,
 };
 
 // F25 — Directed Listening
@@ -1118,6 +1132,7 @@ export const listeningPassageResponseSchema = {
     },
   },
   required: ['passage', 'questions', 'expected_key_points'],
+  additionalProperties: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -1228,6 +1243,7 @@ export const liveConversationMasterResponseSchema = {
           evidence: { type: 'string' as const },
         },
         required: ['canonical_pattern', 'turns_correct', 'turns_incorrect', 'evidence'],
+        additionalProperties: false,
       },
     },
     automaticity_estimate: {
@@ -1255,6 +1271,7 @@ export const liveConversationMasterResponseSchema = {
     'session_size',
     'theme',
   ],
+  additionalProperties: false,
 };
 
 // -----------------------------------------------------------------------------
@@ -1365,6 +1382,7 @@ export const cardVariationResponseSchema = {
     },
   },
   required: ['prompt', 'theme', 'verbs'],
+  additionalProperties: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -1460,5 +1478,6 @@ export const summarizeSessionResponseSchema = {
     opportunity_text: { type: 'string' as const },
   },
   required: ['strength_text', 'opportunity_text'],
+  additionalProperties: false,
 };
 

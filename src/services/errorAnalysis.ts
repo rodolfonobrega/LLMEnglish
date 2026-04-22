@@ -354,7 +354,25 @@ export async function recordErrorPatterns(patterns: ErrorPattern[]): Promise<voi
         canonical_pattern: deriveCanonicalId(newPattern.id),
       })
 
-    if (insertError) throw new Error(`Failed to insert error pattern: ${insertError.message}`)
+    if (insertError) {
+      if (insertError.code === '23505') {
+        const recentScores = [...newPattern.recentScores].slice(-10)
+        const { error: updateError } = await supabase
+          .from('error_patterns')
+          .update({
+            occurrences: newPattern.occurrences + 1,
+            last_seen: newPattern.lastSeen,
+            examples: newPattern.examples,
+            recent_scores: recentScores,
+            trend: newPattern.trend,
+          })
+          .eq('user_id', userId)
+          .eq('pattern_key', newPattern.id)
+        if (updateError) throw new Error(`Failed to update error pattern after conflict: ${updateError.message}`)
+        continue
+      }
+      throw new Error(`Failed to insert error pattern: ${insertError.message}`)
+    }
   }
 }
 

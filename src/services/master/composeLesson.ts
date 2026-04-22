@@ -191,8 +191,9 @@ export function coerceLessonPlan(
   const r = raw as Record<string, unknown>;
 
   if (typeof r.title_thematic !== 'string' || !r.title_thematic.trim()) return null;
+  // Accept whatever the LLM returns for target, but always override with the
+  // authoritative value from the candidate. LLMs sometimes hallucinate this.
   if (typeof r.target_canonical_pattern !== 'string' || !r.target_canonical_pattern) return null;
-  if (r.target_canonical_pattern !== expectedTarget) return null;
 
   const engagementRaw = r.engagement_context;
   if (typeof engagementRaw !== 'object' || engagementRaw === null) return null;
@@ -204,11 +205,26 @@ export function coerceLessonPlan(
       ? (eng.tone_hint as 'casual' | 'balanced' | 'formal')
       : undefined;
 
+  // LLMs sometimes return the curve as a single concatenated string like
+  // "0.20.40.60.80.5" or an array of strings. Parse defensively.
   const curveRaw = r.expected_difficulty_curve;
-  if (!Array.isArray(curveRaw) || curveRaw.length !== 5) return null;
-  const curve = curveRaw
-    .map((n) => (typeof n === 'number' ? n : NaN))
-    .map((n) => (Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : NaN));
+  let curve: number[];
+  if (Array.isArray(curveRaw) && curveRaw.length === 5) {
+    curve = curveRaw.map((n) => {
+      const v = typeof n === 'number' ? n : parseFloat(String(n));
+      return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : NaN;
+    });
+  } else if (typeof curveRaw === 'string' || (Array.isArray(curveRaw) && curveRaw.length === 1)) {
+    const raw = Array.isArray(curveRaw) ? String(curveRaw[0]) : curveRaw;
+    const nums = raw.match(/0?\.\d+/g);
+    if (!nums || nums.length < 5) return null;
+    curve = nums.slice(0, 5).map((s) => {
+      const v = parseFloat(s);
+      return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : NaN;
+    });
+  } else {
+    return null;
+  }
   if (curve.some((n) => Number.isNaN(n))) return null;
 
   const momentsRaw = r.moments;
@@ -238,7 +254,7 @@ export function coerceLessonPlan(
 
   return {
     title_thematic: r.title_thematic.trim(),
-    target_canonical_pattern: r.target_canonical_pattern,
+    target_canonical_pattern: expectedTarget,
     moments,
     engagement_context: { theme: eng.theme, tone_hint: toneHint },
     expected_difficulty_curve: curve,

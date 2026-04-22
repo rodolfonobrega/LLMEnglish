@@ -18,11 +18,18 @@ export function ScoreDisplay({ score, size = 'md' }: ScoreDisplayProps) {
     return 'text-[var(--danger)]';
   };
 
-  const getStrokeColor = () => {
-    if (score >= 8) return 'stroke-leaf';
-    if (score >= 6) return 'stroke-[var(--amber)]';
-    if (score >= 4) return 'stroke-primary';
-    return 'stroke-[var(--danger)]';
+  const getBarColor = () => {
+    if (score >= 8) return 'bg-leaf';
+    if (score >= 6) return 'bg-[var(--amber)]';
+    if (score >= 4) return 'bg-primary';
+    return 'bg-[var(--danger)]';
+  };
+
+  const getBarSoft = () => {
+    if (score >= 8) return 'bg-leaf-soft';
+    if (score >= 6) return 'bg-[var(--amber-soft)]';
+    if (score >= 4) return 'bg-primary-soft';
+    return 'bg-[var(--danger-soft)]';
   };
 
   const getLabel = () => {
@@ -34,44 +41,16 @@ export function ScoreDisplay({ score, size = 'md' }: ScoreDisplayProps) {
   };
 
   const sizeConfig = {
-    sm: { container: 'size-12', text: 'text-lg', svgSize: 48, strokeWidth: 3, radius: 20 },
-    md: { container: 'size-20', text: 'text-2xl', svgSize: 80, strokeWidth: 4, radius: 34 },
-    lg: { container: 'size-28', text: 'text-4xl', svgSize: 112, strokeWidth: 5, radius: 48 },
+    sm: { container: 'size-12', text: 'text-lg', barH: 'h-1.5', barW: 'w-20' },
+    md: { container: 'size-20', text: 'text-2xl', barH: 'h-2', barW: 'w-28' },
+    lg: { container: 'size-28', text: 'text-4xl', barH: 'h-2.5', barW: 'w-36' },
   };
 
   const config = sizeConfig[size];
-  const circumference = 2 * Math.PI * config.radius;
-  const progress = (score / 10) * circumference;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex items-center gap-4">
       <div className={cn('relative', config.container)}>
-        <svg
-          className="-rotate-90"
-          width={config.svgSize}
-          height={config.svgSize}
-          viewBox={`0 0 ${config.svgSize} ${config.svgSize}`}
-        >
-          <circle
-            cx={config.svgSize / 2}
-            cy={config.svgSize / 2}
-            r={config.radius}
-            fill="none"
-            className="stroke-muted"
-            strokeWidth={config.strokeWidth}
-          />
-          <circle
-            cx={config.svgSize / 2}
-            cy={config.svgSize / 2}
-            r={config.radius}
-            fill="none"
-            className={getStrokeColor()}
-            strokeWidth={config.strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={circumference - progress}
-          />
-        </svg>
         <span
           className={cn(
             'absolute inset-0 flex items-center justify-center font-bold tabular-nums',
@@ -82,9 +61,17 @@ export function ScoreDisplay({ score, size = 'md' }: ScoreDisplayProps) {
           {score}
         </span>
       </div>
-      {size !== 'sm' && (
-        <span className={cn('text-sm font-medium', getColor())}>{getLabel()}</span>
-      )}
+      <div className="flex flex-col gap-1.5">
+        <div className={cn('rounded-full overflow-hidden', config.barH, config.barW, getBarSoft())}>
+          <div
+            className={cn('h-full rounded-full transition-all duration-700', getBarColor())}
+            style={{ width: `${Math.max(0, Math.min(100, score * 10))}%` }}
+          />
+        </div>
+        {size !== 'sm' && (
+          <span className={cn('text-sm font-medium', getColor())}>{getLabel()}</span>
+        )}
+      </div>
     </div>
   );
 }

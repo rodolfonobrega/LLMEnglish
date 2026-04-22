@@ -76,7 +76,7 @@ export function ScorecardDisplay({
   return (
     <div className="flex flex-col items-stretch gap-4 rounded-2xl border border-border bg-card p-5">
       {typeof scalar === 'number' && (
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex items-center gap-4 justify-center">
           <div className="relative" style={{ width: ringSize, height: ringSize }}>
             <svg className="-rotate-90" width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`}>
               <circle
@@ -109,7 +109,24 @@ export function ScorecardDisplay({
               {scalar.toFixed(1)}
             </span>
           </div>
-          <span className="text-xs font-medium" style={{ color: ringColor }}>{scalarLabel(scalar)}</span>
+          <div className="flex flex-col gap-1.5">
+            <div
+              className={cn(
+                'rounded-full overflow-hidden',
+                size === 'sm' ? 'h-1.5 w-20' : size === 'lg' ? 'h-2.5 w-36' : 'h-2 w-28',
+              )}
+              style={{ backgroundColor: axisColorSoft(scalar * 10) }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.max(0, Math.min(100, scalar * 10))}%`,
+                  backgroundColor: ringColor,
+                }}
+              />
+            </div>
+            <span className="text-xs font-medium" style={{ color: ringColor }}>{scalarLabel(scalar)}</span>
+          </div>
         </div>
       )}
 

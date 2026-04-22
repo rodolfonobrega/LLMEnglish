@@ -236,9 +236,13 @@ export class GeminiLiveSession implements ILiveSession {
 
         const pcm16 = new Int16Array(event.data.audio);
         const base64 = encodeBase64(new Uint8Array(pcm16.buffer));
-        this.session.sendRealtimeInput({
-          media: { data: base64, mimeType: 'audio/pcm;rate=16000' },
-        });
+        try {
+          this.session.sendRealtimeInput({
+            media: { data: base64, mimeType: 'audio/pcm;rate=16000' },
+          });
+        } catch {
+          this.isStreaming = false;
+        }
       };
 
       this.sourceNode.connect(this.workletNode);

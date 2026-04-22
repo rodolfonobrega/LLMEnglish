@@ -65,11 +65,14 @@ function matches(answer: string, target: string): boolean {
   return tokens.includes(t);
 }
 
-async function generateRound(briefing?: Briefing): Promise<ClozeRound> {
+async function generateRound(briefing?: Briefing, previousRounds?: ClozeRound[]): Promise<ClozeRound> {
   const systemPrompt = getOralClozePrompt(briefing);
+  const prevBlock = previousRounds && previousRounds.length > 0
+    ? `\n\nSENTENCES ALREADY USED (do NOT repeat or closely paraphrase these):\n${previousRounds.map((r, i) => `${i + 1}. "${r.sentence}" (blank: ${r.blank_token})`).join('\n')}\nGenerate something DIFFERENT from all of the above.`
+    : '';
   const response = await chatCompletion(
     systemPrompt,
-    'Generate one oral cloze round now.',
+    `Generate one oral cloze round now.${prevBlock}`,
     undefined,
     oralClozeResponseSchema,
   );
@@ -102,7 +105,8 @@ export function OralCloze({ briefing }: OralClozeProps) {
     setStage('playing');
     discardRecording();
     try {
-      const next = await generateRound(briefing);
+      const prevRounds = results.map((r) => r.round);
+      const next = await generateRound(briefing, prevRounds);
       setRound(next);
     } catch (err) {
       console.error('[OralCloze] generation failed', err);
@@ -110,7 +114,7 @@ export function OralCloze({ briefing }: OralClozeProps) {
     } finally {
       setGenerating(false);
     }
-  }, [briefing, discardRecording]);
+  }, [briefing, discardRecording, results]);
 
   useEffect(() => {
     if (!round && roundIndex === 0 && results.length === 0) {

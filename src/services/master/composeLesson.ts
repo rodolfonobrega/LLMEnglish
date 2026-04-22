@@ -156,7 +156,7 @@ export async function composeLesson(
 
   const plan = coerceLessonPlan(parsed, input.candidate.candidate_pattern);
   if (!plan) {
-    console.warn('[Master.compose_lesson] Schema mismatch, discarding');
+    console.warn('[Master.compose_lesson] Schema mismatch, discarding. Raw:', JSON.stringify(parsed).slice(0, 500));
     return null;
   }
   if (!lessonTitleIsThematic(plan.title_thematic)) {

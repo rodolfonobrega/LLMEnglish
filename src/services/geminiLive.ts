@@ -86,7 +86,7 @@ export class GeminiLiveSession implements ILiveSession {
       const ai = new GoogleGenAI({ apiKey: key });
 
       const sessionPromise = ai.live.connect({
-        model: `models/${model}`,
+        model,
         callbacks: {
           onopen: () => {
             this.callbacks.onConnectionChange(true);
@@ -95,9 +95,12 @@ export class GeminiLiveSession implements ILiveSession {
             this.handleMessage(message);
           },
           onerror: (e: ErrorEvent) => {
-            this.callbacks.onError(`Gemini Live error: ${e.message || 'Unknown error'}`);
+            const msg = e.message || (e.error instanceof Error ? e.error.message : '') || 'Unknown error';
+            console.warn('[GeminiLive] connection error:', msg);
+            this.callbacks.onError(`Gemini Live error: ${msg}`);
           },
-          onclose: () => {
+          onclose: (e: CloseEvent) => {
+            console.log('[GeminiLive] closed, code:', e.code, 'reason:', e.reason);
             this.isStreaming = false;
             this.stopMicrophone();
             this.stopAllAudio();
@@ -238,7 +241,7 @@ export class GeminiLiveSession implements ILiveSession {
         const base64 = encodeBase64(new Uint8Array(pcm16.buffer));
         try {
           this.session.sendRealtimeInput({
-            media: { data: base64, mimeType: 'audio/pcm;rate=16000' },
+            audio: { data: base64, mimeType: 'audio/pcm;rate=16000' },
           });
         } catch {
           this.isStreaming = false;

@@ -83,6 +83,7 @@ async function callAIProxy(request: {
 
   if (!response.ok) {
     const error = await response.text()
+    console.warn(`[ai-proxy] ${request.action} ${request.source}:${request.model} → ${response.status}:`, error)
     throw new Error(`AI proxy error: ${response.status} - ${error}`)
   }
 
